@@ -36,9 +36,18 @@ public final class MainActivity extends Activity {
     private Spinner chooser;
     private int page=0,selectedKey=7;
     private boolean programmatic=false;
+    // All measurements are Android density-independent pixels (dp).
+    // Recomputed after rotation, display scaling, or split-screen resize.
+    private int screenWidthDp=800,contentWidthDp=620,panelWidthDp=620;
+    private int centerWidthDp=515,rightWidthDp=445;
+    private boolean compactNav=false,splitPanels=false;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if(savedInstanceState!=null){
+            page=Math.max(0,Math.min(2,savedInstanceState.getInt("pn12.page",0)));
+            selectedKey=Math.max(1,Math.min(12,savedInstanceState.getInt("pn12.selectedKey",7)));
+        }
         store=new ActionStore(this);
         usb=(UsbManager)getSystemService(USB_SERVICE);
         getWindow().setStatusBarColor(BG);
@@ -111,54 +120,158 @@ public final class MainActivity extends Activity {
     private TextView click(String s,Runnable r){
         TextView t=pill(s,false);t.setOnClickListener(v->r.run());return t;
     }
+    private int screenWidth() {
+        int reported=getResources().getConfiguration().screenWidthDp;
+        if(reported>0)return reported;
+        return (int)(getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density);
+    }
+    private void measureLayout(){
+        screenWidthDp=screenWidth();
+        compactNav=screenWidthDp<700;
+        splitPanels=screenWidthDp>=1040;
+        int sideWidth=compactNav?0:(screenWidthDp>=1050?196:168);
+        int shellPadding=compactNav?20:28;
+        contentWidthDp=Math.max(280,screenWidthDp-sideWidth-shellPadding);
+        int rowWidth=contentWidthDp-12;
+        if(splitPanels){
+            centerWidthDp=Math.round(rowWidth*0.525f);
+            rightWidthDp=rowWidth-centerWidthDp;
+            panelWidthDp=centerWidthDp;
+        }else{
+            centerWidthDp=contentWidthDp;
+            rightWidthDp=contentWidthDp;
+            panelWidthDp=contentWidthDp;
+        }
+    }
     private void buildShell(){
-        ScrollView vscroll=new ScrollView(this);vscroll.setFillViewport(true);vscroll.setBackgroundColor(BG);
-        HorizontalScrollView horizontal=new HorizontalScrollView(this);
-        horizontal.setFillViewport(true);horizontal.setHorizontalScrollBarEnabled(false);
-        vscroll.addView(horizontal);
-        LinearLayout shell=horizontal();shell.setGravity(Gravity.TOP);shell.setMinimumHeight(dp(690));horizontal.addView(shell);
-        sideHost=vertical();sideHost.setBackground(grad(SIDE,0xff0b172b,0,0));pad(sideHost,14,24);
-        add(shell,sideHost,216,-1);
-        buildSidebar();
-        LinearLayout content=vertical();content.setPadding(dp(18),dp(26),dp(20),dp(12));
-        add(shell,content,1015,-2);
-        LinearLayout top=horizontal();top.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout titleBox=vertical();
-        TextView header=txt("버튼 설정",29,WHITE,true);add(titleBox,header,-1,48);
-        add(titleBox,txt("화면에서 키를 선택하고 기능과 색상을 지정하세요.",13,MUTED,false),-1,25);
-        top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(79),1f));
-        statusHeader=pill("●  USB 미연결",false);
-        statusHeader.setOnClickListener(v->{page=2;refreshNavigation();renderPage();});
-        add(top,statusHeader,174,42);space(top,12);
-        add(top,pill("PN12 · 12키 전용",false),185,42);
-        add(content,top,-1,87);
-        pageHost=vertical();add(content,pageHost,-1,-2);
+        measureLayout();
+        ScrollView scroller=new ScrollView(this);
+        scroller.setFillViewport(true);
+        scroller.setVerticalScrollBarEnabled(true);
+        scroller.setBackgroundColor(BG);
+        LinearLayout container=vertical();
+        container.setBackgroundColor(BG);
+        scroller.addView(container,new ScrollView.LayoutParams(-1,-2));
+        LinearLayout shell=horizontal();
+        shell.setGravity(Gravity.TOP);
+        if(compactNav){
+            buildCompactNavigation(container);
+            add(container,shell,-1,-2);
+        }else{
+            add(container,shell,-1,-2);
+            sideHost=vertical();
+            sideHost.setBackground(grad(SIDE,0xff0b172b,0,0));
+            pad(sideHost,12,18);
+            add(shell,sideHost,screenWidthDp>=1050?196:168,-1);
+            buildSidebar();
+        }
+        LinearLayout content=vertical();
+        content.setPadding(dp(compactNav?10:14),dp(12),dp(compactNav?10:14),dp(10));
+        shell.addView(content,new LinearLayout.LayoutParams(0,-2,1));
+        if(contentWidthDp<770){
+            LinearLayout headings=vertical();
+            add(headings,txt("버튼 설정",compactNav?23:26,WHITE,true),-1,41);
+            TextView detail=txt("화면에서 키를 선택하고 기능과 색상을 지정하세요.",12,MUTED,false);
+            add(headings,detail,-1,-2);
+            add(content,headings,-1,-2);
+            space(content,8);
+            LinearLayout statuses=horizontal();
+            statusHeader=pill("●  USB 미연결",false);
+            statusHeader.setOnClickListener(v->{page=2;refreshNavigation();renderPage();});
+            statusHeader.setSingleLine(true);
+            statusHeader.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams st=new LinearLayout.LayoutParams(0,dp(39),1);
+            statuses.addView(statusHeader,st);
+            space(statuses,8);
+            TextView device=pill("PN12 · 12키 전용",false);
+            device.setSingleLine(true);
+            statuses.addView(device,new LinearLayout.LayoutParams(0,dp(39),1));
+            add(content,statuses,-1,45);
+        }else{
+            LinearLayout top=horizontal();
+            top.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout titleBox=vertical();
+            add(titleBox,txt("버튼 설정",29,WHITE,true),-1,46);
+            add(titleBox,txt("화면에서 키를 선택하고 기능과 색상을 지정하세요.",13,MUTED,false),-1,24);
+            top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(75),1));
+            statusHeader=pill("●  USB 미연결",false);
+            statusHeader.setSingleLine(true);
+            statusHeader.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            statusHeader.setOnClickListener(v->{page=2;refreshNavigation();renderPage();});
+            add(top,statusHeader,163,39);
+            space(top,9);
+            add(top,pill("PN12 · 12키 전용",false),161,39);
+            add(content,top,-1,82);
+        }
+        space(content,9);
+        pageHost=vertical();
+        add(content,pageHost,-1,-2);
         space(content,10);
-        LinearLayout footer=horizontal();pad(footer,12,5);
+        LinearLayout footer=horizontal();
+        pad(footer,10,5);
         footer.setBackground(shape(0xff11213a,9,BORDER));
         statusFooter=txt("●  하드웨어 연결 확인 대기",11,MUTED,false);
+        statusFooter.setSingleLine(true);
+        statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        TextView version=txt("v1.1.2  ·  ANDROID",10,BLUE,false);add(footer,version,-2,26);
-        add(content,footer,-1,38);
-        setContentView(vscroll);
+        add(footer,txt("v1.1.3 · ANDROID",10,BLUE,false),-2,26);
+        add(content,footer,-1,37);
+        setContentView(scroller);
         renderPage();
+        updateStatus(Pn12UsbService.status);
+    }
+    private void buildCompactNavigation(LinearLayout parent){
+        LinearLayout navRoot=vertical();
+        navRoot.setBackground(grad(SIDE,0xff0b172b,0,0));
+        navRoot.setPadding(dp(10),dp(10),dp(10),dp(9));
+        LinearLayout brand=horizontal();
+        add(brand,new LogoView(),37,37);
+        space(brand,8);
+        brand.addView(txt("PulseNote Deck",17,WHITE,true),new LinearLayout.LayoutParams(0,dp(39),1));
+        add(brand,txt("PN12",11,MUTED,true),-2,30);
+        add(navRoot,brand,-1,40);
+        space(navRoot,10);
+        LinearLayout navRow=horizontal();
+        String[] labels={"▦  버튼 설정","▣  프로필","⚙  장치"};
+        for(int i=0;i<3;i++){
+            final int index=i;
+            nav[i]=navItem(labels[i],i);
+            nav[i].setGravity(Gravity.CENTER);
+            nav[i].setTextSize(11);
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(42),1);
+            p.setMargins(dp(2),0,dp(2),0);
+            navRow.addView(nav[i],p);
+        }
+        add(navRoot,navRow,-1,44);
+        add(parent,navRoot,-1,-2);
+        statusSide=null;
+        refreshNavigation();
     }
     private void buildSidebar(){
         LinearLayout brand=horizontal();brand.setGravity(Gravity.CENTER_VERTICAL);
-        View logo=new LogoView();add(brand,logo,53,53);space(brand,10);
-        LinearLayout names=vertical();add(names,txt("PulseNote Deck",17,WHITE,true),-1,27);
-        add(names,txt("CONTROL CENTER",10,MUTED,false),-1,18);add(brand,names,-2,-2);
-        add(sideHost,brand,-1,65);space(sideHost,35);
-        add(sideHost,txt("WORKSPACE",11,0xff83a0ca,false),-1,32);
-        nav[0]=navItem("▦   버튼 설정",0);add(sideHost,nav[0],-1,53);space(sideHost,9);
-        nav[1]=navItem("▣   프로필 관리",1);add(sideHost,nav[1],-1,53);
-        space(sideHost,24);add(sideHost,txt("SYSTEM",11,0xff83a0ca,false),-1,30);
-        nav[2]=navItem("⚙   장치 및 설정",2);add(sideHost,nav[2],-1,53);
-        space(sideHost,140);
-        statusSide=txt("●  USB 미연결\n\nPN12 연결 대기",12,WHITE,false);pad(statusSide,12,13);
-        statusSide.setBackground(shape(0xff0d203a,12,BORDER));add(sideHost,statusSide,-1,92);
-        space(sideHost,20);
-        add(sideHost,txt("v1.1.2  ·  ANDROID",11,0xff829bc5,false),-1,25);
+        add(brand,new LogoView(),43,43);space(brand,8);
+        LinearLayout names=vertical();
+        TextView name=txt("PulseNote Deck",15,WHITE,true);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        add(names,name,-1,23);
+        add(names,txt("CONTROL CENTER",9,MUTED,false),-1,16);
+        brand.addView(names,new LinearLayout.LayoutParams(0,-2,1));
+        add(sideHost,brand,-1,62);
+        space(sideHost,27);
+        add(sideHost,txt("WORKSPACE",11,0xff83a0ca,false),-1,28);
+        nav[0]=navItem("▦  버튼 설정",0);add(sideHost,nav[0],-1,50);space(sideHost,7);
+        nav[1]=navItem("▣  프로필 관리",1);add(sideHost,nav[1],-1,50);
+        space(sideHost,24);
+        add(sideHost,txt("SYSTEM",11,0xff83a0ca,false),-1,28);
+        nav[2]=navItem("⚙  장치 및 설정",2);add(sideHost,nav[2],-1,50);
+        space(sideHost,Math.max(20,getResources().getConfiguration().screenHeightDp-570));
+        statusSide=txt("●  USB 미연결\n\nPN12 연결 대기",11,WHITE,false);
+        pad(statusSide,8,10);
+        statusSide.setBackground(shape(0xff0d203a,12,BORDER));
+        add(sideHost,statusSide,-1,85);
+        space(sideHost,12);
+        add(sideHost,txt("v1.1.3 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -178,49 +291,88 @@ public final class MainActivity extends Activity {
         else buildDevicePage();
     }
     private void buildButtonPage(){
-        LinearLayout row=horizontal();row.setGravity(Gravity.TOP);
-        LinearLayout center=card();add(row,center,515,-2);space(row,12);
-        LinearLayout right=card();add(row,right,445,-2);
-        add(pageHost,row,-1,-2);
-        LinearLayout first=horizontal();first.addView(txt("나의 12키 컨트롤러",19,WHITE,true),new LinearLayout.LayoutParams(0,dp(32),1));
-        add(first,pill("PN12 전용",true),145,37);add(center,first,-1,41);
-        add(center,txt("가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,29);
-        LinearLayout frame=vertical();frame.setGravity(Gravity.CENTER);
-        frame.setBackground(shape(INNER,15,0xff2c4364));pad(frame,14,11);
-        keysHost=vertical();keysHost.setGravity(Gravity.CENTER);
+        // Use a side-by-side editor only when both panes fit without horizontal scrolling.
+        LinearLayout wrapper=splitPanels?horizontal():vertical();
+        wrapper.setGravity(Gravity.TOP);
+        LinearLayout center=card();
+        if(splitPanels){
+            add(wrapper,center,centerWidthDp,-2);
+            View gap=new View(this);
+            add(wrapper,gap,12,1);
+        }else{
+            add(wrapper,center,-1,-2);
+            space(wrapper,12);
+        }
+        LinearLayout right=card();
+        if(splitPanels)add(wrapper,right,rightWidthDp,-2);
+        else add(wrapper,right,-1,-2);
+        add(pageHost,wrapper,-1,-2);
+        LinearLayout first=horizontal();
+        TextView h=txt("나의 12키 컨트롤러",Math.min(19,screenWidthDp<400?16:19),WHITE,true);
+        h.setSingleLine(true);
+        h.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        first.addView(h,new LinearLayout.LayoutParams(0,dp(33),1));
+        add(first,pill("PN12 전용",true),screenWidthDp<400?92:120,34);
+        add(center,first,-1,40);
+        add(center,txt("가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
+        LinearLayout frame=vertical();
+        frame.setGravity(Gravity.CENTER);
+        frame.setBackground(shape(INNER,15,0xff2c4364));
+        pad(frame,12,11);
+        keysHost=vertical();
+        keysHost.setGravity(Gravity.CENTER);
         add(frame,keysHost,-1,-2);
-        add(center,frame,-1,-2);
+        int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
+        add(center,frame,frameWidth,-2);
         renderKeys();
-        space(center,13);
+        space(center,12);
         LinearLayout bottom=horizontal();
         profileCaption=txt("프로필 · "+store.profileName(store.activeProfile()),11,MUTED,false);
-        bottom.addView(profileCaption,new LinearLayout.LayoutParams(0,dp(40),1));
-        add(bottom,click("▷   동작 테스트",()->testSelected()),150,39);
-        add(center,bottom,-1,42);
+        profileCaption.setSingleLine(true);
+        profileCaption.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        bottom.addView(profileCaption,new LinearLayout.LayoutParams(0,dp(39),1));
+        add(bottom,click("▷  동작 테스트",()->testSelected()),screenWidthDp<400?118:144,39);
+        add(center,bottom,-1,40);
         rightHost=right;
         renderRight();
     }
     private void renderKeys(){
-        if(keysHost==null || page!=0)return;
+        if(keysHost==null||page!=0)return;
         keysHost.removeAllViews();
+        int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
+        int realKeyWidth=(frameWidth-24-18)/3;
+        int keyHeight=Math.max(84,Math.min(113,Math.round(realKeyWidth*.98f)));
+        int iconSize=Math.min(39,Math.max(25,keyHeight-48));
+        boolean narrow=keyHeight<96;
         for(int r=0;r<4;r++){
-            LinearLayout row=horizontal();row.setGravity(Gravity.CENTER);
+            LinearLayout row=horizontal();
+            row.setGravity(Gravity.CENTER);
             for(int c=0;c<3;c++){
-                int k=r*3+c+1;
-                LinearLayout key=vertical();key.setGravity(Gravity.CENTER_HORIZONTAL);pad(key,7,4);
+                final int k=r*3+c+1;
+                LinearLayout key=vertical();
+                key.setGravity(Gravity.CENTER_HORIZONTAL);
+                key.setPadding(dp(narrow?3:5),dp(3),dp(narrow?3:5),dp(3));
                 int color=ActionStore.COLORS[store.color(k)];
-                key.setBackground(grad(adjust(color,0.19f),color,14,k==selectedKey?BLUE:0xffa3bdd7));
-                TextView n=txt(String.format(Locale.US,"%02d",k),11,0xff202e45,true);
-                n.setGravity(Gravity.LEFT);add(key,n,-1,17);
-                View icon=createSymbol(store.kind(k),39,k);
-                add(key,icon,39,39);
-                TextView name=txt(store.name(k),11,0xff162133,true);
-                name.setGravity(Gravity.CENTER);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                add(key,name,-1,21);
-                TextView type=txt(ActionStore.NAMES[store.kind(k)],9,0xff41536b,false);
-                type.setGravity(Gravity.CENTER);add(key,type,-1,15);
+                key.setBackground(grad(adjust(color,.19f),color,12,k==selectedKey?BLUE:0xffa3bdd7));
+                TextView number=txt(String.format(Locale.US,"%02d",k),narrow?9:10,0xff202e45,true);
+                add(key,number,-1,narrow?13:15);
+                View icon=createSymbol(store.kind(k),iconSize,k);
+                add(key,icon,iconSize,iconSize);
+                TextView name=txt(store.name(k),narrow?9:10,0xff162133,true);
+                name.setGravity(Gravity.CENTER);
+                name.setSingleLine(true);
+                name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                add(key,name,-1,narrow?17:19);
+                TextView type=txt(ActionStore.NAMES[store.kind(k)],narrow?8:9,0xff41536b,false);
+                type.setGravity(Gravity.CENTER);
+                type.setSingleLine(true);
+                type.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                add(key,type,-1,narrow?13:15);
                 key.setOnClickListener(v->{selectedKey=k;renderKeys();renderRight();});
-                LinearLayout.LayoutParams kp=lp(120,109);kp.setMargins(dp(5),dp(4),dp(5),dp(4));row.addView(key,kp);keyViews[k-1]=key;
+                LinearLayout.LayoutParams kp=new LinearLayout.LayoutParams(0,dp(keyHeight),1);
+                kp.setMargins(dp(3),dp(3),dp(3),dp(3));
+                row.addView(key,kp);
+                keyViews[k-1]=key;
             }
             add(keysHost,row,-1,-2);
         }
@@ -246,10 +398,11 @@ public final class MainActivity extends Activity {
         add(rightHost,preview,-1,64);space(rightHost,13);
         add(rightHost,txt("기능",13,WHITE,true),-1,27);
         int[] types={9,8,7,10,1,2,3,4,5,6,0};
-        for(int r=0;r<4;r++){
+        int cols=rightWidthDp<395?2:3;
+        for(int r=0;r<(types.length+cols-1)/cols;r++){
             LinearLayout line=horizontal();
-            for(int col=0;col<3;col++){
-                int pos=r*3+col;
+            for(int col=0;col<cols;col++){
+                int pos=r*cols+col;
                 if(pos>=types.length)break;
                 int type=types[pos];
                 TextView b=txt(ActionStore.SYMBOLS[type]+"  "+ActionStore.NAMES[type],10,WHITE,type==kind);
@@ -358,13 +511,18 @@ public final class MainActivity extends Activity {
         add(card,txt("PulseNote PN12 · ESP32-C3 · USB CDC 115200bps",14,MUTED,false),-1,38);
         devicePickerLabel=txt("USB-C 데이터 케이블을 연결한 후 장치를 검색하세요.",12,MUTED,false);
         add(card,devicePickerLabel,-1,48);
-        chooser=new Spinner(this);chooser.setBackground(shape(0xff0d1b33,11,BORDER));add(card,chooser,650,53);
+        chooser=new Spinner(this);
+        chooser.setBackground(shape(0xff0d1b33,11,BORDER));
+        add(card,chooser,Math.min(650,contentWidthDp-44),53);
         space(card,14);
-        LinearLayout row=horizontal();
-        add(row,click("⟳  USB 장치 검색",()->scan()),180,48);space(row,12);
-        add(row,click("●  PN12 USB 연결",()->connect()),200,48);space(row,12);
-        add(row,click("■  연결 종료",()->startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.STOP))),170,48);
-        add(card,row,-1,55);space(card,15);
+        LinearLayout row=contentWidthDp<680?vertical():horizontal();
+        add(row,click("⟳  USB 장치 검색",()->scan()),contentWidthDp<680?-1:180,48);
+        if(contentWidthDp<680)space(row,7);else space(row,12);
+        add(row,click("●  PN12 USB 연결",()->connect()),contentWidthDp<680?-1:200,48);
+        if(contentWidthDp<680)space(row,7);else space(row,12);
+        add(row,click("■  연결 종료",()->startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.STOP))),contentWidthDp<680?-1:170,48);
+        add(card,row,-1,-2);
+        space(card,15);
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
         TextView state=txt(Pn12UsbService.status,14,0xff3edba8,true);add(card,state,-1,41);
         add(card,txt("연결 후 상태는 상단의 USB 표시에도 반영됩니다. Android에서는 COM 포트 번호 대신 USB Host 장치 경로를 사용합니다.",12,MUTED,false),-1,55);
@@ -508,6 +666,11 @@ public final class MainActivity extends Activity {
         if(statusSide!=null)statusSide.setText((okay?"●  USB 연결됨":"●  USB 상태")+"\n\n"+message);
         if(statusFooter!=null)statusFooter.setText("●  "+message);
         if(page==2&&devicePickerLabel!=null)devicePickerLabel.setText(message);
+    }
+    @Override protected void onSaveInstanceState(Bundle state){
+        state.putInt("pn12.page",page);
+        state.putInt("pn12.selectedKey",selectedKey);
+        super.onSaveInstanceState(state);
     }
     @Override protected void onResume(){super.onResume();visible=true;updateStatus(Pn12UsbService.status);if(page==2&&pageHost!=null)renderPage();if(Pn12UsbService.status.startsWith("연결 완료"))try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}catch(RuntimeException ignored){}}
     @Override protected void onPause(){visible=false;super.onPause();}

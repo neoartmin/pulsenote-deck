@@ -31,11 +31,11 @@ public final class ShortcutService extends AccessibilityService {
             AccessibilityNodeInfo focused=root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
             if(focused!=null){
                 if(action==AccessibilityNodeInfo.ACTION_SET_SELECTION){
-                    CharSequence value=focused.getText();
-                    if(value!=null){
+                    CharSequence currentText=focused.getText();
+                    if(currentText!=null){
                         Bundle args=new Bundle();
                         args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT,0);
-                        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT,value.length());
+                        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT,currentText.length());
                         focused.performAction(action,args);
                     }
                 }else focused.performAction(action);

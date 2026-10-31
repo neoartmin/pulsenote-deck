@@ -166,7 +166,7 @@ public final class MainActivity extends Activity {
     private void buildButtonPage(){
         LinearLayout row=horizontal();row.setGravity(Gravity.TOP);
         LinearLayout center=card();add(row,center,515,-2);space(row,12);
-        LinearLayout right=card();add(row,right,464,-2);
+        LinearLayout right=card();add(row,right,445,-2);
         add(pageHost,row,-1,-2);
         LinearLayout first=horizontal();first.addView(txt("나의 12키 컨트롤러",19,WHITE,true),new LinearLayout.LayoutParams(0,dp(32),1));
         add(first,pill("PN12 전용",true),145,37);add(center,first,-1,41);

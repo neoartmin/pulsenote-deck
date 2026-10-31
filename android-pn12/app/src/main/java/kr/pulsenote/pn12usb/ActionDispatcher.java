@@ -32,7 +32,7 @@ public final class ActionDispatcher {
             audio.dispatchMediaKeyEvent(new KeyEvent(now,now,KeyEvent.ACTION_UP,code,0));
             return ActionStore.NAMES[kind];
         }
-        if(kind==9)return ShortcutService.execute(s.value(key));
+        if(kind==9)return "시스템 단축키는 별도 입력 방식이 필요합니다";
         String value=s.value(key).trim();
         Intent target=null;
         if(kind==7) {

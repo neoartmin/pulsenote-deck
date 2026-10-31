@@ -50,9 +50,15 @@ public final class ActionDispatcher {
         }
         if(target==null)return "지원되지 않는 동작";
         target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if(MainActivity.visible)try {
-            context.startActivity(target);return "실행 요청";
-        }catch(RuntimeException ex){return "Android에서 실행 불가: "+ex.getClass().getSimpleName();}
+        if(MainActivity.visible || DirectLaunchOverlay.isVisible()) {
+            try {
+                context.startActivity(target);
+                return MainActivity.visible ? "실행 요청" : "백그라운드 실행 요청";
+            }catch(RuntimeException ex){
+                // Android can deny background activity launches; keep the
+                // user-interaction notification fallback when direct launch fails.
+            }
+        }
         NotificationManager nm=(NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
         if(nm==null||(Build.VERSION.SDK_INT>=33&&!nm.areNotificationsEnabled()))return "앱 실행용 알림 권한 필요";
         nm.createNotificationChannel(new NotificationChannel(CHANNEL,"PN12 앱 열기",NotificationManager.IMPORTANCE_HIGH));

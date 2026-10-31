@@ -10,6 +10,7 @@ import android.graphics.drawable.*;
 import android.hardware.usb.*;
 import android.os.*;
 import android.provider.Settings;
+import android.net.Uri;
 import android.graphics.Color;
 import android.text.*;
 import android.view.*;
@@ -20,6 +21,7 @@ public final class MainActivity extends Activity {
     public static volatile boolean visible=false;
     private static final String PERMISSION="kr.pulsenote.pn12usb.GRANT";
     private static final int FOLDER_PICK=41;
+    private static final int NOTIFICATION_REQUEST=8;
     private static final int BG=0xff080f1f, SIDE=0xff0f1c31, PANEL=0xff15243d,
       BORDER=0xff263e60, MUTED=0xffa3b8d8, WHITE=0xfff4f7ff,
       BLUE=0xff5769fa, ACTIVE=0xff283a78, INNER=0xff091526;
@@ -63,7 +65,19 @@ public final class MainActivity extends Activity {
         else registerReceiver(receiver,filter);
         scan();
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},8);
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST);
+        boolean shown=getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("permission_guide_111",false);
+        if(!shown){
+            getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("permission_guide_111",true).apply();
+            new Handler(Looper.getMainLooper()).postDelayed(()->{
+                if(isFinishing()||isDestroyed())return;
+                new AlertDialog.Builder(this).setTitle("PN12 사용 권한 안내")
+                    .setMessage("USB 연결 권한은 PN12 연결 시 요청합니다. 앱을 떠나도 다른 프로그램을 바로 실행하려면 '다른 앱 위에 표시' 허용과 직접 실행 활성화가 필요합니다. 단축키는 별도의 접근성 권한이 필요합니다. 권한은 설정 화면에서 개별적으로 선택할 수 있습니다.")
+                    .setNegativeButton("나중에",null)
+                    .setPositiveButton("권한 설정", (d,w)->{page=2;refreshNavigation();renderPage();})
+                    .show();
+            },1100);
+        }
     }
 
     private int dp(float n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
@@ -124,7 +138,7 @@ public final class MainActivity extends Activity {
         footer.setBackground(shape(0xff11213a,9,BORDER));
         statusFooter=txt("●  하드웨어 연결 확인 대기",11,MUTED,false);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        TextView version=txt("v1.1.0  ·  ANDROID",10,BLUE,false);add(footer,version,-2,26);
+        TextView version=txt("v1.1.1  ·  ANDROID",10,BLUE,false);add(footer,version,-2,26);
         add(content,footer,-1,38);
         setContentView(vscroll);
         renderPage();
@@ -144,7 +158,7 @@ public final class MainActivity extends Activity {
         statusSide=txt("●  USB 미연결\n\nPN12 연결 대기",12,WHITE,false);pad(statusSide,12,13);
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));add(sideHost,statusSide,-1,92);
         space(sideHost,20);
-        add(sideHost,txt("v1.1.0  ·  ANDROID",11,0xff829bc5,false),-1,25);
+        add(sideHost,txt("v1.1.1  ·  ANDROID",11,0xff829bc5,false),-1,25);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -354,10 +368,85 @@ public final class MainActivity extends Activity {
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
         TextView state=txt(Pn12UsbService.status,14,0xff3edba8,true);add(card,state,-1,41);
         add(card,txt("연결 후 상태는 상단의 USB 표시에도 반영됩니다. Android에서는 COM 포트 번호 대신 USB Host 장치 경로를 사용합니다.",12,MUTED,false),-1,55);
-        add(card,click("Android 접근성 단축키 설정",()->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))),300,46);
+        add(card,click("Android 접근성 단축키 설정",()->openAccessibility()),300,46);
+        space(card,16);
+        buildPermissionSection(card);
         space(card,14);
         add(card,txt("Windows용 기존 PN12 펌웨어는 그대로 사용합니다. 단축키는 Android 보안 정책과 접근성 서비스 지원 범위에 따라 제한될 수 있으며 앱 실행은 백그라운드 상태에서 알림을 통해 진행됩니다.",12,MUTED,false),-1,84);
         scan();
+    }
+
+    private void buildPermissionSection(LinearLayout parent){
+        add(parent,txt("권한 및 직접 실행",19,WHITE,true),-1,39);
+        add(parent,txt("Android는 백그라운드에서 앱을 자동으로 여는 동작을 제한합니다. '다른 앱 위에 표시'를 허용하고 아래 직접 실행을 켜면 PN12 연결 중 작은 PN 표시가 화면에 나타납니다. 일부 기기는 여전히 직접 실행을 제한할 수 있습니다.",12,MUTED,false),-1,88);
+
+        boolean granted=Settings.canDrawOverlays(this);
+        boolean toggled=getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("direct_launch_enabled",false);
+        add(parent,txt("다른 앱 위에 표시  ·  "+(granted?"허용됨":"허용 필요"),13,granted?0xff3edba8:WHITE,true),-1,32);
+        add(parent,click(granted?"권한 설정 다시 열기":"다른 앱 위에 표시 권한 허용",()->requestOverlayPermission()),310,45);
+        space(parent,8);
+        add(parent,click(toggled?"●  직접 실행 끄기":"▷  직접 실행 켜기",()->{
+            if(toggled){
+                setDirectLaunch(false);
+            }else if(!Settings.canDrawOverlays(this)){
+                new AlertDialog.Builder(this).setTitle("직접 실행 권한")
+                  .setMessage("앱을 떠나서도 PN12 버튼으로 프로그램을 열려면 화면 위 표시 권한을 허용해야 합니다. 권한이 허용되면 PN12 연결 중 화면 우측에 작은 PN 버튼이 표시됩니다. 사용하지 않을 때는 언제든 끌 수 있습니다.")
+                  .setNegativeButton("취소",null)
+                  .setPositiveButton("설정 열기",(d,w)->{setDirectLaunch(true);requestOverlayPermission();})
+                  .show();
+            }else setDirectLaunch(true);
+        }),300,43);
+        space(parent,13);
+        boolean notificationGranted=Build.VERSION.SDK_INT<33 ||
+          checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED;
+        add(parent,txt("알림  ·  "+(notificationGranted?"허용됨":"허용 필요"),13,notificationGranted?0xff3edba8:WHITE,true),-1,32);
+        add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
+        space(parent,13);
+        add(parent,txt("접근성 단축키  ·  "+(ShortcutService.enabled()?"활성":"비활성"),13,
+           ShortcutService.enabled()?0xff3edba8:WHITE,true),-1,32);
+        add(parent,click("접근성 서비스 설정",()->openAccessibility()),245,43);
+        space(parent,11);
+        add(parent,txt("USB 접근 권한은 'PN12 USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다. Android 13 이상에서 접근성 기능이 제한되면 삼성 설정의 '제한된 설정 허용' 여부를 확인해야 할 수 있습니다.",11,MUTED,false),-1,69);
+        add(parent,txt("기본 기능(볼륨·미디어)은 특수 권한 없이 사용할 수 있으며, 직접 실행·접근성 권한은 선택 사항입니다.",11,MUTED,false),-1,51);
+    }
+    private void setDirectLaunch(boolean enabled) {
+        getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("direct_launch_enabled",enabled).apply();
+        if(Pn12UsbService.status.startsWith("연결 완료")){
+           Intent i=new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH);
+           startService(i);
+        }
+        if(page==2)renderPage();
+    }
+    private void requestOverlayPermission() {
+        try {
+            Intent intent=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                  Uri.parse("package:"+getPackageName()));
+            startActivity(intent);
+        }catch(Exception error) {
+            try{startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                   Uri.parse("package:"+getPackageName())));}
+            catch(Exception ignored){updateStatus("권한 설정을 열 수 없습니다");}
+        }
+    }
+    private void requestNotificationPermission() {
+        if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST);
+        }else{
+            try{startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                 .putExtra(Settings.EXTRA_APP_PACKAGE,getPackageName()));}
+            catch(Exception ignored){updateStatus("알림 설정 실행 실패");}
+        }
+    }
+    private void openAccessibility() {
+        new AlertDialog.Builder(this).setTitle("접근성 권한 안내")
+          .setMessage("CTRL+C/V/X/A 등 일부 단축키를 Android 입력 칸에서 실행하기 위한 선택 권한입니다. 해당 서비스는 실행 버튼의 요청 시에만 현재 선택된 입력 칸에 동작을 전달합니다. 화면 내용은 저장하지 않습니다. 설정 화면에서 PulseNote Deck을 직접 활성화하세요.")
+          .setNegativeButton("취소",null)
+          .setPositiveButton("설정 열기",(d,w)->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)))
+          .show();
+    }
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results) {
+        super.onRequestPermissionsResult(request,permissions,results);
+        if(page==2)renderPage();
     }
     private void pickApp(int key){
         Intent query=new Intent(Intent.ACTION_MAIN);query.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -420,7 +509,7 @@ public final class MainActivity extends Activity {
         if(statusFooter!=null)statusFooter.setText("●  "+message);
         if(page==2&&devicePickerLabel!=null)devicePickerLabel.setText(message);
     }
-    @Override protected void onResume(){super.onResume();visible=true;updateStatus(Pn12UsbService.status);}
+    @Override protected void onResume(){super.onResume();visible=true;updateStatus(Pn12UsbService.status);if(page==2&&pageHost!=null)renderPage();if(Pn12UsbService.status.startsWith("연결 완료"))try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}catch(RuntimeException ignored){}}
     @Override protected void onPause(){visible=false;super.onPause();}
     @Override protected void onDestroy(){if(receiver!=null)unregisterReceiver(receiver);super.onDestroy();}
     private final class LogoView extends View{

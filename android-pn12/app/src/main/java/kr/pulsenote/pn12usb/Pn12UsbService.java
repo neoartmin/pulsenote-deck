@@ -7,10 +7,10 @@ import android.os.*;
 import java.io.IOException;
 import java.util.*;
 public final class Pn12UsbService extends Service {
- public static final String START="kr.pulsenote.pn12usb.START",STOP="kr.pulsenote.pn12usb.STOP",STATUS="kr.pulsenote.pn12usb.STATUS",KEY="kr.pulsenote.pn12usb.KEY",DEVICE="device",TEXT="text",NUMBER="number";
+ public static final String START="kr.pulsenote.pn12usb.START",STOP="kr.pulsenote.pn12usb.STOP",REFRESH="kr.pulsenote.pn12usb.REFRESH",STATUS="kr.pulsenote.pn12usb.STATUS",KEY="kr.pulsenote.pn12usb.KEY",DEVICE="device",TEXT="text",NUMBER="number";
  public static volatile String status="미연결";
  private static final String CHANNEL="pn12_usb";
- private UsbManager manager; private volatile UsbDeviceConnection active; private volatile int generation=0;
+ private UsbManager manager; private DirectLaunchOverlay overlay; private volatile UsbDeviceConnection active; private volatile int generation=0;
  private final Handler handler=new Handler(Looper.getMainLooper());
  public static boolean candidate(UsbDevice d) {
    boolean control=false,data=false;
@@ -32,7 +32,7 @@ public final class Pn12UsbService extends Service {
    return in==null||out==null?null:new UsbEndpoint[]{in,out};
  }
  @Override public void onCreate(){
-   super.onCreate(); manager=(UsbManager)getSystemService(USB_SERVICE);
+   super.onCreate(); manager=(UsbManager)getSystemService(USB_SERVICE); overlay=new DirectLaunchOverlay(this);
    ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(CHANNEL,"PN12 USB",NotificationManager.IMPORTANCE_LOW));
  }
  private Notification notification(String msg){
@@ -43,9 +43,11 @@ public final class Pn12UsbService extends Service {
    status=s;
    Intent i=new Intent(STATUS).setPackage(getPackageName());i.putExtra(TEXT,s);sendBroadcast(i);
    if(s.startsWith("연결 완료"))((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(44,notification(s));
+   handler.post(()->{if(overlay!=null)overlay.refresh(status.startsWith("연결 완료"));});
  }
  @Override public int onStartCommand(Intent i,int flags,int startId){
    if(i==null)return START_NOT_STICKY;
+   if(REFRESH.equals(i.getAction())){if(overlay!=null)overlay.refresh(status.startsWith("연결 완료"));return START_NOT_STICKY;}
    if(STOP.equals(i.getAction())){report("연결 종료");stopSelf();return START_NOT_STICKY;}
    if(!START.equals(i.getAction()))return START_NOT_STICKY;
    UsbDevice d=manager.getDeviceList().get(i.getStringExtra(DEVICE));
@@ -101,6 +103,6 @@ public final class Pn12UsbService extends Service {
    }catch(Exception e){if(my==generation)report("연결 오류: "+e.getMessage());}
    finally{if(con!=null)con.close();if(active==con)active=null;if(my==generation)stopSelf();}
  }
- @Override public void onDestroy(){generation++;UsbDeviceConnection con=active;active=null;if(con!=null)con.close();super.onDestroy();}
+ @Override public void onDestroy(){generation++;if(overlay!=null)overlay.remove();UsbDeviceConnection con=active;active=null;if(con!=null)con.close();super.onDestroy();}
  @Override public IBinder onBind(Intent intent){return null;}
 }

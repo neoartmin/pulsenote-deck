@@ -43,6 +43,7 @@ public final class MainActivity extends Activity {
     private boolean compactNav=false,splitPanels=false;
     private String pendingUsbDevice=null;
     private boolean permissionPromptActive=false;
+    private boolean showingConnectionHome=false;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,18 +67,26 @@ public final class MainActivity extends Activity {
                  pendingUsbDevice=null;
                  if(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED,false)&&device!=null)startDevice(device);
                  else updateStatus("USB 접근 권한 거부");
-              }else if(Pn12UsbService.STATUS.equals(a))updateStatus(intent.getStringExtra(Pn12UsbService.TEXT));
+              }else if(Pn12UsbService.STATUS.equals(a)){
+                 String status=intent.getStringExtra(Pn12UsbService.TEXT);
+                 updateStatus(status);
+                 if(showingConnectionHome&&status!=null&&status.startsWith("연결 완료")){
+                     showingConnectionHome=false;
+                     showControllerHome();
+                 }
+              }
               else if(Pn12UsbService.KEY.equals(a)){
                  int number=intent.getIntExtra(Pn12UsbService.NUMBER,0);
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
                  if(statusFooter!=null)statusFooter.setText("KEY: "+number+" · "+result);
               }else if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)){
+                  showControllerHome();
                   scan();
                   UsbDevice newlyAttached=usbFromIntent(intent);
                   if(newlyAttached!=null)maybeAutoConnect(newlyAttached);
                   else maybeAutoConnect();
               }else if(UsbManager.ACTION_USB_DEVICE_DETACHED.equals(a)){
-                  permissionPromptActive=false;pendingUsbDevice=null;
+                  permissionPromptActive=false;pendingUsbDevice=null;showingConnectionHome=false;
                   scan();
               }
            }
@@ -231,7 +240,7 @@ public final class MainActivity extends Activity {
         statusFooter.setSingleLine(true);
         statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        add(footer,txt("v1.1.5 · ANDROID",10,BLUE,false),-2,26);
+        add(footer,txt("v1.1.6 · ANDROID",10,BLUE,false),-2,26);
         add(content,footer,-1,37);
         setContentView(scroller);
         renderPage();
@@ -288,7 +297,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.1.5 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.1.6 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -710,8 +719,18 @@ public final class MainActivity extends Activity {
             updateStatus("USB 권한 요청 실패: "+error.getClass().getSimpleName());
         }
     }
+    private void showControllerHome(){
+        if(page==0 || isFinishing() || isDestroyed())return;
+        page=0;
+        refreshNavigation();
+        renderPage();
+    }
     private void startDevice(UsbDevice device){
         if(device==null||!usb.hasPermission(device))return;
+        // Transition to the 12-key controller immediately after USB permission,
+        // not only after the subsequent serial handshake has finished.
+        showControllerHome();
+        showingConnectionHome=true;
         Intent intent=new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.START);
         intent.putExtra(Pn12UsbService.DEVICE,device.getDeviceName());
         try {
@@ -726,6 +745,7 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())){
+            showControllerHome();
             scan();
             UsbDevice device=usbFromIntent(intent);
             if(device!=null)maybeAutoConnect(device);else maybeAutoConnect();
@@ -746,6 +766,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume(){
         super.onResume();visible=true;updateStatus(Pn12UsbService.status);
+        if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(getIntent()==null?null:getIntent().getAction())&&
+                usbFromIntent(getIntent())!=null)showControllerHome();
         if(page==2&&pageHost!=null)renderPage();
         if(Pn12UsbService.status.startsWith("연결 완료")){
             try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PulseNote Deck</string>
+    <string name="accessibility_desc">사용자가 설정한 PN12의 복사·붙여넣기·잘라내기 단축키를 현재 입력 칸에서 실행합니다. 키 입력 기록이나 화면 내용 저장은 하지 않습니다.</string>
+</resources>

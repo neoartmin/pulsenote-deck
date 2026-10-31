@@ -240,7 +240,7 @@ public final class MainActivity extends Activity {
         statusFooter.setSingleLine(true);
         statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        add(footer,txt("v1.1.6 · ANDROID",10,BLUE,false),-2,26);
+        add(footer,txt("v1.1.7 · ANDROID",10,BLUE,false),-2,26);
         add(content,footer,-1,37);
         setContentView(scroller);
         renderPage();
@@ -297,7 +297,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.1.6 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.1.7 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -579,8 +579,13 @@ public final class MainActivity extends Activity {
 
         boolean granted=Settings.canDrawOverlays(this);
         boolean toggled=getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("direct_launch_enabled",false);
-        add(parent,txt("다른 앱 위에 표시  ·  "+(granted?"허용됨":"허용 필요"),13,granted?0xff3edba8:WHITE,true),-1,32);
-        add(parent,click(granted?"권한 설정 다시 열기":"다른 앱 위에 표시 권한 허용",()->requestOverlayPermission()),310,45);
+        add(parent,txt("백그라운드 직접 실행  ·  "+(granted&&toggled?"활성화됨":granted?"실행 모드 꺼짐":"권한 필요"),13,
+           granted&&toggled?0xff3edba8:WHITE,true),-1,32);
+        add(parent,txt(granted&&toggled?
+             "PN12 USB 연결 중 우측에 작은 PN 표시가 보이면 직접 실행 준비가 된 상태입니다.":
+             "권한을 허용하면 직접 실행 모드가 자동으로 켜집니다. 언제든 끌 수 있습니다.",
+             11,MUTED,false),-1,52);
+        add(parent,click(granted?"권한 설정 확인":"다른 앱 위에 표시 권한 허용",()->requestOverlayPermission()),310,45);
         space(parent,8);
         add(parent,click(toggled?"●  직접 실행 끄기":"▷  직접 실행 켜기",()->{
             if(toggled){
@@ -601,17 +606,38 @@ public final class MainActivity extends Activity {
         space(parent,13);
         add(parent,txt("시스템 단축키  ·  지원 제한 (접근성 서비스 제거)",12,MUTED,false),-1,40);
         add(parent,txt("USB 접근 권한은 'PN12 USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
-        add(parent,txt("볼륨과 미디어 동작은 추가 특수 권한 없이 작동합니다. '다른 앱 위에 표시' 허용과 직접 실행 모드를 켜야 백그라운드 앱 실행을 시도합니다.",11,MUTED,false),-1,65);
+        add(parent,txt("볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 백그라운드 앱 실행을 위해 화면 위 표시 권한을 요청하며, Android 보안 정책에 따라 일부 실행이 제한될 수 있습니다.",11,MUTED,false),-1,65);
     }
     private void setDirectLaunch(boolean enabled) {
-        getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("direct_launch_enabled",enabled).apply();
+        getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit()
+            .putBoolean("direct_launch_enabled",enabled)
+            .putBoolean("direct_launch_explicit_off",!enabled)
+            .apply();
         if(Pn12UsbService.status.startsWith("연결 완료")){
            Intent i=new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH);
            startService(i);
         }
         if(page==2)renderPage();
     }
+    private void syncOverlayPermission(){
+        if(!Settings.canDrawOverlays(this))return;
+        android.content.SharedPreferences prefs=getSharedPreferences("pn12_permissions",MODE_PRIVATE);
+        if(!prefs.getBoolean("direct_launch_explicit_off",false) &&
+                !prefs.getBoolean("direct_launch_enabled",false)){
+            prefs.edit().putBoolean("direct_launch_enabled",true).apply();
+        }
+        if(Pn12UsbService.status.startsWith("연결 완료")){
+            try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}
+            catch(RuntimeException ignored){}
+        }
+    }
     private void requestOverlayPermission() {
+        if(Settings.canDrawOverlays(this)){
+            setDirectLaunch(true);
+            return;
+        }
+        getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit()
+            .putBoolean("direct_launch_explicit_off",false).apply();
         try {
             Intent intent=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                   Uri.parse("package:"+getPackageName()));
@@ -765,7 +791,7 @@ public final class MainActivity extends Activity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onResume(){
-        super.onResume();visible=true;updateStatus(Pn12UsbService.status);
+        super.onResume();visible=true;syncOverlayPermission();updateStatus(Pn12UsbService.status);
         if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(getIntent()==null?null:getIntent().getAction())&&
                 usbFromIntent(getIntent())!=null)showControllerHome();
         if(page==2&&pageHost!=null)renderPage();

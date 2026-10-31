@@ -58,17 +58,26 @@ public final class ActionDispatcher {
         // has explicitly opted in and the app shows a visible overlay window.
         // Send an activity PendingIntent with BAL opt-in on Android 14+.
         // OS versions can still refuse to surface the activity.
-        if(DirectLaunchOverlay.isVisible()&&DirectLaunchOverlay.allowed(context)){
+        boolean overlayAllowed=DirectLaunchOverlay.allowed(context);
+        if(overlayAllowed && DirectLaunchOverlay.isVisible()){
             try{
+                // Android 16 (API 36) introduces ALLOW_ALWAYS (value 3) for
+                // explicit connected-device actions. compileSdk is currently 35,
+                // so use its documented numeric value until upgrading the SDK.
+                // Earlier versions retain the API 34 allowed mode.
+                int balMode=Build.VERSION.SDK_INT>=36 ? 3 :
+                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED;
+                android.os.Bundle creatorOptions=null;
+                if(Build.VERSION.SDK_INT>=35){
+                    creatorOptions=ActivityOptions.makeBasic()
+                        .setPendingIntentCreatorBackgroundActivityStartMode(balMode).toBundle();
+                }
                 PendingIntent pending=PendingIntent.getActivity(context,2000+key,target,
-                     PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE,
-                     Build.VERSION.SDK_INT>=34?
-                         ActivityOptions.makeBasic().setPendingIntentCreatorBackgroundActivityStartMode(
-                             ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle():null);
+                    PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE,
+                    creatorOptions);
                 if(Build.VERSION.SDK_INT>=34){
                     ActivityOptions options=ActivityOptions.makeBasic();
-                    options.setPendingIntentBackgroundActivityStartMode(
-                         ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                    options.setPendingIntentBackgroundActivityStartMode(balMode);
                     pending.send(context,0,null,null,null,null,options.toBundle());
                 }else pending.send();
                 return "백그라운드 직접 실행 전송";
@@ -81,9 +90,13 @@ public final class ActionDispatcher {
         nm.createNotificationChannel(new NotificationChannel(CHANNEL,"PN12 앱 열기",NotificationManager.IMPORTANCE_HIGH));
         try {
             PendingIntent pi=PendingIntent.getActivity(context,1000+key,target,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+            String reason=!android.provider.Settings.canDrawOverlays(context)?
+                    "화면 위 표시 권한이 없어 직접 실행을 대체합니다":
+                    !overlayAllowed?"직접 실행 모드가 꺼져 있습니다":
+                    "직접 실행을 사용할 수 없어 알림으로 대체합니다";
             nm.notify(1000+key,new Notification.Builder(context,CHANNEL)
               .setSmallIcon(android.R.drawable.ic_menu_view).setContentTitle("PN12 · "+s.name(key))
-              .setContentText("탭하여 "+ActionStore.NAMES[kind]+" 실행")
+              .setContentText(reason+" · 탭하여 실행")
               .setContentIntent(pi).setAutoCancel(true).build());
             return "알림을 눌러 실행";
         }catch(Exception ex){return "실행 알림 실패";}

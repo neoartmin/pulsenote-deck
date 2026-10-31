@@ -138,7 +138,7 @@ public final class MainActivity extends Activity {
         footer.setBackground(shape(0xff11213a,9,BORDER));
         statusFooter=txt("●  하드웨어 연결 확인 대기",11,MUTED,false);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        TextView version=txt("v1.1.1  ·  ANDROID",10,BLUE,false);add(footer,version,-2,26);
+        TextView version=txt("v1.1.2  ·  ANDROID",10,BLUE,false);add(footer,version,-2,26);
         add(content,footer,-1,38);
         setContentView(vscroll);
         renderPage();
@@ -158,7 +158,7 @@ public final class MainActivity extends Activity {
         statusSide=txt("●  USB 미연결\n\nPN12 연결 대기",12,WHITE,false);pad(statusSide,12,13);
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));add(sideHost,statusSide,-1,92);
         space(sideHost,20);
-        add(sideHost,txt("v1.1.1  ·  ANDROID",11,0xff829bc5,false),-1,25);
+        add(sideHost,txt("v1.1.2  ·  ANDROID",11,0xff829bc5,false),-1,25);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){

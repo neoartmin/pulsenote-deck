@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- PulseNote Deck original-brand-style square: safe zone for Android adaptive masks -->
+    <path android:fillColor="#586AFF"
+          android:pathData="M36,19 L72,19 C81.4,19 89,26.6 89,36 L89,72 C89,81.4 81.4,89 72,89 L36,89 C26.6,89 19,81.4 19,72 L19,36 C19,26.6 26.6,19 36,19 Z"/>
+    <path android:fillColor="#6D7DFF" android:fillAlpha="0.55"
+          android:pathData="M36,19 L72,19 C81.4,19 89,26.6 89,36 L89,41 C89,30 81,24 72,24 L36,24 C27,24 19,30 19,41 L19,36 C19,26.6 26.6,19 36,19 Z"/>
+    <!-- Four white keys match the PN12 Windows app mark -->
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M41,37 L46,37 C48.8,37 51,39.2 51,42 L51,47 C51,49.8 48.8,52 46,52 L41,52 C38.2,52 36,49.8 36,47 L36,42 C36,39.2 38.2,37 41,37 Z"/>
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M62,37 L67,37 C69.8,37 72,39.2 72,42 L72,47 C72,49.8 69.8,52 67,52 L62,52 C59.2,52 57,49.8 57,47 L57,42 C57,39.2 59.2,37 62,37 Z"/>
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M41,58 L46,58 C48.8,58 51,60.2 51,63 L51,68 C51,70.8 48.8,73 46,73 L41,73 C38.2,73 36,70.8 36,68 L36,63 C36,60.2 38.2,58 41,58 Z"/>
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M62,58 L67,58 C69.8,58 72,60.2 72,63 L72,68 C72,70.8 69.8,73 67,73 L62,73 C59.2,73 57,70.8 57,68 L57,63 C57,60.2 59.2,58 62,58 Z"/>
+</vector>

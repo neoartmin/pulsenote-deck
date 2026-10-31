@@ -114,6 +114,7 @@ public final class MainActivity extends Activity {
         add(titleBox,txt("화면에서 키를 선택하고 기능과 색상을 지정하세요.",13,MUTED,false),-1,25);
         top.addView(titleBox,new LinearLayout.LayoutParams(0,dp(79),1f));
         statusHeader=pill("●  USB 미연결",false);
+        statusHeader.setOnClickListener(v->{page=2;refreshNavigation();renderPage();});
         add(top,statusHeader,174,42);space(top,12);
         add(top,pill("PN12 · 12키 전용",false),185,42);
         add(content,top,-1,87);
@@ -197,7 +198,7 @@ public final class MainActivity extends Activity {
                 key.setBackground(grad(adjust(color,0.19f),color,14,k==selectedKey?BLUE:0xffa3bdd7));
                 TextView n=txt(String.format(Locale.US,"%02d",k),11,0xff202e45,true);
                 n.setGravity(Gravity.LEFT);add(key,n,-1,17);
-                View icon=createSymbol(store.kind(k),39);
+                View icon=createSymbol(store.kind(k),39,k);
                 add(key,icon,39,39);
                 TextView name=txt(store.name(k),11,0xff162133,true);
                 name.setGravity(Gravity.CENTER);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -215,13 +216,8 @@ public final class MainActivity extends Activity {
             Math.min(255,(int)(Color.green(color)+(255-Color.green(color))*factor)),
             Math.min(255,(int)(Color.blue(color)+(255-Color.blue(color))*factor)));
     }
-    private View createSymbol(int kind,int size){
-        TextView t=txt(kind>=0&&kind<ActionStore.SYMBOLS.length?ActionStore.SYMBOLS[kind]:"?",22,WHITE,true);
-        t.setGravity(Gravity.CENTER);
-        final int[] gradient={0xff8450ed,0xff09b5c9,0xffef9857,0xfffc457c,0xff38bd70,0xff3789ee};
-        int main=gradient[Math.min(gradient.length-1,Math.max(0,kind%gradient.length))];
-        t.setBackground(grad(adjust(main,.30f),main,11,0x3394aaff));
-        return t;
+    private View createSymbol(int kind,int size,int key){
+        return KeyArtwork.create(this,kind,store.value(key),size);
     }
     private void renderRight(){
         if(rightHost==null||page!=0)return;
@@ -230,7 +226,7 @@ public final class MainActivity extends Activity {
         add(rightHost,txt(String.format(Locale.US,"키 %02d 설정",k),19,WHITE,true),-1,32);
         add(rightHost,txt("기능·이름·색상을 원하는 대로 지정하세요.",11,MUTED,false),-1,27);
         LinearLayout preview=horizontal();pad(preview,13,10);preview.setBackground(shape(0xff0d1b32,11,BORDER));
-        add(preview,createSymbol(kind,44),44,44);space(preview,11);
+        add(preview,createSymbol(kind,44,k),44,44);space(preview,11);
         LinearLayout text=vertical();add(text,txt(store.name(k),14,WHITE,true),-1,23);
         add(text,txt(ActionStore.NAMES[kind],10,MUTED,false),-1,19);add(preview,text,-1,-1);
         add(rightHost,preview,-1,64);space(rightHost,13);

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CDC ACM control interface matches the existing PN12 firmware.
+         Interface-level class/subclass matching is supported by UsbDeviceFilter. -->
+    <usb-device class="2" subclass="2" />
+    <!-- Espressif ESP32-C3 USB Serial/JTAG default descriptors -->
+    <usb-device vendor-id="12346" product-id="4097" />
+</resources>

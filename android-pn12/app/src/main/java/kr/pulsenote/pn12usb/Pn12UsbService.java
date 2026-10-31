@@ -9,6 +9,8 @@ import java.util.*;
 public final class Pn12UsbService extends Service {
  public static final String START="kr.pulsenote.pn12usb.START",STOP="kr.pulsenote.pn12usb.STOP",REFRESH="kr.pulsenote.pn12usb.REFRESH",STATUS="kr.pulsenote.pn12usb.STATUS",KEY="kr.pulsenote.pn12usb.KEY",DEVICE="device",TEXT="text",NUMBER="number";
  public static volatile String status="미연결";
+ public static volatile String connectedDeviceName=null;
+ private volatile String activeDeviceName=null;
  private static final String CHANNEL="pn12_usb";
  private UsbManager manager; private DirectLaunchOverlay overlay; private volatile UsbDeviceConnection active; private volatile int generation=0;
  private final Handler handler=new Handler(Looper.getMainLooper());
@@ -48,10 +50,13 @@ public final class Pn12UsbService extends Service {
  @Override public int onStartCommand(Intent i,int flags,int startId){
    if(i==null)return START_NOT_STICKY;
    if(REFRESH.equals(i.getAction())){if(overlay!=null)overlay.refresh(status.startsWith("연결 완료"));return START_NOT_STICKY;}
-   if(STOP.equals(i.getAction())){report("연결 종료");stopSelf();return START_NOT_STICKY;}
+   if(STOP.equals(i.getAction())){connectedDeviceName=null;report("연결 종료");stopSelf();return START_NOT_STICKY;}
    if(!START.equals(i.getAction()))return START_NOT_STICKY;
    UsbDevice d=manager.getDeviceList().get(i.getStringExtra(DEVICE));
    if(d==null||!candidate(d)||!manager.hasPermission(d)){report("권한 또는 USB 장치 오류");stopSelf();return START_NOT_STICKY;}
+   if(d.getDeviceName().equals(activeDeviceName)&&
+       (status.startsWith("연결 완료")||status.startsWith("연결 시도 중")))return START_NOT_STICKY;
+   activeDeviceName=d.getDeviceName();
    try{if(Build.VERSION.SDK_INT>=29)startForeground(44,notification("연결 중"),ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);else startForeground(44,notification("연결 중"));}
    catch(RuntimeException e){report("서비스 실행 실패");stopSelf();return START_NOT_STICKY;}
    final int my=++generation;
@@ -80,7 +85,7 @@ public final class Pn12UsbService extends Service {
      if(r!=7)throw new IOException("CDC 속도 설정 실패");
      if(con.controlTransfer(0x21,0x22,3,ctl.getId(),null,0,1000)<0)throw new IOException("CDC DTR 실패");
      Pn12Protocol protocol=new Pn12Protocol(new Pn12Protocol.Listener(){
-       public void onHandshake(){report("연결 완료 · PN12 12키");}
+       public void onHandshake(){connectedDeviceName=d.getDeviceName();report("연결 완료 · PN12 12키");}
        public void onKey(int key){handler.post(()->{
          if(my!=generation)return;
          String result;
@@ -101,8 +106,10 @@ public final class Pn12UsbService extends Service {
      }
      if(my==generation)report("USB 연결 해제");
    }catch(Exception e){if(my==generation)report("연결 오류: "+e.getMessage());}
-   finally{if(con!=null)con.close();if(active==con)active=null;if(my==generation)stopSelf();}
+   finally{if(con!=null)con.close();if(active==con)active=null;
+     if(my==generation){connectedDeviceName=null;activeDeviceName=null;stopSelf();}
+   }
  }
- @Override public void onDestroy(){generation++;if(overlay!=null)overlay.remove();UsbDeviceConnection con=active;active=null;if(con!=null)con.close();super.onDestroy();}
+ @Override public void onDestroy(){generation++;connectedDeviceName=null;activeDeviceName=null;if(overlay!=null)overlay.remove();UsbDeviceConnection con=active;active=null;if(con!=null)con.close();super.onDestroy();}
  @Override public IBinder onBind(Intent intent){return null;}
 }

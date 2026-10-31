@@ -41,6 +41,8 @@ public final class MainActivity extends Activity {
     private int screenWidthDp=800,contentWidthDp=620,panelWidthDp=620;
     private int centerWidthDp=515,rightWidthDp=445;
     private boolean compactNav=false,splitPanels=false;
+    private String pendingUsbDevice=null;
+    private boolean permissionPromptActive=false;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,14 +60,26 @@ public final class MainActivity extends Activity {
            @Override public void onReceive(Context context,Intent intent){
               String a=intent.getAction();if(a==null)return;
               if(PERMISSION.equals(a)){
-                 if(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED,false))startChosen();
+                 permissionPromptActive=false;
+                 UsbDevice device=usbFromIntent(intent);
+                 if(device==null&&pendingUsbDevice!=null)device=usb.getDeviceList().get(pendingUsbDevice);
+                 pendingUsbDevice=null;
+                 if(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED,false)&&device!=null)startDevice(device);
                  else updateStatus("USB 접근 권한 거부");
               }else if(Pn12UsbService.STATUS.equals(a))updateStatus(intent.getStringExtra(Pn12UsbService.TEXT));
               else if(Pn12UsbService.KEY.equals(a)){
                  int number=intent.getIntExtra(Pn12UsbService.NUMBER,0);
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
                  if(statusFooter!=null)statusFooter.setText("KEY: "+number+" · "+result);
-              }else if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)||UsbManager.ACTION_USB_DEVICE_DETACHED.equals(a))scan();
+              }else if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)){
+                  scan();
+                  UsbDevice newlyAttached=usbFromIntent(intent);
+                  if(newlyAttached!=null)maybeAutoConnect(newlyAttached);
+                  else maybeAutoConnect();
+              }else if(UsbManager.ACTION_USB_DEVICE_DETACHED.equals(a)){
+                  permissionPromptActive=false;pendingUsbDevice=null;
+                  scan();
+              }
            }
         };
         IntentFilter filter=new IntentFilter();
@@ -73,6 +87,9 @@ public final class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,filter,Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(receiver,filter);
         scan();
+        UsbDevice attached=usbFromIntent(getIntent());
+        if(attached!=null)maybeAutoConnect(attached);
+        else maybeAutoConnect();
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST);
         boolean shown=getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("permission_guide_111",false);
@@ -214,7 +231,7 @@ public final class MainActivity extends Activity {
         statusFooter.setSingleLine(true);
         statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        add(footer,txt("v1.1.4 · ANDROID",10,BLUE,false),-2,26);
+        add(footer,txt("v1.1.5 · ANDROID",10,BLUE,false),-2,26);
         add(content,footer,-1,37);
         setContentView(scroller);
         renderPage();
@@ -271,7 +288,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.1.4 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.1.5 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -508,6 +525,14 @@ public final class MainActivity extends Activity {
         LinearLayout card=card();add(pageHost,card,-1,-2);
         add(card,txt("장치 및 설정",23,WHITE,true),-1,50);
         add(card,txt("PulseNote PN12 · ESP32-C3 · USB CDC 115200bps",14,MUTED,false),-1,38);
+        add(card,click(autoEnabled()?"●  USB 자동 연결: 켜짐":"○  USB 자동 연결: 꺼짐",()->{
+            boolean next=!autoEnabled();
+            getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("auto_connect",next).apply();
+            renderPage();
+            if(next)maybeAutoConnect();
+        }),Math.min(300,contentWidthDp-44),43);
+        space(card,10);
+        add(card,txt("앱을 열거나 PN12 USB 케이블을 연결하면 자동으로 접속합니다. 최초 연결은 Android의 USB 허용 창에서 승인해야 합니다.",11,MUTED,false),-1,58);
         devicePickerLabel=txt("USB-C 데이터 케이블을 연결한 후 장치를 검색하세요.",12,MUTED,false);
         add(card,devicePickerLabel,-1,48);
         chooser=new Spinner(this);
@@ -519,7 +544,13 @@ public final class MainActivity extends Activity {
         if(contentWidthDp<680)space(row,7);else space(row,12);
         add(row,click("●  PN12 USB 연결",()->connect()),contentWidthDp<680?-1:200,48);
         if(contentWidthDp<680)space(row,7);else space(row,12);
-        add(row,click("■  연결 종료",()->startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.STOP))),contentWidthDp<680?-1:170,48);
+        add(row,click("■  연결 종료",()->{
+            // An explicit user disconnect must not be immediately reversed
+            // by a later Activity.onResume callback.
+            getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("auto_connect",false).apply();
+            startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.STOP));
+            renderPage();
+        }),contentWidthDp<680?-1:170,48);
         add(card,row,-1,-2);
         space(card,15);
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
@@ -632,21 +663,73 @@ public final class MainActivity extends Activity {
         if(devicePickerLabel!=null)devicePickerLabel.setText(candidates.isEmpty()?"장치를 찾지 못했습니다. USB-C 데이터 케이블과 USB Host 지원을 확인하세요.":"호환되는 USB CDC 장치 "+candidates.size()+"개 발견");
     }
     private UsbDevice chosen(){return candidates.isEmpty()?null:candidates.get(Math.max(0,Math.min(candidates.size()-1,chooser==null?0:chooser.getSelectedItemPosition())));}
+    private boolean autoEnabled(){
+        return getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("auto_connect",true);
+    }
+    private UsbDevice usbFromIntent(Intent intent){
+        if(intent==null)return null;
+        if(Build.VERSION.SDK_INT>=33)
+            return intent.getParcelableExtra(UsbManager.EXTRA_DEVICE,UsbDevice.class);
+        return intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+    }
+    private void maybeAutoConnect(){
+        if(!autoEnabled()||usb==null)return;
+        UsbDevice first=null;
+        for(UsbDevice device:usb.getDeviceList().values()){
+            if(Pn12UsbService.candidate(device)){first=device;break;}
+        }
+        if(first!=null)maybeAutoConnect(first);
+    }
+    private void maybeAutoConnect(UsbDevice device){
+        if(!autoEnabled()||usb==null||device==null||!Pn12UsbService.candidate(device))return;
+        if(device.getDeviceName().equals(Pn12UsbService.connectedDeviceName)&&
+            Pn12UsbService.status.startsWith("연결 완료"))return;
+        if(permissionPromptActive)return;
+        requestOrStart(device);
+    }
     private void connect(){
-        scan();UsbDevice d=chosen();
-        if(d==null){updateStatus("USB CDC 장치 없음");return;}
-        if(usb.hasPermission(d))startChosen();
-        else {
-            PendingIntent p=PendingIntent.getBroadcast(this,1,new Intent(PERMISSION).setPackage(getPackageName()),PendingIntent.FLAG_MUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-            usb.requestPermission(d,p);
+        scan();
+        UsbDevice device=chosen();
+        if(device==null){updateStatus("USB CDC 장치 없음");return;}
+        requestOrStart(device);
+    }
+    private void requestOrStart(UsbDevice device){
+        if(device==null||!Pn12UsbService.candidate(device))return;
+        if(usb.hasPermission(device)){startDevice(device);return;}
+        if(permissionPromptActive)return;
+        pendingUsbDevice=device.getDeviceName();
+        permissionPromptActive=true;
+        try {
+            Intent response=new Intent(PERMISSION).setPackage(getPackageName());
+            PendingIntent callback=PendingIntent.getBroadcast(this,1,response,
+                PendingIntent.FLAG_MUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+            usb.requestPermission(device,callback);
+            updateStatus("PN12 USB 권한 승인 대기");
+        }catch(RuntimeException error){
+            permissionPromptActive=false;pendingUsbDevice=null;
+            updateStatus("USB 권한 요청 실패: "+error.getClass().getSimpleName());
         }
     }
-    private void startChosen(){
-        UsbDevice d=chosen();if(d==null)return;
+    private void startDevice(UsbDevice device){
+        if(device==null||!usb.hasPermission(device))return;
         Intent intent=new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.START);
-        intent.putExtra(Pn12UsbService.DEVICE,d.getDeviceName());
-        if(Build.VERSION.SDK_INT>=26)startForegroundService(intent);else startService(intent);
-        updateStatus("USB 연결 중");
+        intent.putExtra(Pn12UsbService.DEVICE,device.getDeviceName());
+        try {
+            if(Build.VERSION.SDK_INT>=26)startForegroundService(intent);
+            else startService(intent);
+            updateStatus("PN12 USB 자동 연결 중");
+        }catch(RuntimeException error){
+            updateStatus("USB 서비스 실행 제한: "+error.getClass().getSimpleName());
+        }
+    }
+    @Override protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())){
+            scan();
+            UsbDevice device=usbFromIntent(intent);
+            if(device!=null)maybeAutoConnect(device);else maybeAutoConnect();
+        }
     }
     private void updateStatus(String message){
         if(message==null)message="상태 확인 중";
@@ -661,7 +744,16 @@ public final class MainActivity extends Activity {
         state.putInt("pn12.selectedKey",selectedKey);
         super.onSaveInstanceState(state);
     }
-    @Override protected void onResume(){super.onResume();visible=true;updateStatus(Pn12UsbService.status);if(page==2&&pageHost!=null)renderPage();if(Pn12UsbService.status.startsWith("연결 완료"))try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}catch(RuntimeException ignored){}}
+    @Override protected void onResume(){
+        super.onResume();visible=true;updateStatus(Pn12UsbService.status);
+        if(page==2&&pageHost!=null)renderPage();
+        if(Pn12UsbService.status.startsWith("연결 완료")){
+            try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}
+            catch(RuntimeException ignored){}
+        }else if(autoEnabled()&&!permissionPromptActive){
+            maybeAutoConnect();
+        }
+    }
     @Override protected void onPause(){visible=false;super.onPause();}
     @Override protected void onDestroy(){if(receiver!=null)unregisterReceiver(receiver);super.onDestroy();}
     private final class LogoView extends View{

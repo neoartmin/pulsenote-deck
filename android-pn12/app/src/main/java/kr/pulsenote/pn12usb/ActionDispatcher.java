@@ -50,13 +50,30 @@ public final class ActionDispatcher {
         }
         if(target==null)return "지원되지 않는 동작";
         target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if(MainActivity.visible || DirectLaunchOverlay.isVisible()) {
-            try {
-                context.startActivity(target);
-                return MainActivity.visible ? "실행 요청" : "백그라운드 실행 요청";
-            }catch(RuntimeException ex){
-                // Android can deny background activity launches; keep the
-                // user-interaction notification fallback when direct launch fails.
+        if(MainActivity.visible) {
+            try{context.startActivity(target);return "직접 실행 요청";}
+            catch(RuntimeException ex){return "앱 실행 실패: "+ex.getClass().getSimpleName();}
+        }
+        // The PN12 hardware key is the user action. In direct mode the user
+        // has explicitly opted in and the app shows a visible overlay window.
+        // Send an activity PendingIntent with BAL opt-in on Android 14+.
+        // OS versions can still refuse to surface the activity.
+        if(DirectLaunchOverlay.isVisible()&&DirectLaunchOverlay.allowed(context)){
+            try{
+                PendingIntent pending=PendingIntent.getActivity(context,2000+key,target,
+                     PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE,
+                     Build.VERSION.SDK_INT>=34?
+                         ActivityOptions.makeBasic().setPendingIntentCreatorBackgroundActivityStartMode(
+                             ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle():null);
+                if(Build.VERSION.SDK_INT>=34){
+                    ActivityOptions options=ActivityOptions.makeBasic();
+                    options.setPendingIntentBackgroundActivityStartMode(
+                         ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                    pending.send(context,0,null,null,null,null,options.toBundle());
+                }else pending.send();
+                return "백그라운드 직접 실행 전송";
+            }catch(PendingIntent.CanceledException|RuntimeException ignored){
+                // Fallback to user-facing notification.
             }
         }
         NotificationManager nm=(NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);

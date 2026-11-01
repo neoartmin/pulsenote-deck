@@ -108,8 +108,8 @@ public final class MainActivity extends Activity {
             getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("permission_guide_111",true).apply();
             new Handler(Looper.getMainLooper()).postDelayed(()->{
                 if(isFinishing()||isDestroyed())return;
-                new AlertDialog.Builder(this).setTitle("PN12 사용 권한 안내")
-                    .setMessage("USB 연결 권한은 PN12 연결 시 요청합니다. 앱을 벗어나서 다른 앱을 직접 실행하려면 '다른 앱 위에 표시' 허용과 직접 실행 모드를 켜세요. 접근성 서비스는 설치 차단을 줄이기 위해 제외했습니다. 일부 Android 버전에서는 백그라운드 직접 실행이 제한됩니다.")
+                new AlertDialog.Builder(this).setTitle("PulseNote USB 사용 권한 안내")
+                    .setMessage("USB 연결 권한은 PN12/PN15 연결 시 요청합니다. 앱을 벗어나서 다른 앱을 직접 실행하려면 '다른 앱 위에 표시' 허용과 직접 실행 모드를 켜세요. 접근성 서비스는 설치 차단을 줄이기 위해 제외했습니다. 일부 Android 버전에서는 백그라운드 직접 실행이 제한됩니다.")
                     .setNegativeButton("나중에",null)
                     .setPositiveButton("권한 설정", (d,w)->{page=2;refreshNavigation();renderPage();})
                     .show();
@@ -211,7 +211,7 @@ public final class MainActivity extends Activity {
             LinearLayout.LayoutParams st=new LinearLayout.LayoutParams(0,dp(39),1);
             statuses.addView(statusHeader,st);
             space(statuses,8);
-            TextView device=pill("PN12 · 12키 전용",false);
+            TextView device=pill("PN12 / PN15 · USB",false);
             device.setSingleLine(true);
             statuses.addView(device,new LinearLayout.LayoutParams(0,dp(39),1));
             add(content,statuses,-1,45);
@@ -228,7 +228,7 @@ public final class MainActivity extends Activity {
             statusHeader.setOnClickListener(v->{page=2;refreshNavigation();renderPage();});
             add(top,statusHeader,163,39);
             space(top,9);
-            add(top,pill("PN12 · 12키 전용",false),161,39);
+            add(top,pill("PN12 / PN15 · USB",false),161,39);
             add(content,top,-1,82);
         }
         space(content,9);
@@ -242,7 +242,7 @@ public final class MainActivity extends Activity {
         statusFooter.setSingleLine(true);
         statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        add(footer,txt("v1.1.7 · ANDROID",10,BLUE,false),-2,26);
+        add(footer,txt("v1.2.1 · ANDROID",10,BLUE,false),-2,26);
         add(content,footer,-1,37);
         setContentView(scroller);
         renderPage();
@@ -256,7 +256,7 @@ public final class MainActivity extends Activity {
         add(brand,new LogoView(),37,37);
         space(brand,8);
         brand.addView(txt("PulseNote Deck",17,WHITE,true),new LinearLayout.LayoutParams(0,dp(39),1));
-        add(brand,txt("PN12",11,MUTED,true),-2,30);
+        add(brand,txt("PN12·15",11,MUTED,true),-2,30);
         add(navRoot,brand,-1,40);
         space(navRoot,10);
         LinearLayout navRow=horizontal();
@@ -299,7 +299,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.2.0 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.2.1 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -341,7 +341,11 @@ public final class MainActivity extends Activity {
         h.setEllipsize(android.text.TextUtils.TruncateAt.END);
         first.addView(h,new LinearLayout.LayoutParams(0,dp(33),1));
         TextView modelButton=pill(activeKeyCount==15?"PN15 GRIP":"PN12",true);
-        modelButton.setOnClickListener(v->switchModel(activeKeyCount==15?12:15));
+        modelButton.setOnClickListener(v->{
+            if(Pn12UsbService.status.startsWith("연결 완료")) {
+                Toast.makeText(this,"연결된 장치의 모델은 자동으로 인식됩니다.",Toast.LENGTH_SHORT).show();
+            } else switchModel(activeKeyCount==15?12:15);
+        });
         add(first,modelButton,screenWidthDp<400?92:120,34);
         add(center,first,-1,40);
         add(center,txt(activeKeyCount==15?"가로 5개 × 세로 3개 · 오른쪽 하강 대각선 배열":"가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
@@ -558,7 +562,7 @@ public final class MainActivity extends Activity {
     private void buildProfilePage(){
         LinearLayout panel=card();add(pageHost,panel,-1,-2);
         add(panel,txt("프로필 관리",22,WHITE,true),-1,43);
-        add(panel,txt("프로필마다 12개 버튼의 기능, 이름, 색상을 별도로 저장합니다.",13,MUTED,false),-1,40);
+        add(panel,txt("프로필마다 "+activeKeyCount+"개 버튼의 기능, 이름, 색상을 별도로 저장합니다.",13,MUTED,false),-1,40);
         for(int id:store.profiles()){
             LinearLayout line=horizontal();pad(line,12,9);
             line.setBackground(shape(id==store.activeProfile()?ACTIVE:INNER,12,id==store.activeProfile()?BLUE:BORDER));
@@ -589,7 +593,7 @@ public final class MainActivity extends Activity {
     private void buildDevicePage(){
         LinearLayout card=card();add(pageHost,card,-1,-2);
         add(card,txt("장치 및 설정",23,WHITE,true),-1,50);
-        add(card,txt("PulseNote PN12 · ESP32-C3 · USB CDC 115200bps",14,MUTED,false),-1,38);
+        add(card,txt("PulseNote PN12 / PN15 · ESP32-C3 · USB CDC 115200bps",14,MUTED,false),-1,38);
         add(card,click(autoEnabled()?"●  USB 자동 연결: 켜짐":"○  USB 자동 연결: 꺼짐",()->{
             boolean next=!autoEnabled();
             getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("auto_connect",next).apply();
@@ -597,7 +601,7 @@ public final class MainActivity extends Activity {
             if(next)maybeAutoConnect();
         }),Math.min(300,contentWidthDp-44),43);
         space(card,10);
-        add(card,txt("앱을 열거나 PN12 USB 케이블을 연결하면 자동으로 접속합니다. 최초 연결은 Android의 USB 허용 창에서 승인해야 합니다.",11,MUTED,false),-1,58);
+        add(card,txt("앱을 열거나 PulseNote USB 케이블을 연결하면 자동으로 접속합니다. 최초 연결은 Android의 USB 허용 창에서 승인해야 합니다.",11,MUTED,false),-1,58);
         devicePickerLabel=txt("USB-C 데이터 케이블을 연결한 후 장치를 검색하세요.",12,MUTED,false);
         add(card,devicePickerLabel,-1,48);
         chooser=new Spinner(this);
@@ -607,7 +611,7 @@ public final class MainActivity extends Activity {
         LinearLayout row=contentWidthDp<680?vertical():horizontal();
         add(row,click("⟳  USB 장치 검색",()->scan()),contentWidthDp<680?-1:180,48);
         if(contentWidthDp<680)space(row,7);else space(row,12);
-        add(row,click("●  PN12 USB 연결",()->connect()),contentWidthDp<680?-1:200,48);
+        add(row,click("●  PulseNote USB 연결",()->connect()),contentWidthDp<680?-1:200,48);
         if(contentWidthDp<680)space(row,7);else space(row,12);
         add(row,click("■  연결 종료",()->{
             // An explicit user disconnect must not be immediately reversed
@@ -621,24 +625,24 @@ public final class MainActivity extends Activity {
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
         TextView state=txt(Pn12UsbService.status,14,0xff3edba8,true);add(card,state,-1,41);
         add(card,txt("연결 후 상태는 상단의 USB 표시에도 반영됩니다. Android에서는 COM 포트 번호 대신 USB Host 장치 경로를 사용합니다.",12,MUTED,false),-1,55);
-        add(card,txt("USB 통신은 화면 밖에서도 유지됩니다. 직접 실행을 켜면 PN12 연결 중 작은 PN 상태 표시가 나타나며, 앱·웹사이트를 곧바로 여는 기능을 시도합니다.",12,MUTED,false),-1,69);
+        add(card,txt("USB 통신은 화면 밖에서도 유지됩니다. 직접 실행을 켜면 PulseNote 연결 중 작은 PN 상태 표시가 나타나며, 앱·웹사이트를 곧바로 여는 기능을 시도합니다.",12,MUTED,false),-1,69);
         space(card,16);
         buildPermissionSection(card);
         space(card,14);
-        add(card,txt("Windows용 기존 PN12 펌웨어는 그대로 사용합니다. 단축키는 Android 보안 정책과 접근성 서비스 지원 범위에 따라 제한될 수 있으며 앱 실행은 백그라운드 상태에서 알림을 통해 진행됩니다.",12,MUTED,false),-1,84);
+        add(card,txt("PN12에는 기존 펌웨어를, PN15에는 15키 펌웨어를 사용합니다. 단축키는 Android 보안 정책과 접근성 서비스 지원 범위에 따라 제한될 수 있으며 앱 실행은 백그라운드 상태에서 알림을 통해 진행됩니다.",12,MUTED,false),-1,84);
         scan();
     }
 
     private void buildPermissionSection(LinearLayout parent){
         add(parent,txt("권한 및 직접 실행",19,WHITE,true),-1,39);
-        add(parent,txt("PN12는 화면 밖에서 USB 연결과 버튼 입력을 유지합니다. 백그라운드 앱 실행을 위해 '다른 앱 위에 표시' 권한을 이용하며, 선택적으로 작은 PN 상태 표시를 띄웁니다. 일부 Android 버전은 직접 실행을 제한할 수 있습니다.",12,MUTED,false),-1,88);
+        add(parent,txt("PulseNote 장치는 화면 밖에서 USB 연결과 버튼 입력을 유지합니다. 백그라운드 앱 실행을 위해 '다른 앱 위에 표시' 권한을 이용하며, 선택적으로 작은 PN 상태 표시를 띄웁니다. 일부 Android 버전은 직접 실행을 제한할 수 있습니다.",12,MUTED,false),-1,88);
 
         boolean granted=Settings.canDrawOverlays(this);
         boolean toggled=getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("direct_launch_enabled",false);
         add(parent,txt("백그라운드 직접 실행  ·  "+(granted&&toggled?"활성화됨":granted?"실행 모드 꺼짐":"권한 필요"),13,
            granted&&toggled?0xff3edba8:WHITE,true),-1,32);
         add(parent,txt(granted&&toggled?
-             "PN12 USB 연결 중 우측에 작은 PN 표시가 보이면 직접 실행 준비가 된 상태입니다.":
+             "PulseNote USB 연결 중 우측에 작은 PN 표시가 보이면 직접 실행 준비가 된 상태입니다.":
              "권한을 허용하면 직접 실행 모드가 자동으로 켜집니다. 언제든 끌 수 있습니다.",
              11,MUTED,false),-1,52);
         add(parent,click(granted?"권한 설정 확인":"다른 앱 위에 표시 권한 허용",()->requestOverlayPermission()),310,45);
@@ -648,7 +652,7 @@ public final class MainActivity extends Activity {
                 setDirectLaunch(false);
             }else if(!Settings.canDrawOverlays(this)){
                 new AlertDialog.Builder(this).setTitle("직접 실행 권한")
-                  .setMessage("앱을 떠나서도 PN12 버튼으로 프로그램을 열려면 화면 위 표시 권한을 허용해야 합니다. 권한이 허용되면 PN12 연결 중 화면 우측에 작은 PN 버튼이 표시됩니다. 사용하지 않을 때는 언제든 끌 수 있습니다.")
+                  .setMessage("앱을 떠나서도 PulseNote 버튼으로 프로그램을 열려면 화면 위 표시 권한을 허용해야 합니다. 권한이 허용되면 PulseNote 연결 중 화면 우측에 작은 PN 버튼이 표시됩니다. 사용하지 않을 때는 언제든 끌 수 있습니다.")
                   .setNegativeButton("취소",null)
                   .setPositiveButton("설정 열기",(d,w)->{setDirectLaunch(true);requestOverlayPermission();})
                   .show();
@@ -661,7 +665,7 @@ public final class MainActivity extends Activity {
         add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
         space(parent,13);
         add(parent,txt("시스템 단축키  ·  지원 제한 (접근성 서비스 제거)",12,MUTED,false),-1,40);
-        add(parent,txt("USB 접근 권한은 'PN12 USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
+        add(parent,txt("USB 접근 권한은 'PulseNote USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
         add(parent,txt("볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 백그라운드 앱 실행을 위해 화면 위 표시 권한을 요청하며, Android 보안 정책에 따라 일부 실행이 제한될 수 있습니다.",11,MUTED,false),-1,65);
     }
     private void setDirectLaunch(boolean enabled) {
@@ -749,7 +753,7 @@ public final class MainActivity extends Activity {
         for(UsbDevice d:usb.getDeviceList().values())if(Pn12UsbService.candidate(d)){
             candidates.add(d);labels.add("USB CDC  ·  VID "+d.getVendorId()+" / PID "+d.getProductId());
         }
-        if(labels.isEmpty())labels.add("PN12 USB CDC 장치 없음");
+        if(labels.isEmpty())labels.add("PulseNote USB CDC 장치 없음");
         if(chooser!=null)chooser.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,labels));
         if(devicePickerLabel!=null)devicePickerLabel.setText(candidates.isEmpty()?"장치를 찾지 못했습니다. USB-C 데이터 케이블과 USB Host 지원을 확인하세요.":"호환되는 USB CDC 장치 "+candidates.size()+"개 발견");
     }
@@ -795,7 +799,7 @@ public final class MainActivity extends Activity {
             PendingIntent callback=PendingIntent.getBroadcast(this,1,response,
                 PendingIntent.FLAG_MUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
             usb.requestPermission(device,callback);
-            updateStatus("PN12 USB 권한 승인 대기");
+            updateStatus("PulseNote USB 권한 승인 대기");
         }catch(RuntimeException error){
             permissionPromptActive=false;pendingUsbDevice=null;
             updateStatus("USB 권한 요청 실패: "+error.getClass().getSimpleName());
@@ -818,7 +822,7 @@ public final class MainActivity extends Activity {
         try {
             if(Build.VERSION.SDK_INT>=26)startForegroundService(intent);
             else startService(intent);
-            updateStatus("PN12 USB 자동 연결 중");
+            updateStatus("PulseNote USB 자동 연결 중");
         }catch(RuntimeException error){
             updateStatus("USB 서비스 실행 제한: "+error.getClass().getSimpleName());
         }

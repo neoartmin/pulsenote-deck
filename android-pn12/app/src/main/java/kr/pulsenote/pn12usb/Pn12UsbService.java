@@ -40,7 +40,7 @@ public final class Pn12UsbService extends Service {
  }
  private Notification notification(String msg){
    PendingIntent p=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-   return new Notification.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.ic_menu_manage).setContentTitle("PulseNote PN12").setContentText(msg).setOngoing(true).setContentIntent(p).build();
+   return new Notification.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.ic_menu_manage).setContentTitle("PulseNote Deck").setContentText(msg).setOngoing(true).setContentIntent(p).build();
  }
  private void report(String s){
    status=s;

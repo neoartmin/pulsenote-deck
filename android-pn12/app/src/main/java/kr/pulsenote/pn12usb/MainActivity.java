@@ -242,7 +242,7 @@ public final class MainActivity extends Activity {
         statusFooter.setSingleLine(true);
         statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        add(footer,txt("v1.2.1 · ANDROID",10,BLUE,false),-2,26);
+        add(footer,txt("v1.2.2 · ANDROID",10,BLUE,false),-2,26);
         add(content,footer,-1,37);
         setContentView(scroller);
         renderPage();
@@ -299,7 +299,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.2.1 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.2.2 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){

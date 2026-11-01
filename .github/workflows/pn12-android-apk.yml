@@ -4,6 +4,10 @@ on:
     branches: [android-pn12-apk-build, feature/pn15-grip]
   workflow_dispatch:
 
+concurrency:
+  group: pn15-android-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

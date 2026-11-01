@@ -24,10 +24,16 @@ public final class ActionStore {
        "CTRL+C","CTRL+V","","","",""
     };
     private final SharedPreferences prefs;
+    private final int fixedKeyCount;
+    private final String fixedSide;
 
-    public ActionStore(Context context) {
+    public ActionStore(Context context) { this(context,0,null); }
+    // A hardware action binds to the identified USB device, NOT the last UI model.
+    public ActionStore(Context context,int model,String side) {
         prefs=context.getSharedPreferences("pn12_actions",Context.MODE_PRIVATE);
-        if (prefs.getInt("device_key_count",15)==15) migratePn15Profiles();
+        fixedKeyCount=(model==12||model==15)?model:0;
+        fixedSide=side;
+        if (keyCount()==15) migratePn15Profiles();
     }
     // Preserve PN15 beta profile metadata before splitting PN12/PN15 profiles.
     private void migratePn15Profiles() {
@@ -45,14 +51,14 @@ public final class ActionStore {
     }
     private String modelPrefix() { return keyCount()!=15?"":("L".equals(deviceSide())?"pn15l_":"pn15_"); }
     private String profileKey(String name) { return modelPrefix()+name; }
-    public String deviceSide() { return "L".equals(prefs.getString("device_side","R"))?"L":"R"; }
+    public String deviceSide() { if(fixedSide!=null)return "L".equals(fixedSide)?"L":"R"; return "L".equals(prefs.getString("device_side","R"))?"L":"R"; }
     public void setDeviceModel(int count, String side) {
         if(count!=12&&count!=15)return;
         if(count==15)migratePn15Profiles();
         prefs.edit().putString("device_side",count==15&&"L".equals(side)?"L":"R")
             .putInt("device_key_count",count).apply();
     }
-    public int keyCount() { return prefs.getInt("device_key_count",12)==15 ? 15 : 12; }
+    public int keyCount() { if(fixedKeyCount!=0)return fixedKeyCount; return prefs.getInt("device_key_count",15)==15 ? 15 : 12; }
     public void setDeviceKeyCount(int count) { setDeviceModel(count,"R"); }
     public int activeProfile() { return prefs.getInt(profileKey("active_profile"),0); }
     public void setProfile(int id) { if(profiles().contains(id)) prefs.edit().putInt(profileKey("active_profile"),id).apply(); }

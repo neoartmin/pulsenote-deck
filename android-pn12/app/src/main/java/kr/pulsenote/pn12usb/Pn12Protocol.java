@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 public final class Pn12Protocol {
     public interface Listener {
-        void onHandshake(int keyCount);
+        void onHandshake(int keyCount, String side);
         void onKey(int key);
     }
     public static final byte[] HELLO = "PND:HELLO\n".getBytes(StandardCharsets.US_ASCII);
@@ -12,9 +12,11 @@ public final class Pn12Protocol {
     private final StringBuilder line = new StringBuilder();
     private boolean ready, info, announced, dropping;
     private int keyCount = 12;
+    private String side = "R";
+    private boolean conflict = false;
 
     public Pn12Protocol(Listener callback) { listener = callback; }
-    public boolean isVerified() { return ready && info; }
+    public boolean isVerified() { return ready && info && !conflict; }
     public void receive(byte[] data, int size) {
         for (int i = 0; i < Math.max(0, Math.min(size, data.length)); i++) {
             int c = data[i] & 0xff;
@@ -28,10 +30,16 @@ public final class Pn12Protocol {
             }
         }
     }
+    private void acceptModel(int count,String hand){
+        if(info && (keyCount!=count || !side.equals(hand))) { conflict=true; return; }
+        info=true; keyCount=count; side=hand;
+    }
+    public boolean isConflicting(){return conflict;}
     private void parse(String s) {
         if ("PND:READY:2.1".equals(s)) ready = true;
-        else if ("PND:INFO:12:C3".equals(s)) { info = true; keyCount = 12; }
-        else if ("PND:INFO:15:C3".equals(s)) { info = true; keyCount = 15; }
+        else if ("PND:INFO:12:C3".equals(s)) acceptModel(12,"R");
+        else if ("PND:INFO:15:C3".equals(s) || "PND:INFO:15:R:C3".equals(s)) acceptModel(15,"R");
+        else if ("PND:INFO:15:L:C3".equals(s)) acceptModel(15,"L");
         else if (s.startsWith("KEY:") && isVerified()) {
             try {
                 String digits = s.substring(4);
@@ -40,6 +48,6 @@ public final class Pn12Protocol {
                 if (key <= keyCount) listener.onKey(key);
             } catch (NumberFormatException ignored) {}
         }
-        if (isVerified() && !announced) { announced = true; listener.onHandshake(keyCount); }
+        if (isVerified() && !announced) { announced = true; listener.onHandshake(keyCount, side); }
     }
 }

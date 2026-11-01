@@ -3,7 +3,9 @@ on:
   push:
     branches: [feature/pn15-grip]
     paths:
-      - 'Windows/**'
+      - 'Windows/소스/**'
+      - 'Windows/설치/**'
+      - 'Windows/펌웨어/**'
   workflow_dispatch:
 
 permissions:

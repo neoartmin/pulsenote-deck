@@ -75,9 +75,6 @@ public final class MainActivity extends Activity {
               }else if(Pn12UsbService.STATUS.equals(a)){
                  String status=intent.getStringExtra(Pn12UsbService.TEXT);
                  updateStatus(status);
-                  int reportedModel=intent.getIntExtra(Pn12UsbService.MODEL,0);
-                  if(reportedModel==12||reportedModel==15)
-                      switchDetectedModel(reportedModel,intent.getStringExtra(Pn12UsbService.SIDE));
                  if(showingConnectionHome&&status!=null&&status.startsWith("연결 완료")){
                      showingConnectionHome=false;
                      showControllerHome();
@@ -86,9 +83,6 @@ public final class MainActivity extends Activity {
               else if(Pn12UsbService.KEY.equals(a)){
                  int number=intent.getIntExtra(Pn12UsbService.NUMBER,0);
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
-                  int eventModel=intent.getIntExtra(Pn12UsbService.MODEL,0);
-                  if(eventModel==12||eventModel==15)
-                      switchDetectedModel(eventModel,intent.getStringExtra(Pn12UsbService.SIDE));
                  if(statusFooter!=null)statusFooter.setText("KEY: "+number+" · "+result);
               }else if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)){
                   showControllerHome();
@@ -349,11 +343,27 @@ public final class MainActivity extends Activity {
         h.setSingleLine(true);
         h.setEllipsize(android.text.TextUtils.TruncateAt.END);
         first.addView(h,new LinearLayout.LayoutParams(0,dp(33),1));
-        TextView modelButton=pill(activeKeyCount==15?("PN15 "+("L".equals(activeSide)?"LEFT":"RIGHT")):"PN12",true);
-        // Firmware dictates model/hand: no manual model selector.
-        add(first,modelButton,screenWidthDp<400?115:135,34);
+        add(first,pill("오프라인 설정",false),screenWidthDp<400?106:125,34);
         add(center,first,-1,40);
-        add(center,txt(activeKeyCount==15?("5열 × 3행 · "+("L".equals(activeSide)?"왼쪽":"오른쪽")+" 하강 대각선 배열"):"가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
+        // Tabs only control offline editor view, not the active USB sessions.
+        LinearLayout selectors=horizontal();
+        int[] models={12,15,15};
+        String[] sides={"R","L","R"};
+        String[] titles={"PN12","PN15 왼손","PN15 오른손"};
+        for(int i=0;i<models.length;i++){
+            final int targetModel=models[i];
+            final String targetSide=sides[i];
+            boolean chosen=activeKeyCount==targetModel &&
+                (targetModel==12||activeSide.equals(targetSide));
+            TextView tab=pill(titles[i],chosen);
+            tab.setGravity(Gravity.CENTER);
+            tab.setOnClickListener(v->selectEditorModel(targetModel,targetSide));
+            LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,dp(43),1);
+            pp.setMargins(dp(2),dp(2),dp(2),dp(2));
+            selectors.addView(tab,pp);
+        }
+        add(center,selectors,-1,49);
+        add(center,txt(activeKeyCount==15?("5열 × 3행 · "+("L".equals(activeSide)?"왼쪽":"오른쪽")+" 하강 대각선 배열 · 오프라인 설정"):"3열 × 4행 · 오프라인 설정 가능",11,MUTED,false),-1,28);
         LinearLayout frame=vertical();
         frame.setGravity(Gravity.CENTER);
         frame.setBackground(shape(INNER,15,0xff2c4364));
@@ -361,7 +371,7 @@ public final class MainActivity extends Activity {
         keysHost=vertical();
         keysHost.setGravity(Gravity.CENTER);
         add(frame,keysHost,-1,-2);
-        int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
+        int frameWidth=Math.min(620,Math.max(245,centerWidthDp-36));
         add(center,frame,frameWidth,-2);
         renderKeys();
         space(center,12);
@@ -379,7 +389,7 @@ public final class MainActivity extends Activity {
         if(keysHost==null||page!=0)return;
         keysHost.removeAllViews();
         if(activeKeyCount==15) { renderPn15Keys(); return; }
-        int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
+        int frameWidth=Math.min(620,Math.max(245,centerWidthDp-36));
         int realKeyWidth=(frameWidth-24-18)/3;
         int keyHeight=Math.max(84,Math.min(113,Math.round(realKeyWidth*.98f)));
         int iconSize=Math.min(39,Math.max(25,keyHeight-48));
@@ -421,7 +431,7 @@ public final class MainActivity extends Activity {
     // PN15 CAD layout: 19.04 mm horizontal pitch, 5.93 mm downward per
     // column, and 19.0 mm downward per row. Keep key numbering row-major.
     private void renderPn15Keys(){
-        int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
+        int frameWidth=Math.min(620,Math.max(245,centerWidthDp-36));
         int gap=6;
         int keyWidth=Math.max(32,(frameWidth-38-gap*4)/5);
         int keyHeight=Math.max(49,Math.round(keyWidth*1.04f));
@@ -441,10 +451,10 @@ public final class MainActivity extends Activity {
                 TextView number=txt(String.format(Locale.US,"%02d",k),keyWidth<57?9:10,0xff202e45,true);
                 number.setGravity(Gravity.CENTER);
                 add(key,number,-1,keyWidth<57?12:16);
-                int iconSize=Math.max(17,Math.min(34,keyWidth/2-2));
+                int iconSize=Math.max(17,Math.min(46,keyWidth/2-2));
                 View artwork=createSymbol(store.kind(k),iconSize,k);
                 add(key,artwork,iconSize,iconSize);
-                if(keyWidth>=57){
+                if(keyWidth>=53){
                     TextView label=txt(store.name(k),9,0xff162133,true);
                     label.setGravity(Gravity.CENTER);
                     label.setSingleLine(true);
@@ -460,7 +470,7 @@ public final class MainActivity extends Activity {
             }
         }
     }
-    private void switchDetectedModel(int count,String side){
+    private void selectEditorModel(int count,String side){
         if(count!=12 && count!=15)return;
         String normalized=count==15&&"L".equals(side)?"L":"R";
         if(activeKeyCount==count && activeSide.equals(normalized))return;
@@ -468,7 +478,7 @@ public final class MainActivity extends Activity {
         activeSide=normalized;
         store.setDeviceModel(count,normalized);
         selectedKey=Math.min(selectedKey,count);
-        // Header, key positions and model label all depend on handedness.
+        // Only the editor view changes; USB sessions remain independent.
         buildShell();
     }
     private int adjust(int color,float factor){

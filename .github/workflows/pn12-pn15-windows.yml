@@ -1,7 +1,7 @@
 name: Windows PN12 + PN15 LEFT/RIGHT - Build and Complete ZIP
 on:
   push:
-    branches: [feature/pn15-grip]
+    branches: [main, feature/pn15-grip]
     paths:
       - 'Windows/소스/**'
       - 'Windows/설치/**'

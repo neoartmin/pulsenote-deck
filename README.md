@@ -1,67 +1,63 @@
-# PulseNote Deck — PN12 · PN15 LEFT · PN15 RIGHT
+# PulseNote Deck — Windows · Android · Firmware
 
-Single repository for Windows, Android and ESP32-C3 firmware.
+Single repository for **PN12**, **PN15 LEFT**, and **PN15 RIGHT**.
+The three USB CDC devices are designed to operate concurrently (42 keys total).
+Physical three-device verification is still pending.
 
-## Repository paths
+## Source folders (original relative paths preserved)
 
 ```text
-android-pn12/                   Android native application v1.3.1 (complete Java/Gradle source)
-Firmware/
-  PN12/                         PN12 12-key firmware
-  PN15/                         PN15 right-hand 15-key firmware
-  PN15_LEFT/                    PN15 left-hand 15-key firmware
-.github/workflows/
-  pn12-android-apk.yml          Android APK + source/firmware full ZIP release
-  pn12-pn15-windows.yml         Windows build when Windows files are imported
-tools/
-  import-windows-v758.ps1       Exact Windows v7.5.8 ZIP importer
-Windows/                        Full Windows package after ZIP import (see below)
-  README_KO.txt
-  SHA256SUMS.txt
-  검증보고서.txt
+Windows/
   설치/PulseNoteDeck_v7.5.8_Setup.exe
-  소스/app/                    Original Go source, icon assets and tests
-  소스/installer/              Original Go installer source, icons and tests
+  소스/app/                       Go Windows program, assets and tests
+  소스/installer/                 Go Windows installer, assets and tests
   펌웨어/PN12/
   펌웨어/PN15_LEFT/
   펌웨어/PN15_RIGHT/
+  README_KO.txt
+  SHA256SUMS.txt
+  검증보고서.txt
+
+android-pn12/                     Full Android Java + Gradle source
+Firmware/
+  PN12/                           12-key ESP32-C3 sketch
+  PN15/                           RIGHT 15-key ESP32-C3 sketch
+  PN15_LEFT/                      LEFT 15-key ESP32-C3 sketch
+.github/workflows/
+  pn12-android-apk.yml            Android APK + full ZIP release
+  pn12-pn15-windows.yml           Windows install EXE + full ZIP release
 ```
 
-**Current import status (2026-11-01):** Android source and all three common firmware
-sketches are committed in this branch. The Windows v7.5.8 original ZIP has
-been inspected and verified locally, but its complete binary/source contents
-are **not committed to GitHub yet**. Do not treat the presence of this README,
-the import script or the Windows workflow as proof that Windows source is
-already in the remote repository.
+Windows original **v7.5.8 complete ZIP** was reassembled and verified by
+GitHub Actions using SHA-256
+`270f8839b092ca8726f159fd9474a440cb305d56cb687434cc1a2fb59b7dca25`.
+All **119 original ZIP entries** were extracted into the `Windows/` tree.
+One legacy Go test assertion was updated to match the new independent
+USB device event queue; this does not change the runtime code.
 
-## Exact Windows source import
+## Download complete platform archives
 
-Original local Windows archive:
+- **Windows v7.5.8**:
+  [Setup EXE, Go source, PN12/PN15 L/R firmware and verification data](https://github.com/neoartmin/pulsenote-deck/releases/tag/pnd-windows-v7.5.8)
+- **Android v1.3.1**:
+  [APK, Android source, PN12/PN15 L/R firmware and instructions](https://github.com/neoartmin/pulsenote-deck/releases/tag/pn12-pn15-android-v1.3.1)
 
-`PND_Windows_v7.5.8_PN12_PN15_3Devices_전체파일집.zip`
+## Firmware USB identities
 
-SHA-256:
-`270f8839b092ca8726f159fd9474a440cb305d56cb687434cc1a2fb59b7dca25`
-
-In a clone on branch `feature/pn15-grip` run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\import-windows-v758.ps1 -ArchivePath "C:\path\to\PND_Windows_v7.5.8_PN12_PN15_3Devices_전체파일집.zip"
-```
-
-The importer copies **every** file, including the Windows installer EXE, Go
-sources and 3 firmware sketches, into `Windows/` **without renaming any
-path inside the original archive**, commits it, and pushes to the same branch.
-The Windows workflow then runs tests and builds a Windows setup EXE and ZIP.
-
-## USB identifiers
-
-| Firmware | Identifier | Keys |
+| Board | ID | Keys |
 |---|---|---:|
 | PN12 | `PND:INFO:12:C3` | 12 |
 | PN15 RIGHT | `PND:INFO:15:R:C3` | 15 |
 | PN15 LEFT | `PND:INFO:15:L:C3` | 15 |
 
-Firmware determines physical device identity automatically, while the
-offline editor supports all three profiles without attached hardware.
-Hardware testing with three simultaneous devices is still required.
+Legacy PN15 identifier `PND:INFO:15:C3` is treated as RIGHT.
+Offline editing allows all three models to be configured before connection.
+Hardware connection, reconnection, and concurrent inputs still require
+real-device tests on Windows and Android.
+
+## Build
+
+Both platform workflows build independently using GitHub Actions.
+Windows uses Go 1.23 on `windows-latest`; Android uses Java 17 / Gradle and
+Android SDK 35. The published APK is debug-signed; it may not update an APK
+signed with a different key.

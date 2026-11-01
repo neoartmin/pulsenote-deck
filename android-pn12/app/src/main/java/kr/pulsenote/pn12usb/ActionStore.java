@@ -28,6 +28,8 @@ public final class ActionStore {
     public ActionStore(Context context) {
         prefs=context.getSharedPreferences("pn12_actions",Context.MODE_PRIVATE);
     }
+    public int keyCount() { return prefs.getInt("device_key_count",12)==15 ? 15 : 12; }
+    public void setDeviceKeyCount(int count) { if (count==12 || count==15) prefs.edit().putInt("device_key_count",count).apply(); }
     public int activeProfile() { return prefs.getInt("active_profile",0); }
     public void setProfile(int id) { if(profiles().contains(id)) prefs.edit().putInt("active_profile",id).apply(); }
     public List<Integer> profiles() {
@@ -53,24 +55,24 @@ public final class ActionStore {
         StringBuilder all=new StringBuilder();for(int id:profiles())if(id>0&&id!=current){if(all.length()>0)all.append(',');all.append(id);}
         prefs.edit().putString("profile_ids",all.toString()).putInt("active_profile",0).apply();return true;
     }
-    private String idKey(String field,int key) { return (activeProfile()==0?"":("p"+activeProfile()+"_"))+field+"_"+key; }
+    private String idKey(String field,int key) { return (keyCount()==15?"pn15_":"")+(activeProfile()==0?"":("p"+activeProfile()+"_"))+field+"_"+key; }
     private int ix(int key){return Math.max(0,Math.min(11,key-1));}
     public int kind(int key) {
-       int k=prefs.getInt(idKey("type",key),activeProfile()==0?DEFAULT_TYPES[ix(key)]:0);
+       int k=prefs.getInt(idKey("type",key),activeProfile()==0&&keyCount()==12?DEFAULT_TYPES[ix(key)]:0);
        return k>=0&&k<NAMES.length?k:0;
     }
     public String name(int key) {
-       return prefs.getString(idKey("name",key),activeProfile()==0?DEFAULT_NAMES[ix(key)]:String.format(java.util.Locale.US,"버튼 %02d",key));
+       return prefs.getString(idKey("name",key),activeProfile()==0&&keyCount()==12?DEFAULT_NAMES[ix(key)]:String.format(java.util.Locale.US,"버튼 %02d",key));
     }
     public String value(int key) {
-       return prefs.getString(idKey("value",key),activeProfile()==0?DEFAULT_VALUES[ix(key)]:"");
+       return prefs.getString(idKey("value",key),activeProfile()==0&&keyCount()==12?DEFAULT_VALUES[ix(key)]:"");
     }
     public int color(int key) {
-       int c=prefs.getInt(idKey("color",key),activeProfile()==0?DEFAULT_COLORS[ix(key)]:2);
+       int c=prefs.getInt(idKey("color",key),activeProfile()==0&&keyCount()==12?DEFAULT_COLORS[ix(key)]:2);
        return c>=0&&c<COLORS.length?c:2;
     }
     public void setKind(int key,int kind) {
-       if(key>=1&&key<=12&&kind>=0&&kind<NAMES.length)prefs.edit().putInt(idKey("type",key),kind).apply();
+       if(key>=1&&key<=keyCount()&&kind>=0&&kind<NAMES.length)prefs.edit().putInt(idKey("type",key),kind).apply();
     }
     public void setName(int key,String name) {
        if(key>=1&&key<=12)prefs.edit().putString(idKey("name",key),name).apply();
@@ -79,7 +81,7 @@ public final class ActionStore {
        if(key>=1&&key<=12)prefs.edit().putString(idKey("value",key),value).apply();
     }
     public void setColor(int key,int color) {
-       if(key>=1&&key<=12&&color>=0&&color<COLORS.length)prefs.edit().putInt(idKey("color",key),color).apply();
+       if(key>=1&&key<=keyCount()&&color>=0&&color<COLORS.length)prefs.edit().putInt(idKey("color",key),color).apply();
     }
     public String label(int key) { return name(key); }
 }

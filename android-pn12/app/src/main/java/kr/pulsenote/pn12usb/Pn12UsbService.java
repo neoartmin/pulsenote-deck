@@ -10,6 +10,7 @@ public final class Pn12UsbService extends Service {
  public static final String START="kr.pulsenote.pn12usb.START",STOP="kr.pulsenote.pn12usb.STOP",REFRESH="kr.pulsenote.pn12usb.REFRESH",STATUS="kr.pulsenote.pn12usb.STATUS",KEY="kr.pulsenote.pn12usb.KEY",DEVICE="device",TEXT="text",NUMBER="number";
  public static volatile String status="미연결";
  public static volatile String connectedDeviceName=null;
+ public static volatile int connectedKeyCount=12;
  private volatile String activeDeviceName=null;
  private static final String CHANNEL="pn12_usb";
  private UsbManager manager; private DirectLaunchOverlay overlay; private volatile UsbDeviceConnection active; private volatile int generation=0;
@@ -85,7 +86,12 @@ public final class Pn12UsbService extends Service {
      if(r!=7)throw new IOException("CDC 속도 설정 실패");
      if(con.controlTransfer(0x21,0x22,3,ctl.getId(),null,0,1000)<0)throw new IOException("CDC DTR 실패");
      Pn12Protocol protocol=new Pn12Protocol(new Pn12Protocol.Listener(){
-       public void onHandshake(){connectedDeviceName=d.getDeviceName();report("연결 완료 · PN12 12키");}
+       public void onHandshake(int keyCount){
+         connectedKeyCount=keyCount;
+         new ActionStore(Pn12UsbService.this).setDeviceKeyCount(keyCount);
+         connectedDeviceName=d.getDeviceName();
+         report("연결 완료 · PN"+keyCount+" "+keyCount+"키");
+       }
        public void onKey(int key){handler.post(()->{
          if(my!=generation)return;
          String result;

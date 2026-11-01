@@ -4,7 +4,6 @@ on:
     branches: [feature/pn15-grip]
     paths:
       - 'Windows/**'
-      - '.github/workflows/pn12-pn15-windows.yml'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +15,6 @@ concurrency:
 
 jobs:
   windows:
-    if: ${{ hashFiles('Windows/소스/app/go.mod') != '' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

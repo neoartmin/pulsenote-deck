@@ -10,7 +10,8 @@ public final class Pn12UsbService extends Service {
  public static final String START="kr.pulsenote.pn12usb.START",STOP="kr.pulsenote.pn12usb.STOP",REFRESH="kr.pulsenote.pn12usb.REFRESH",STATUS="kr.pulsenote.pn12usb.STATUS",KEY="kr.pulsenote.pn12usb.KEY",DEVICE="device",TEXT="text",NUMBER="number";
  public static volatile String status="미연결";
  public static volatile String connectedDeviceName=null;
- public static volatile int connectedKeyCount=12;
+ public static volatile int connectedKeyCount=15;
+ public static volatile String connectedSide="R";
  private volatile String activeDeviceName=null;
  private static final String CHANNEL="pn12_usb";
  private UsbManager manager; private DirectLaunchOverlay overlay; private volatile UsbDeviceConnection active; private volatile int generation=0;
@@ -86,11 +87,12 @@ public final class Pn12UsbService extends Service {
      if(r!=7)throw new IOException("CDC 속도 설정 실패");
      if(con.controlTransfer(0x21,0x22,3,ctl.getId(),null,0,1000)<0)throw new IOException("CDC DTR 실패");
      Pn12Protocol protocol=new Pn12Protocol(new Pn12Protocol.Listener(){
-       public void onHandshake(int keyCount){
+       public void onHandshake(int keyCount, String side){
          connectedKeyCount=keyCount;
-         new ActionStore(Pn12UsbService.this).setDeviceKeyCount(keyCount);
+         connectedSide=side;
+         new ActionStore(Pn12UsbService.this).setDeviceModel(keyCount,side);
          connectedDeviceName=d.getDeviceName();
-         report("연결 완료 · PN"+keyCount+" "+keyCount+"키");
+         report("연결 완료 · PN"+keyCount+(keyCount==15?(" "+("L".equals(side)?"LEFT":"RIGHT")):"")+" "+keyCount+"키");
        }
        public void onKey(int key){handler.post(()->{
          if(my!=generation)return;
@@ -108,6 +110,7 @@ public final class Pn12UsbService extends Service {
        }
        int len=con.bulkTransfer(endpoints[0],buffer,buffer.length,250);
        if(len>0)protocol.receive(buffer,len);
+       if(protocol.isConflicting())throw new IOException("USB 모델/손 방향 식별 충돌");
        if(!protocol.isVerified()&&now-start>12000)throw new IOException("PN12 식별 타임아웃");
      }
      if(my==generation)report("USB 연결 해제");

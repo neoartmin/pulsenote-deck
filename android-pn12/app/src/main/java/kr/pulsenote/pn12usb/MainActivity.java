@@ -26,7 +26,7 @@ public final class MainActivity extends Activity {
       BORDER=0xff263e60, MUTED=0xffa3b8d8, WHITE=0xfff4f7ff,
       BLUE=0xff5769fa, ACTIVE=0xff283a78, INNER=0xff091526;
     private final List<UsbDevice> candidates=new ArrayList<>();
-    private final View[] keyViews=new View[12];
+    private final View[] keyViews=new View[15];
     private final TextView[] nav=new TextView[3];
     private UsbManager usb;
     private ActionStore store;
@@ -34,7 +34,7 @@ public final class MainActivity extends Activity {
     private LinearLayout pageHost,rightHost,keysHost,sideHost;
     private TextView statusHeader,statusSide,statusFooter,keyHeader,profileCaption,devicePickerLabel;
     private Spinner chooser;
-    private int page=0,selectedKey=7;
+    private int page=0,selectedKey=7,activeKeyCount=12;
     private boolean programmatic=false;
     // All measurements are Android density-independent pixels (dp).
     // Recomputed after rotation, display scaling, or split-screen resize.
@@ -49,9 +49,11 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         if(savedInstanceState!=null){
             page=Math.max(0,Math.min(2,savedInstanceState.getInt("pn12.page",0)));
-            selectedKey=Math.max(1,Math.min(12,savedInstanceState.getInt("pn12.selectedKey",7)));
+            selectedKey=Math.max(1,Math.min(15,savedInstanceState.getInt("pn12.selectedKey",7)));
         }
         store=new ActionStore(this);
+        activeKeyCount=store.keyCount();
+        selectedKey=Math.min(selectedKey,activeKeyCount);
         usb=(UsbManager)getSystemService(USB_SERVICE);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
@@ -297,7 +299,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.1.7 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.2.0 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -334,13 +336,15 @@ public final class MainActivity extends Activity {
         else add(wrapper,right,-1,-2);
         add(pageHost,wrapper,-1,-2);
         LinearLayout first=horizontal();
-        TextView h=txt("나의 12키 컨트롤러",Math.min(19,screenWidthDp<400?16:19),WHITE,true);
+        TextView h=txt(activeKeyCount==15?"나의 15키 컨트롤러":"나의 12키 컨트롤러",Math.min(19,screenWidthDp<400?16:19),WHITE,true);
         h.setSingleLine(true);
         h.setEllipsize(android.text.TextUtils.TruncateAt.END);
         first.addView(h,new LinearLayout.LayoutParams(0,dp(33),1));
-        add(first,pill("PN12 전용",true),screenWidthDp<400?92:120,34);
+        TextView modelButton=pill(activeKeyCount==15?"PN15 GRIP":"PN12",true);
+        modelButton.setOnClickListener(v->switchModel(activeKeyCount==15?12:15));
+        add(first,modelButton,screenWidthDp<400?92:120,34);
         add(center,first,-1,40);
-        add(center,txt("가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
+        add(center,txt(activeKeyCount==15?"가로 5개 × 세로 3개 · 오른쪽 하강 대각선 배열":"가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
         LinearLayout frame=vertical();
         frame.setGravity(Gravity.CENTER);
         frame.setBackground(shape(INNER,15,0xff2c4364));
@@ -365,6 +369,7 @@ public final class MainActivity extends Activity {
     private void renderKeys(){
         if(keysHost==null||page!=0)return;
         keysHost.removeAllViews();
+        if(activeKeyCount==15) { renderPn15Keys(); return; }
         int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
         int realKeyWidth=(frameWidth-24-18)/3;
         int keyHeight=Math.max(84,Math.min(113,Math.round(realKeyWidth*.98f)));
@@ -402,6 +407,57 @@ public final class MainActivity extends Activity {
             }
             add(keysHost,row,-1,-2);
         }
+    }
+
+    // PN15 CAD layout: 19.04 mm horizontal pitch, 5.93 mm downward per
+    // column, and 19.0 mm downward per row. Keep key numbering row-major.
+    private void renderPn15Keys(){
+        int frameWidth=Math.min(485,Math.max(245,centerWidthDp-44));
+        int gap=6;
+        int keyWidth=Math.max(32,(frameWidth-38-gap*4)/5);
+        int keyHeight=Math.max(49,Math.round(keyWidth*1.04f));
+        int rowPitch=keyHeight+gap;
+        int colSlant=Math.round(rowPitch*(5.93f/19.0f));
+        int height=3*keyHeight+2*gap+4*colSlant+8;
+        FrameLayout diagonal=new FrameLayout(this);
+        add(keysHost,diagonal,-1,height);
+        for(int row=0;row<3;row++){
+            for(int col=0;col<5;col++){
+                final int k=row*5+col+1;
+                LinearLayout key=vertical();
+                key.setGravity(Gravity.CENTER_HORIZONTAL);
+                key.setPadding(dp(2),dp(2),dp(2),dp(1));
+                int color=ActionStore.COLORS[store.color(k)];
+                key.setBackground(grad(adjust(color,.19f),color,10,k==selectedKey?BLUE:0xffa3bdd7));
+                TextView number=txt(String.format(Locale.US,"%02d",k),keyWidth<57?9:10,0xff202e45,true);
+                number.setGravity(Gravity.CENTER);
+                add(key,number,-1,keyWidth<57?12:16);
+                int iconSize=Math.max(17,Math.min(34,keyWidth/2-2));
+                View artwork=createSymbol(store.kind(k),iconSize,k);
+                add(key,artwork,iconSize,iconSize);
+                if(keyWidth>=57){
+                    TextView label=txt(store.name(k),9,0xff162133,true);
+                    label.setGravity(Gravity.CENTER);
+                    label.setSingleLine(true);
+                    label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    add(key,label,-1,18);
+                }
+                key.setOnClickListener(v->{selectedKey=k;renderKeys();renderRight();});
+                FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(keyWidth),dp(keyHeight));
+                p.leftMargin=dp(col*(keyWidth+gap));
+                p.topMargin=dp(row*rowPitch+col*colSlant);
+                diagonal.addView(key,p);
+                keyViews[k-1]=key;
+            }
+        }
+    }
+    private void switchModel(int count){
+        if(count!=12 && count!=15) return;
+        if(activeKeyCount==count) return;
+        activeKeyCount=count;
+        store.setDeviceKeyCount(count);
+        selectedKey=Math.min(selectedKey,count);
+        renderPage();
     }
     private int adjust(int color,float factor){
         return Color.rgb(Math.min(255,(int)(Color.red(color)+(255-Color.red(color))*factor)),
@@ -780,6 +836,8 @@ public final class MainActivity extends Activity {
     private void updateStatus(String message){
         if(message==null)message="상태 확인 중";
         boolean okay=message.startsWith("연결 완료");
+        if(message.startsWith("연결 완료 · PN15"))switchModel(15);
+        else if(message.startsWith("연결 완료 · PN12"))switchModel(12);
         if(statusHeader!=null)statusHeader.setText(okay?"●  USB 연결됨":"●  "+message);
         if(statusSide!=null)statusSide.setText((okay?"●  USB 연결됨":"●  USB 상태")+"\n\n"+message);
         if(statusFooter!=null)statusFooter.setText("●  "+message);

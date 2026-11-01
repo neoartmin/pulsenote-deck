@@ -37,6 +37,39 @@ jobs:
           path: android-pn12/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Assemble full Android package (APK, sources, both firmware sketches)
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' android-pn12/app/build.gradle.kts | head -n1)
+          PKG="PND_Android_v${VERSION}_PN12_PN15_Complete"
+          ROOT="${RUNNER_TEMP}/${PKG}"
+          mkdir -p "${ROOT}/APK" "${ROOT}/Sources"
+          cp android-pn12/app/build/outputs/apk/debug/app-debug.apk "${ROOT}/APK/PulseNote_PN12_PN15_Android_v${VERSION}.apk"
+          git archive HEAD android-pn12 Firmware | tar -x -C "${ROOT}/Sources"
+          cat > "${ROOT}/README_KO.txt" <<'EOF'
+          PulseNote Deck Android PN12 + PN15 - 전체 파일집
+          APK/     : Android 설치 파일 (디버그 서명)
+          Sources/android-pn12 : Android 앱 전체 소스 (Gradle/Java/리소스)
+          Sources/Firmware/PN12: PN12 ESP32-C3 펌웨어
+          Sources/Firmware/PN15: PN15 ESP32-C3 펌웨어
+          
+          USB CDC 프로토콜: PND:HELLO / PND:READY:2.1 /
+          PND:INFO:12:C3 또는 PND:INFO:15:C3 / KEY:1..12 또는 KEY:1..15
+          Android 8.0(API26) 이상, USB OTG/호스트, USB 권한 필요
+          GitHub Actions Gradle debug build. 실제 PN15 장치에서 테스트하지 않음.
+          서명이 다른 이전 APK와의 덮어쓰기 업데이트는 실패할 수 있습니다.
+          EOF
+          (cd "${ROOT}" && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+          (cd "${RUNNER_TEMP}" && zip -qr "${PKG}.zip" "${PKG}")
+          test -s "${RUNNER_TEMP}/${PKG}.zip"
+          echo "COMPLETE_ARCHIVE=${RUNNER_TEMP}/${PKG}.zip" >> "$GITHUB_ENV"
+      - name: Upload full Android package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PulseNote-Android-Complete
+          path: ${{ env.COMPLETE_ARCHIVE }}
+          if-no-files-found: error
+          retention-days: 30
       - name: Publish directly downloadable APK to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
@@ -48,7 +81,7 @@ jobs:
           APK_NAME="PulseNote_PN12_PN15_Android_v${VERSION}.apk"
           cp android-pn12/app/build/outputs/apk/debug/app-debug.apk "${RUNNER_TEMP}/${APK_NAME}"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" --clobber
+            gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "$COMPLETE_ARCHIVE" --clobber
           else
             gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" \
               --target "$GITHUB_SHA" \

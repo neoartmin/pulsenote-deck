@@ -1,3 +1,4 @@
+// PN15 GRIP RIGHT hand firmware; this file is kept for legacy upload instructions.
 // PulseNote Deck PN15 GRIP -- ESP32-C3 Super Mini, 3 rows x 5 columns.
 // Rows GPIO {0,1,6}; columns GPIO {3,4,21,7,5} (8 pins total).
 // KEY 1..15 are row-major. USB CDC On Boot: Enabled; baud: 115200.
@@ -21,7 +22,7 @@ static bool usbSessionAnnounced = false;
 
 static void identify() {
   Serial.println("PND:READY:2.1");
-  Serial.println("PND:INFO:15:C3");
+  Serial.println("PND:INFO:15:R:C3");
 }
 static void announceWhenUSBReady() {
   bool ready = (bool)Serial;

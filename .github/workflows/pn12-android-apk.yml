@@ -1,7 +1,7 @@
 name: PN12 Android APK
 on:
   push:
-    branches: [main, android-pn12-apk-build, feature/pn15-grip]
+    branches: [main, android-pn12-apk-build, feature/pn15-grip, feature/firmware-canonical-sync]
     paths:
       - 'android-pn12/**'
       - 'Firmware/**'

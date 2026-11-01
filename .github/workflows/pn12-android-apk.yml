@@ -83,7 +83,7 @@ jobs:
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "$COMPLETE_ARCHIVE" --clobber
           else
-            gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" \
+            gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "$COMPLETE_ARCHIVE" \
               --target "$GITHUB_SHA" \
               --title "PulseNote Deck PN12 + PN15 Android v${VERSION}" \
               --notes "Direct APK download for PulseNote PN12/PN15 Android. Debug-signed testing build; real device verification required." \

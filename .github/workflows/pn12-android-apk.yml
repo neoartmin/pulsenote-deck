@@ -5,6 +5,7 @@ on:
     paths:
       - 'android-pn12/**'
       - 'Firmware/**'
+      - 'tools/firmware_sync.py'
       - '.github/workflows/pn12-android-apk.yml'
   workflow_dispatch:
 
@@ -20,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify bundled firmware is canonical
+        run: python3 tools/firmware_sync.py --check
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -45,7 +48,7 @@ jobs:
           path: android-pn12/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Assemble full Android package (APK, sources, both firmware sketches)
+      - name: Assemble complete Android package (APK, sources, PN12 and PN15 L/R firmware)
         run: |
           set -euo pipefail
           VERSION=$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' android-pn12/app/build.gradle.kts | head -n1)
@@ -59,10 +62,13 @@ jobs:
           APK/     : Android 설치 파일 (디버그 서명)
           Sources/android-pn12 : Android 앱 전체 소스 (Gradle/Java/리소스)
           Sources/Firmware/PN12: PN12 ESP32-C3 펌웨어
-          Sources/Firmware/PN15: PN15 ESP32-C3 펌웨어
+          Sources/Firmware/PN15: PN15 RIGHT ESP32-C3 펌웨어
+          Sources/Firmware/PN15_LEFT: PN15 LEFT ESP32-C3 펌웨어
           
           USB CDC 프로토콜: PND:HELLO / PND:READY:2.1 /
-          PND:INFO:12:C3 또는 PND:INFO:15:C3 / KEY:1..12 또는 KEY:1..15
+          PND:INFO:12:C3 / PN15:R:C3 / PN15:L:C3 / KEY:1..12 또는 KEY:1..15
+          PN15 USB 식별 전문: PND:INFO:15:R:C3 / PND:INFO:15:L:C3
+          Firmware/ 폴더만 공통 원본입니다. Windows 설치기와 동일한 파일을 포함합니다.
           Android 8.0(API26) 이상, USB OTG/호스트, USB 권한 필요
           GitHub Actions Gradle debug build. 실제 PN15 장치에서 테스트하지 않음.
           서명이 다른 이전 APK와의 덮어쓰기 업데이트는 실패할 수 있습니다.

@@ -80,7 +80,7 @@ jobs:
               Sort-Object FullName |
               ForEach-Object {
                 $sha = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-                $relative = $_.FullName.Substring($fullStage.Length + 1).Replace('\\','/')
+                $relative = $_.FullName.Substring($fullStage.Length + 1).Replace([char]92, '/')
                 "$sha  $relative"
               }
           )

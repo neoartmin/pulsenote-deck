@@ -244,7 +244,7 @@ public final class MainActivity extends Activity {
         statusFooter.setSingleLine(true);
         statusFooter.setEllipsize(android.text.TextUtils.TruncateAt.END);
         footer.addView(statusFooter,new LinearLayout.LayoutParams(0,dp(26),1));
-        add(footer,txt("v1.2.3 · ANDROID",10,BLUE,false),-2,26);
+        add(footer,txt("v1.2.4 · ANDROID",10,BLUE,false),-2,26);
         add(content,footer,-1,37);
         setContentView(scroller);
         renderPage();

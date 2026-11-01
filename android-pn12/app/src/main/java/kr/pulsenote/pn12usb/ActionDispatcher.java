@@ -95,7 +95,7 @@ public final class ActionDispatcher {
                     !overlayAllowed?"직접 실행 모드가 꺼져 있습니다":
                     "직접 실행을 사용할 수 없어 알림으로 대체합니다";
             nm.notify(1000+key,new Notification.Builder(context,CHANNEL)
-              .setSmallIcon(android.R.drawable.ic_menu_view).setContentTitle("PN12 · "+s.name(key))
+              .setSmallIcon(android.R.drawable.ic_menu_view).setContentTitle("PulseNote · "+s.name(key))
               .setContentText(reason+" · 탭하여 실행")
               .setContentIntent(pi).setAutoCancel(true).build());
             return "알림을 눌러 실행";

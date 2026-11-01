@@ -51,7 +51,7 @@ func TestWindowCloseLeavesBackgroundActionsRunning(t *testing.T) {
 	}
 	for _, required := range []string{
 		"g.tray(true)", "완전 종료", "destroyWindow.Call(g.hwnd)",
-		"go serialLoop()", "for n := range actionQueue", "TaskbarCreated", "-H=windowsgui",
+		"go serialLoop()", "case n := <-actionQueue", "case event := <-multiActionQueue", "TaskbarCreated", "-H=windowsgui",
 	} {
 		// -H=windowsgui is a build flag checked separately, not embedded in Go sources.
 		if required == "-H=windowsgui" {

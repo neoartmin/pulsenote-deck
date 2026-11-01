@@ -4,13 +4,14 @@ import java.nio.charset.StandardCharsets;
 
 public final class Pn12Protocol {
     public interface Listener {
-        void onHandshake();
+        void onHandshake(int keyCount);
         void onKey(int key);
     }
     public static final byte[] HELLO = "PND:HELLO\n".getBytes(StandardCharsets.US_ASCII);
     private final Listener listener;
     private final StringBuilder line = new StringBuilder();
     private boolean ready, info, announced, dropping;
+    private int keyCount = 12;
 
     public Pn12Protocol(Listener callback) { listener = callback; }
     public boolean isVerified() { return ready && info; }
@@ -29,14 +30,16 @@ public final class Pn12Protocol {
     }
     private void parse(String s) {
         if ("PND:READY:2.1".equals(s)) ready = true;
-        else if ("PND:INFO:12:C3".equals(s)) info = true;
+        else if ("PND:INFO:12:C3".equals(s)) { info = true; keyCount = 12; }
+        else if ("PND:INFO:15:C3".equals(s)) { info = true; keyCount = 15; }
         else if (s.startsWith("KEY:") && isVerified()) {
             try {
                 String digits = s.substring(4);
-                if (!digits.matches("(?:[1-9]|1[0-2])")) return;
-                listener.onKey(Integer.parseInt(digits));
+                if (!digits.matches("(?:[1-9]|1[0-5])")) return;
+                int key = Integer.parseInt(digits);
+                if (key <= keyCount) listener.onKey(key);
             } catch (NumberFormatException ignored) {}
         }
-        if (isVerified() && !announced) { announced = true; listener.onHandshake(); }
+        if (isVerified() && !announced) { announced = true; listener.onHandshake(keyCount); }
     }
 }

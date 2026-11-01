@@ -27,33 +27,49 @@ public final class ActionStore {
 
     public ActionStore(Context context) {
         prefs=context.getSharedPreferences("pn12_actions",Context.MODE_PRIVATE);
+        if (prefs.getInt("device_key_count",12)==15) migratePn15Profiles();
     }
+    // Preserve PN15 beta profile metadata before splitting PN12/PN15 profiles.
+    private void migratePn15Profiles() {
+        if(prefs.getBoolean("pn15_profiles_migrated",false))return;
+        SharedPreferences.Editor editor=prefs.edit();
+        editor.putInt("pn15_active_profile",prefs.getInt("active_profile",0));
+        editor.putString("pn15_profile_ids",prefs.getString("profile_ids",""));
+        editor.putInt("pn15_next_profile",prefs.getInt("next_profile",1));
+        for(int i=0;i<100;i++){
+            String oldKey="profile_name_"+i;
+            if(prefs.contains(oldKey))
+                editor.putString("pn15_"+oldKey,prefs.getString(oldKey,""));
+        }
+        editor.putBoolean("pn15_profiles_migrated",true).apply();
+    }
+    private String profileKey(String name) { return keyCount()==15 ? "pn15_"+name : name; }
     public int keyCount() { return prefs.getInt("device_key_count",12)==15 ? 15 : 12; }
-    public void setDeviceKeyCount(int count) { if (count==12 || count==15) prefs.edit().putInt("device_key_count",count).apply(); }
-    public int activeProfile() { return prefs.getInt("active_profile",0); }
-    public void setProfile(int id) { if(profiles().contains(id)) prefs.edit().putInt("active_profile",id).apply(); }
+    public void setDeviceKeyCount(int count) { if(count==12||count==15){ if(count==15)migratePn15Profiles(); prefs.edit().putInt("device_key_count",count).apply(); } }
+    public int activeProfile() { return prefs.getInt(profileKey("active_profile"),0); }
+    public void setProfile(int id) { if(profiles().contains(id)) prefs.edit().putInt(profileKey("active_profile"),id).apply(); }
     public List<Integer> profiles() {
         ArrayList<Integer> result=new ArrayList<>(); result.add(0);
-        String raw=prefs.getString("profile_ids","");
+        String raw=prefs.getString(profileKey("profile_ids"),"");
         for(String s:raw.split(",")) if(!s.isEmpty()) try{
             int id=Integer.parseInt(s); if(id>0 && !result.contains(id))result.add(id);
         }catch(NumberFormatException ignored){}
         return result;
     }
-    public String profileName(int id) { return id==0 ? prefs.getString("profile_name_0","기본 프로필") : prefs.getString("profile_name_"+id,"프로필 "+id); }
+    public String profileName(int id) { return id==0 ? prefs.getString(profileKey("profile_name_0"),"기본 프로필") : prefs.getString(profileKey("profile_name_"+id),"프로필 "+id); }
     public void renameProfile(int id,String name) {
-        String safe=name.trim();if(!safe.isEmpty() && profiles().contains(id))prefs.edit().putString("profile_name_"+id,safe).apply();
+        String safe=name.trim();if(!safe.isEmpty() && profiles().contains(id))prefs.edit().putString(profileKey("profile_name_"+id),safe).apply();
     }
     public int newProfile(String name) {
-        int next=prefs.getInt("next_profile",1);List<Integer> list=profiles();list.add(next);
+        int next=prefs.getInt(profileKey("next_profile"),1);List<Integer> list=profiles();list.add(next);
         StringBuilder all=new StringBuilder();for(int id:list)if(id>0){if(all.length()>0)all.append(',');all.append(id);}
-        prefs.edit().putString("profile_ids",all.toString()).putString("profile_name_"+next,name.trim().isEmpty()?"새 프로필":name.trim()).putInt("active_profile",next).putInt("next_profile",next+1).apply();
+        prefs.edit().putString(profileKey("profile_ids"),all.toString()).putString(profileKey("profile_name_"+next),name.trim().isEmpty()?"새 프로필":name.trim()).putInt(profileKey("active_profile"),next).putInt(profileKey("next_profile"),next+1).apply();
         return next;
     }
     public boolean deleteCurrent() {
         int current=activeProfile();if(current==0)return false;
         StringBuilder all=new StringBuilder();for(int id:profiles())if(id>0&&id!=current){if(all.length()>0)all.append(',');all.append(id);}
-        prefs.edit().putString("profile_ids",all.toString()).putInt("active_profile",0).apply();return true;
+        prefs.edit().putString(profileKey("profile_ids"),all.toString()).putInt(profileKey("active_profile"),0).apply();return true;
     }
     private String idKey(String field,int key) { return (keyCount()==15?"pn15_":"")+(activeProfile()==0?"":("p"+activeProfile()+"_"))+field+"_"+key; }
     private int ix(int key){return Math.max(0,Math.min(11,key-1));}
@@ -75,10 +91,10 @@ public final class ActionStore {
        if(key>=1&&key<=keyCount()&&kind>=0&&kind<NAMES.length)prefs.edit().putInt(idKey("type",key),kind).apply();
     }
     public void setName(int key,String name) {
-       if(key>=1&&key<=12)prefs.edit().putString(idKey("name",key),name).apply();
+       if(key>=1&&key<=keyCount())prefs.edit().putString(idKey("name",key),name).apply();
     }
     public void setValue(int key,String value) {
-       if(key>=1&&key<=12)prefs.edit().putString(idKey("value",key),value).apply();
+       if(key>=1&&key<=keyCount())prefs.edit().putString(idKey("value",key),value).apply();
     }
     public void setColor(int key,int color) {
        if(key>=1&&key<=keyCount()&&color>=0&&color<COLORS.length)prefs.edit().putInt(idKey("color",key),color).apply();

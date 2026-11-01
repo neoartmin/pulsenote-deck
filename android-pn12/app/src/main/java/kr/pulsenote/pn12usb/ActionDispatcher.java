@@ -13,8 +13,9 @@ public final class ActionDispatcher {
     private static final String CHANNEL="pn12_shortcuts";
     private ActionDispatcher(){}
 
-    public static String run(Context context,int key) {
-        ActionStore s=new ActionStore(context);
+    public static String run(Context context,int key) { return run(context,key,0,null); }
+    public static String run(Context context,int key,int model,String side) {
+        ActionStore s=model==12||model==15 ? new ActionStore(context,model,side) : new ActionStore(context);
         int kind=s.kind(key);
         if(kind==0)return "기능 없음";
         AudioManager audio=(AudioManager)context.getSystemService(Context.AUDIO_SERVICE);

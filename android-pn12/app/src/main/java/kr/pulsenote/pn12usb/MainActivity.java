@@ -34,7 +34,8 @@ public final class MainActivity extends Activity {
     private LinearLayout pageHost,rightHost,keysHost,sideHost;
     private TextView statusHeader,statusSide,statusFooter,keyHeader,profileCaption,devicePickerLabel;
     private Spinner chooser;
-    private int page=0,selectedKey=7,activeKeyCount=12;
+    private int page=0,selectedKey=7,activeKeyCount=15;
+    private String activeSide="R";
     private boolean programmatic=false;
     // All measurements are Android density-independent pixels (dp).
     // Recomputed after rotation, display scaling, or split-screen resize.
@@ -53,6 +54,7 @@ public final class MainActivity extends Activity {
         }
         store=new ActionStore(this);
         activeKeyCount=store.keyCount();
+        activeSide=store.deviceSide();
         selectedKey=Math.min(selectedKey,activeKeyCount);
         usb=(UsbManager)getSystemService(USB_SERVICE);
         getWindow().setStatusBarColor(BG);
@@ -340,15 +342,11 @@ public final class MainActivity extends Activity {
         h.setSingleLine(true);
         h.setEllipsize(android.text.TextUtils.TruncateAt.END);
         first.addView(h,new LinearLayout.LayoutParams(0,dp(33),1));
-        TextView modelButton=pill(activeKeyCount==15?"PN15 GRIP":"PN12",true);
-        modelButton.setOnClickListener(v->{
-            if(Pn12UsbService.status.startsWith("연결 완료")) {
-                Toast.makeText(this,"연결된 장치의 모델은 자동으로 인식됩니다.",Toast.LENGTH_SHORT).show();
-            } else switchModel(activeKeyCount==15?12:15);
-        });
-        add(first,modelButton,screenWidthDp<400?92:120,34);
+        TextView modelButton=pill(activeKeyCount==15?("PN15 "+("L".equals(activeSide)?"LEFT":"RIGHT")):"PN12",true);
+        // Firmware dictates model/hand: no manual model selector.
+        add(first,modelButton,screenWidthDp<400?115:135,34);
         add(center,first,-1,40);
-        add(center,txt(activeKeyCount==15?"가로 5개 × 세로 3개 · 오른쪽 하강 대각선 배열":"가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
+        add(center,txt(activeKeyCount==15?("5열 × 3행 · "+("L".equals(activeSide)?"왼쪽":"오른쪽")+" 하강 대각선 배열"):"가로 3개 × 세로 4개 · 키별 자동 저장",11,MUTED,false),-1,28);
         LinearLayout frame=vertical();
         frame.setGravity(Gravity.CENTER);
         frame.setBackground(shape(INNER,15,0xff2c4364));
@@ -449,19 +447,22 @@ public final class MainActivity extends Activity {
                 key.setOnClickListener(v->{selectedKey=k;renderKeys();renderRight();});
                 FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(keyWidth),dp(keyHeight));
                 p.leftMargin=dp(col*(keyWidth+gap));
-                p.topMargin=dp(row*rowPitch+col*colSlant);
+                p.topMargin=dp(row*rowPitch+("L".equals(activeSide)?4-col:col)*colSlant);
                 diagonal.addView(key,p);
                 keyViews[k-1]=key;
             }
         }
     }
-    private void switchModel(int count){
-        if(count!=12 && count!=15) return;
-        if(activeKeyCount==count) return;
+    private void switchDetectedModel(int count,String side){
+        if(count!=12 && count!=15)return;
+        String normalized=count==15&&"L".equals(side)?"L":"R";
+        if(activeKeyCount==count && activeSide.equals(normalized))return;
         activeKeyCount=count;
-        store.setDeviceKeyCount(count);
+        activeSide=normalized;
+        store.setDeviceModel(count,normalized);
         selectedKey=Math.min(selectedKey,count);
-        renderPage();
+        // Header, key positions and model label all depend on handedness.
+        buildShell();
     }
     private int adjust(int color,float factor){
         return Color.rgb(Math.min(255,(int)(Color.red(color)+(255-Color.red(color))*factor)),
@@ -840,8 +841,8 @@ public final class MainActivity extends Activity {
     private void updateStatus(String message){
         if(message==null)message="상태 확인 중";
         boolean okay=message.startsWith("연결 완료");
-        if(message.startsWith("연결 완료 · PN15"))switchModel(15);
-        else if(message.startsWith("연결 완료 · PN12"))switchModel(12);
+        if(message.startsWith("연결 완료 · PN15"))switchDetectedModel(15,Pn12UsbService.connectedSide);
+        else if(message.startsWith("연결 완료 · PN12"))switchDetectedModel(12,"R");
         if(statusHeader!=null)statusHeader.setText(okay?"●  USB 연결됨":"●  "+message);
         if(statusSide!=null)statusSide.setText((okay?"●  USB 연결됨":"●  USB 상태")+"\n\n"+message);
         if(statusFooter!=null)statusFooter.setText("●  "+message);

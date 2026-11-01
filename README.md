@@ -61,3 +61,24 @@ Both platform workflows build independently using GitHub Actions.
 Windows uses Go 1.23 on `windows-latest`; Android uses Java 17 / Gradle and
 Android SDK 35. The published APK is debug-signed; it may not update an APK
 signed with a different key.
+
+
+## Single canonical firmware (PN12 / PN15 LEFT / PN15 RIGHT)
+
+Only the three sketches in [Firmware/](Firmware/README.md) are authoritative.
+The copies in `Windows/펌웨어/` and in
+`Windows/소스/installer/firmware_*.ino` are **exact binary-identical mirrors**.
+Windows Go `embed` includes these verified mirrored sketches in the installer;
+Android full ZIP packages include `Firmware/` directly.
+
+```sh
+python tools/firmware_sync.py --check
+python tools/firmware_sync.py --write  # regenerate Windows mirrors after firmware changes
+python tools/firmware_sync.py --check
+```
+
+Both GitHub Actions workflows verify byte equality before building. If a
+mirror drifts, **CI fails**, rather than silently publishing different
+firmware for Windows and Android. The two PN15 sketches differ only in the
+LEFT/RIGHT identifier and first comment; actual GPIO mapping and scan logic
+remain identical.

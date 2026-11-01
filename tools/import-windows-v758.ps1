@@ -19,6 +19,11 @@ if (!(Test-Path -LiteralPath $ArchivePath -PathType Leaf)) {
     throw "Archive not found: $ArchivePath"
 }
 $expected = "PND_Windows_v7.5.8_PN12_PN15_3Devices_전체파일집"
+$archiveSha256 = "270f8839b092ca8726f159fd9474a440cb305d56cb687434cc1a2fb59b7dca25"
+$actualSha256 = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualSha256 -ne $archiveSha256) {
+    throw "SHA256 mismatch: Windows archive is not the verified v7.5.8 package"
+}
 $gitRoot = (& git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or !$gitRoot) { throw "Run from a Git clone" }
 $remote = (& git -C $gitRoot remote get-url origin).Trim()

@@ -1,7 +1,7 @@
 name: PN12 Android APK
 on:
   push:
-    branches: [android-pn12-apk-build]
+    branches: [android-pn12-apk-build, feature/pn15-grip]
   workflow_dispatch:
 
 permissions:
@@ -44,15 +44,15 @@ jobs:
           set -euo pipefail
           VERSION=$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' android-pn12/app/build.gradle.kts | head -n1)
           test -n "$VERSION"
-          RELEASE_TAG="pn12-android-v${VERSION}"
-          APK_NAME="PulseNote_PN12_Android_v${VERSION}.apk"
+          RELEASE_TAG="pn12-pn15-android-v${VERSION}"
+          APK_NAME="PulseNote_PN12_PN15_Android_v${VERSION}.apk"
           cp android-pn12/app/build/outputs/apk/debug/app-debug.apk "${RUNNER_TEMP}/${APK_NAME}"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" --clobber
           else
             gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" \
               --target "$GITHUB_SHA" \
-              --title "PulseNote Deck Android v${VERSION}" \
-              --notes "Direct APK download for PulseNote PN12 Android. Debug-signed testing build. Real tablet compatibility requires hardware testing." \
+              --title "PulseNote Deck PN12 + PN15 Android v${VERSION}" \
+              --notes "Direct APK download for PulseNote PN12/PN15 Android. Debug-signed testing build; real device verification required." \
               --prerelease
           fi

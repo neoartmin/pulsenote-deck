@@ -6,6 +6,7 @@ on:
       - 'Windows/소스/**'
       - 'Windows/설치/**'
       - 'Windows/펌웨어/**'
+      - '.github/workflows/pn12-pn15-windows.yml'
   workflow_dispatch:
 
 permissions:
@@ -23,6 +24,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
+      - name: Rebuild Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Push-Location 'Windows/소스/app'
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o '../../../out/PulseNoteDeck.exe' .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          Copy-Item 'out/PulseNoteDeck.exe' 'Windows/소스/installer/app.bin' -Force
+          Push-Location 'Windows/소스/installer'
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o '../../../out/PulseNoteDeck_v7.5.8_Setup.exe' .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
       - name: Check all Go tests
         shell: pwsh
         run: |
@@ -36,19 +50,6 @@ jobs:
           go test ./...
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go vet ./...
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Pop-Location
-      - name: Rebuild Windows installer
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path out | Out-Null
-          Push-Location 'Windows/소스/app'
-          go build -trimpath -ldflags '-s -w -H windowsgui' -o '../../../out/PulseNoteDeck.exe' .
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Pop-Location
-          Copy-Item 'out/PulseNoteDeck.exe' 'Windows/소스/installer/app.bin' -Force
-          Push-Location 'Windows/소스/installer'
-          go build -trimpath -ldflags '-s -w -H windowsgui' -o '../../../out/PulseNoteDeck_v7.5.8_Setup.exe' .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
       - name: Bundle Windows original files and rebuilt installer

@@ -1,7 +1,11 @@
 name: PN12 Android APK
 on:
   push:
-    branches: [android-pn12-apk-build, feature/pn15-grip]
+    branches: [main, android-pn12-apk-build, feature/pn15-grip]
+    paths:
+      - 'android-pn12/**'
+      - 'Firmware/**'
+      - '.github/workflows/pn12-android-apk.yml'
   workflow_dispatch:
 
 concurrency:

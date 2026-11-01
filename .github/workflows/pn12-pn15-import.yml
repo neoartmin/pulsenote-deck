@@ -78,4 +78,4 @@ jobs:
             git commit -m "Import all Windows v7.5.8 original paths, installer, Go sources and firmware"
             git push origin HEAD:feature/pn15-grip
           fi
-          gh workflow run pn12-pn15-windows.yml --ref feature/pn15-grip
+          echo "Windows sources imported. The separate Windows build can now be run via workflow_dispatch."

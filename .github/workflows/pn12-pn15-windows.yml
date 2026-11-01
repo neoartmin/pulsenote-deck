@@ -6,6 +6,8 @@ on:
       - 'Windows/소스/**'
       - 'Windows/설치/**'
       - 'Windows/펌웨어/**'
+      - 'Firmware/**'
+      - 'tools/firmware_sync.py'
       - '.github/workflows/pn12-pn15-windows.yml'
   workflow_dispatch:
 
@@ -21,6 +23,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Windows mirrors and embedded sketches match Firmware/
+        shell: pwsh
+        run: |
+          python tools/firmware_sync.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
@@ -61,6 +68,24 @@ jobs:
             Copy-Item -LiteralPath $_.FullName -Destination $stage -Recurse -Force
           }
           Copy-Item 'out/PulseNoteDeck_v7.5.8_Setup.exe' (Join-Path $stage '설치/PulseNoteDeck_v7.5.8_Setup.exe') -Force
+          # The imported checksum listing records the historical installer.
+          # Preserve it, then generate a manifest for the rebuilt release.
+          $old = Join-Path $stage 'SHA256SUMS.txt'
+          if (Test-Path -LiteralPath $old) {
+            Move-Item -LiteralPath $old -Destination (Join-Path $stage 'SHA256SUMS_ORIGINAL_v7.5.8.txt')
+          }
+          $fullStage = (Resolve-Path -LiteralPath $stage).Path
+          $entries = @(
+            Get-ChildItem -LiteralPath $stage -Recurse -File |
+              Sort-Object FullName |
+              ForEach-Object {
+                $sha = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+                $relative = $_.FullName.Substring($fullStage.Length + 1).Replace('\\','/')
+                "$sha  $relative"
+              }
+          )
+          [System.IO.File]::WriteAllLines((Join-Path $fullStage 'SHA256SUMS.txt'), $entries,
+            [System.Text.UTF8Encoding]::new($false))
           Compress-Archive -Path $stage -DestinationPath 'out/PND_Windows_v7.5.8_PN12_PN15_Complete.zip' -Force
       - name: Upload Windows full package
         uses: actions/upload-artifact@v4

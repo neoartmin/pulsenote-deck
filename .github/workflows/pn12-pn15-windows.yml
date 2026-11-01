@@ -91,6 +91,8 @@ jobs:
             Copy-Item -LiteralPath $_.FullName -Destination $stage -Recurse -Force
           }
           Copy-Item 'out/PulseNoteDeck_v7.5.8_Setup.exe' (Join-Path $stage '설치/PulseNoteDeck_v7.5.8_Setup.exe') -Force
+          # app.bin is an untracked intermediate, not part of the source archive.
+          Remove-Item -LiteralPath (Join-Path $stage '소스/installer/app.bin') -Force -ErrorAction SilentlyContinue
           Compress-Archive -Path $stage -DestinationPath 'out/PND_Windows_v7.5.8_PN12_PN15_Complete.zip' -Force
       - name: Upload Windows full package
         uses: actions/upload-artifact@v4

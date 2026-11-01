@@ -1,0 +1,9 @@
+PulseNote Deck Windows v7.5.8
+- Offline configuration of three models: IMPLEMENTED
+- Persist manually selected editor model in config_unified.json: IMPLEMENTED
+- Hardware key dispatch independent of editor: IMPLEMENTED
+- Enlarged PN12/PN15 keycaps: IMPLEMENTED / grid boundary unit tests PASS
+- Windows app Go tests, go vet, GOOS=windows GOARCH=amd64 build: PASS
+- Installer tests and Windows amd64 build: PASS
+- Real hardware 3x USB multi-session: NOT TESTED
+- Windows UI rendering by running .exe: NOT TESTED in Linux environment

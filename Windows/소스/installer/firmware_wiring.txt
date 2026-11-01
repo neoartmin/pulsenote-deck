@@ -1,0 +1,26 @@
+# PulseNote Deck PN12 v7.5.2 — ESP32-C3 펌웨어 배선
+
+보드: ESP32C3 Dev Module / USB CDC On Boot: Enabled / 115200 baud
+펌웨어: Firmware/PN12/PulseNoteDeck_C3_12Key.ino
+
+3열 × 4행, 다이오드 없는 매트릭스 구조입니다. 각 스위치는 행과 열 사이를 연결하며 GND에 연결하지 않습니다.
+
+열: C0 GPIO3, C1 GPIO4, C2 GPIO21
+행: R0 GPIO0, R1 GPIO1, R2 GPIO6, R3 GPIO7
+
+             GPIO3      GPIO4      GPIO21
+GPIO0         KEY1       KEY2       KEY3
+GPIO1         KEY4       KEY5       KEY6
+GPIO6         KEY7       KEY8       KEY9
+GPIO7         KEY10      KEY11      KEY12
+
+다이오드가 없으므로 복수 키 동시 입력은 지원하지 않습니다. 단일 키 입력만 사용하세요.
+펌웨어는 설치기에 포함되지만 자동 업로드되지는 않습니다.
+업로드 직후 필요할 때 RESET을 누르고 Arduino IDE 시리얼 모니터를 닫은 뒤 Windows 앱을 연결하세요.
+
+
+PN15 GRIP: 3행 x 5열 (GPIO 8개)
+행 R1 R2 R3 = GPIO 0, 1, 6
+열 C1 C2 C3 C4 C5 = GPIO 3, 4, 21, 7, 5
+KEY01-05: R1 x C1-C5 / KEY06-10: R2 / KEY11-15: R3
+다이오드 없음: 여러 버튼 동시 누름은 지원하지 않음.

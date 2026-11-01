@@ -71,9 +71,13 @@ public final class MainActivity extends Activity {
                  pendingUsbDevice=null;
                  if(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED,false)&&device!=null)startDevice(device);
                  else updateStatus("USB 접근 권한 거부");
+                  new Handler(Looper.getMainLooper()).post(()->maybeAutoConnect());
               }else if(Pn12UsbService.STATUS.equals(a)){
                  String status=intent.getStringExtra(Pn12UsbService.TEXT);
                  updateStatus(status);
+                  int reportedModel=intent.getIntExtra(Pn12UsbService.MODEL,0);
+                  if(reportedModel==12||reportedModel==15)
+                      switchDetectedModel(reportedModel,intent.getStringExtra(Pn12UsbService.SIDE));
                  if(showingConnectionHome&&status!=null&&status.startsWith("연결 완료")){
                      showingConnectionHome=false;
                      showControllerHome();
@@ -82,6 +86,9 @@ public final class MainActivity extends Activity {
               else if(Pn12UsbService.KEY.equals(a)){
                  int number=intent.getIntExtra(Pn12UsbService.NUMBER,0);
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
+                  int eventModel=intent.getIntExtra(Pn12UsbService.MODEL,0);
+                  if(eventModel==12||eventModel==15)
+                      switchDetectedModel(eventModel,intent.getStringExtra(Pn12UsbService.SIDE));
                  if(statusFooter!=null)statusFooter.setText("KEY: "+number+" · "+result);
               }else if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)){
                   showControllerHome();
@@ -770,16 +777,17 @@ public final class MainActivity extends Activity {
     }
     private void maybeAutoConnect(){
         if(!autoEnabled()||usb==null)return;
-        UsbDevice first=null;
         for(UsbDevice device:usb.getDeviceList().values()){
-            if(Pn12UsbService.candidate(device)){first=device;break;}
+            if(!Pn12UsbService.candidate(device))continue;
+            if(Pn12UsbService.isConnected(device.getDeviceName()))continue;
+            if(usb.hasPermission(device))startDevice(device);
+            else if(!permissionPromptActive)requestOrStart(device);
+            if(permissionPromptActive)break;
         }
-        if(first!=null)maybeAutoConnect(first);
     }
     private void maybeAutoConnect(UsbDevice device){
         if(!autoEnabled()||usb==null||device==null||!Pn12UsbService.candidate(device))return;
-        if(device.getDeviceName().equals(Pn12UsbService.connectedDeviceName)&&
-            Pn12UsbService.status.startsWith("연결 완료"))return;
+        if(Pn12UsbService.isConnected(device.getDeviceName()))return;
         if(permissionPromptActive)return;
         requestOrStart(device);
     }
@@ -841,8 +849,7 @@ public final class MainActivity extends Activity {
     private void updateStatus(String message){
         if(message==null)message="상태 확인 중";
         boolean okay=message.startsWith("연결 완료");
-        if(message.startsWith("연결 완료 · PN15"))switchDetectedModel(15,Pn12UsbService.connectedSide);
-        else if(message.startsWith("연결 완료 · PN12"))switchDetectedModel(12,"R");
+        // Models are chosen by verified per-device broadcast metadata.
         if(statusHeader!=null)statusHeader.setText(okay?"●  USB 연결됨":"●  "+message);
         if(statusSide!=null)statusSide.setText((okay?"●  USB 연결됨":"●  USB 상태")+"\n\n"+message);
         if(statusFooter!=null)statusFooter.setText("●  "+message);
@@ -861,9 +868,8 @@ public final class MainActivity extends Activity {
         if(Pn12UsbService.status.startsWith("연결 완료")){
             try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}
             catch(RuntimeException ignored){}
-        }else if(autoEnabled()&&!permissionPromptActive){
-            maybeAutoConnect();
         }
+        if(autoEnabled()&&!permissionPromptActive)maybeAutoConnect();
     }
     @Override protected void onPause(){visible=false;super.onPause();}
     @Override protected void onDestroy(){if(receiver!=null)unregisterReceiver(receiver);super.onDestroy();}

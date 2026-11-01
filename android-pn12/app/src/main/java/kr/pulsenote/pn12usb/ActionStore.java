@@ -27,7 +27,7 @@ public final class ActionStore {
 
     public ActionStore(Context context) {
         prefs=context.getSharedPreferences("pn12_actions",Context.MODE_PRIVATE);
-        if (prefs.getInt("device_key_count",12)==15) migratePn15Profiles();
+        if (prefs.getInt("device_key_count",15)==15) migratePn15Profiles();
     }
     // Preserve PN15 beta profile metadata before splitting PN12/PN15 profiles.
     private void migratePn15Profiles() {
@@ -43,9 +43,17 @@ public final class ActionStore {
         }
         editor.putBoolean("pn15_profiles_migrated",true).apply();
     }
-    private String profileKey(String name) { return keyCount()==15 ? "pn15_"+name : name; }
+    private String modelPrefix() { return keyCount()!=15?"":("L".equals(deviceSide())?"pn15l_":"pn15_"); }
+    private String profileKey(String name) { return modelPrefix()+name; }
+    public String deviceSide() { return "L".equals(prefs.getString("device_side","R"))?"L":"R"; }
+    public void setDeviceModel(int count, String side) {
+        if(count!=12&&count!=15)return;
+        if(count==15)migratePn15Profiles();
+        prefs.edit().putString("device_side",count==15&&"L".equals(side)?"L":"R")
+            .putInt("device_key_count",count).apply();
+    }
     public int keyCount() { return prefs.getInt("device_key_count",12)==15 ? 15 : 12; }
-    public void setDeviceKeyCount(int count) { if(count==12||count==15){ if(count==15)migratePn15Profiles(); prefs.edit().putInt("device_key_count",count).apply(); } }
+    public void setDeviceKeyCount(int count) { setDeviceModel(count,"R"); }
     public int activeProfile() { return prefs.getInt(profileKey("active_profile"),0); }
     public void setProfile(int id) { if(profiles().contains(id)) prefs.edit().putInt(profileKey("active_profile"),id).apply(); }
     public List<Integer> profiles() {
@@ -71,7 +79,7 @@ public final class ActionStore {
         StringBuilder all=new StringBuilder();for(int id:profiles())if(id>0&&id!=current){if(all.length()>0)all.append(',');all.append(id);}
         prefs.edit().putString(profileKey("profile_ids"),all.toString()).putInt(profileKey("active_profile"),0).apply();return true;
     }
-    private String idKey(String field,int key) { return (keyCount()==15?"pn15_":"")+(activeProfile()==0?"":("p"+activeProfile()+"_"))+field+"_"+key; }
+    private String idKey(String field,int key) { return modelPrefix()+(activeProfile()==0?"":("p"+activeProfile()+"_"))+field+"_"+key; }
     private int ix(int key){return Math.max(0,Math.min(11,key-1));}
     public int kind(int key) {
        int k=prefs.getInt(idKey("type",key),activeProfile()==0&&keyCount()==12?DEFAULT_TYPES[ix(key)]:0);

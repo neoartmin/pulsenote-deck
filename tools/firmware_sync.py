@@ -102,4 +102,9 @@ def main() -> int:
     return 0
 
 if __name__ == "__main__":
+    # GitHub Windows runners may default Python stdout to cp1252, which cannot
+    # print the Korean directory names used by the original Windows sources.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     raise SystemExit(main())

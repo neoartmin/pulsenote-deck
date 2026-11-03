@@ -7,6 +7,7 @@ on:
       - 'Firmware/**'
       - 'tools/firmware_sync.py'
       - 'tools/check_action_icon_sync.py'
+      - 'tools/check_android_permissions.py'
       - 'Windows/소스/app/assets/**'
 
 permissions:
@@ -50,4 +51,6 @@ jobs:
           java -cp "${RUNNER_TEMP}/java-test" kr.pulsenote.pn12usb.AndroidParitySelfTest
       - name: Compile Android debug APK
         working-directory: android-pn12
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: gradle --no-daemon --stacktrace assembleStandardDebug assembleExtendedDebug
+      - name: Validate merged APK manifests (standard excludes sensitive permissions)
+        run: python3 tools/check_android_permissions.py

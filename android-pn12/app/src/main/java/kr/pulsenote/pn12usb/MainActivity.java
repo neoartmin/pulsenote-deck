@@ -83,7 +83,7 @@ public final class MainActivity extends Activity {
             selectedKey=Math.max(1,Math.min(15,savedInstanceState.getInt("pn12.selectedKey",7)));
         }
         firstPermissionSetupPending=!getSharedPreferences("pn12_permissions",MODE_PRIVATE)
-            .getBoolean("permission_guide_v135",false);
+            .getBoolean("permission_guide_v137",false);
         store=new ActionStore(this);
         activeKeyCount=store.keyCount();
         activeSide=store.deviceSide();
@@ -159,14 +159,16 @@ public final class MainActivity extends Activity {
         // The system owns every approval. We show a guided first-run entry,
         // never attempt to silently grant permissions or cache screen consent.
         boolean shown=getSharedPreferences("pn12_permissions",MODE_PRIVATE)
-                .getBoolean("permission_guide_v135",false);
+                .getBoolean("permission_guide_v137",false);
         if(!shown){
             getSharedPreferences("pn12_permissions",MODE_PRIVATE)
-                .edit().putBoolean("permission_guide_v135",true).apply();
+                .edit().putBoolean("permission_guide_v137",true).apply();
             new Handler(Looper.getMainLooper()).postDelayed(()->{
                 if(isFinishing()||isDestroyed())return;
                 new AlertDialog.Builder(this).setTitle("PulseNote 첫 실행 · 권한 설정")
-                    .setMessage("PN12/PN15 USB, 알림, 화면 위 표시, 선택형 편집 단축키의 접근성 권한을 한 곳에서 설정할 수 있습니다. 항목별 Android 시스템 승인 화면에서 직접 결정합니다.\n\n스크린샷은 Android 정책상 캡처할 때마다 별도로 화면 공유 승인을 받아야 합니다.")
+                    .setMessage(BuildConfig.HAS_ACCESSIBILITY ?
+                        "확장 설치판: USB·알림·화면 위 표시·편집 단축키 접근성 권한을 순서대로 설정합니다. 화면 캡처는 사용할 때마다 별도 승인이 필요합니다." :
+                        "기본 설치판: USB·알림 권한을 설정합니다. 민감한 접근성 및 화면 위 표시 권한을 요청하지 않습니다. 화면 캡처는 실행할 때마다 Android 시스템 동의가 필요합니다.")
                     .setNegativeButton("나중에",(d,w)->{firstPermissionSetupPending=false;maybeAutoConnect();})
                     .setPositiveButton("필요한 권한 설정",(d,w)->startPermissionWizard())
                     .setCancelable(false).show();
@@ -582,7 +584,8 @@ public final class MainActivity extends Activity {
             if(programmatic)return;store.setName(k,s);renderKeys();
         }));
         String hint=null;
-        if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
+        if(kind==9)hint=BuildConfig.HAS_ACCESSIBILITY ?
+            "편집 단축키 · 스크롤 휠에서 선택" : "기본 설치판은 편집 단축키 미지원";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
@@ -608,6 +611,9 @@ public final class MainActivity extends Activity {
             if(kind==9){
                 add(rightHost,txt("선택한 텍스트 입력창에서 복사·붙여넣기·잘라내기·전체 선택을 지원합니다. 기타 Windows 단축키는 지원하지 않습니다. 접근성 서비스 활성화가 필요합니다.",10,MUTED,false),-1,75);
             }
+        }
+        if(kind==9&&!BuildConfig.HAS_ACCESSIBILITY){
+            add(rightHost,txt("기본 설치판은 Play 프로텍트 설치 차단 위험을 줄이기 위해 접근성 편집 단축키를 실행하지 않습니다. 다른 버튼 기능을 선택해 주세요.",11,MUTED,false),-1,85);
         }
         if(kind==11){
             add(rightHost,txt("PN12/PN15 캡처 버튼을 누르면 Android 화면 공유 승인 창이 열립니다. 승인 후 PNG를 사진/PulseNote Deck에 저장합니다. Android 14 이상에서는 매번 사용자 동의가 필요합니다.",11,MUTED,false),-1,85);
@@ -742,7 +748,9 @@ public final class MainActivity extends Activity {
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
         TextView state=txt(Pn12UsbService.status,14,0xff3edba8,true);add(card,state,-1,41);
         add(card,txt("연결 후 상태는 상단의 USB 표시에도 반영됩니다. Android에서는 COM 포트 번호 대신 USB Host 장치 경로를 사용합니다.",12,MUTED,false),-1,55);
-        add(card,txt("USB 통신은 화면 밖에서도 유지됩니다. 직접 실행을 켜면 PulseNote 연결 중 작은 PN 상태 표시가 나타나며, 앱·웹사이트를 곧바로 여는 기능을 시도합니다.",12,MUTED,false),-1,69);
+        add(card,txt(BuildConfig.HAS_OVERLAY ?
+            "USB 통신은 화면 밖에서도 유지됩니다. 직접 실행을 켜면 작은 PN 상태 표시가 나타납니다." :
+            "USB 연결은 화면 밖에서도 유지됩니다. 기본 설치판은 화면 위 표시 권한을 요청하지 않으며 앱 열기는 Android가 허용하는 경우 또는 알림을 통해 실행됩니다.",12,MUTED,false),-1,69);
         space(card,16);
         buildPermissionSection(card);
         space(card,14);
@@ -754,6 +762,7 @@ public final class MainActivity extends Activity {
         add(parent,click("필요한 권한 한 번에 설정 · 단계별 승인",()->startPermissionWizard()),-1,49);
         space(parent,10);
         add(parent,txt("권한 및 직접 실행",19,WHITE,true),-1,39);
+        if(BuildConfig.HAS_OVERLAY){
         add(parent,txt("PulseNote 장치는 화면 밖에서 USB 연결과 버튼 입력을 유지합니다. 백그라운드 앱 실행을 위해 '다른 앱 위에 표시' 권한을 이용하며, 선택적으로 작은 PN 상태 표시를 띄웁니다. 일부 Android 버전은 직접 실행을 제한할 수 있습니다.",12,MUTED,false),-1,88);
 
         boolean granted=Settings.canDrawOverlays(this);
@@ -778,18 +787,29 @@ public final class MainActivity extends Activity {
             }else setDirectLaunch(true);
         }),300,43);
         space(parent,13);
+        }else{
+            add(parent,txt("기본 설치판 · 민감 권한 최소화",13,0xff3edba8,true),-1,35);
+            add(parent,txt("기본 설치판은 화면 위 표시 권한을 요청하지 않습니다. USB·볼륨·미디어 제어, 웹사이트 및 앱 알림 실행, 화면 캡처는 계속 지원합니다. 화면 위 표시를 사용하는 백그라운드 직접 실행만 제외됩니다.",11,MUTED,false),-1,98);
+        }
         boolean notificationGranted=Build.VERSION.SDK_INT<33 ||
           checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED;
         add(parent,txt("알림  ·  "+(notificationGranted?"허용됨":"허용 필요"),13,notificationGranted?0xff3edba8:WHITE,true),-1,32);
         add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
         space(parent,13);
+        if(BuildConfig.HAS_ACCESSIBILITY){
         add(parent,txt("편집 단축키  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
         add(parent,txt("사용자가 지정한 단축키 버튼을 누를 때에만 선택한 일반 입력창에서 CTRL+C/V/X/A 편집 동작을 실행합니다. 복사·잘라내기는 시스템 클립보드를 변경하고 붙여넣기는 클립보드의 기존 내용을 사용합니다. 비밀번호 필드는 차단하고 화면 내용을 수집·전송하지 않습니다.",11,MUTED,false),-1,135);
         add(parent,click("편집 단축키 접근성 권한 설정",()->requestTextMacroAccessibility()),325,43);
         space(parent,10);
         add(parent,txt("편집 단축키  ·  CTRL+C/V/X/A만 지원 · 다른 조합은 미지원",12,MUTED,false),-1,40);
+        }else{
+            add(parent,txt("접근성 서비스를 포함하지 않는 기본 설치판",13,0xff3edba8,true),-1,38);
+            add(parent,txt("Google Play 프로텍트에서 민감 권한을 이유로 차단하는 위험을 줄이기 위해 편집 단축키 Ctrl+C/V/X/A만 사용할 수 없습니다. 다른 USB 버튼 기능과 스크린샷은 유지됩니다.",11,MUTED,false),-1,100);
+        }
         add(parent,txt("USB 접근 권한은 'PulseNote USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
-        add(parent,txt("볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 백그라운드 앱 실행을 위해 화면 위 표시 권한을 요청하며, Android 보안 정책에 따라 일부 실행이 제한될 수 있습니다.",11,MUTED,false),-1,65);
+        add(parent,txt(BuildConfig.HAS_OVERLAY ?
+            "볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 선택적으로 화면 위 표시 권한을 요청할 수 있습니다." :
+            "볼륨과 미디어 제어는 별도 민감 권한 없이 작동합니다. 기본 설치판은 접근성 및 화면 위 표시 권한을 포함하지 않습니다.",11,MUTED,false),-1,65);
     }
     private void startPermissionWizard(){
         permissionWizardStage=0;
@@ -806,7 +826,7 @@ public final class MainActivity extends Activity {
                     checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED){
                 nextPermissionWizard();return;
             }
-            new AlertDialog.Builder(this).setTitle("1/3 · 알림 권한")
+            new AlertDialog.Builder(this).setTitle(BuildConfig.HAS_ACCESSIBILITY ? "1/3 · 알림 권한" : "1/1 · 알림 권한")
                 .setMessage("USB 연결 상태와 앱 실행 요청을 알림으로 표시합니다. 허용하지 않아도 일부 기본 기능은 사용할 수 있지만 백그라운드 알림 동작이 제한됩니다.")
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
                 .setPositiveButton("Android 승인 창 열기",(d,w)->
@@ -815,7 +835,9 @@ public final class MainActivity extends Activity {
             return;
         }
         if(stage==1){
-            if(Settings.canDrawOverlays(this)){nextPermissionWizard();return;}
+            if(!BuildConfig.HAS_OVERLAY || Settings.canDrawOverlays(this)){
+                nextPermissionWizard();return;
+            }
             new AlertDialog.Builder(this).setTitle("2/3 · 다른 앱 위에 표시")
                 .setMessage("화면 위 표시를 허용하면 USB 연결 중 상태 표시와 일부 백그라운드 앱 실행에 사용할 수 있습니다. 선택 사항이며 언제든 설정에서 해제할 수 있습니다.")
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
@@ -828,7 +850,9 @@ public final class MainActivity extends Activity {
             return;
         }
         if(stage==2){
-            if(TextMacroAccessibilityService.enabled()){nextPermissionWizard();return;}
+            if(!BuildConfig.HAS_ACCESSIBILITY || TextMacroAccessibilityService.enabled()){
+                nextPermissionWizard();return;
+            }
             new AlertDialog.Builder(this).setTitle("3/3 · 편집 단축키 (선택 사항)")
                 .setMessage("복사·붙여넣기·잘라내기·전체 선택 버튼에만 접근성 서비스가 필요합니다. 서비스는 선택된 입력창의 텍스트를 읽고 변경할 수 있으므로 신뢰하는 앱에만 허용하세요. 스크린샷 기능에는 접근성 권한이 필요하지 않습니다.\n\n외부 APK는 Android의 '제한된 설정'으로 활성화가 막힐 수 있으며, 이 제한을 앱이 자동으로 해제할 수 없습니다.")
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
@@ -847,7 +871,10 @@ public final class MainActivity extends Activity {
             "\n\nUSB 장치가 감지됐습니다. 장치 접근 권한은 Android 시스템 창에서 추가 승인해야 합니다.":
             "\n\nUSB 장치가 연결되지 않았다면 케이블을 연결한 뒤 나오는 시스템 권한 창을 승인하세요.";
         new AlertDialog.Builder(this).setTitle("권한 설정 안내 완료")
-            .setMessage("알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다.\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요하며 이 과정에서 미리 허용해 둘 수 없습니다."+usbText)
+            .setMessage((BuildConfig.HAS_ACCESSIBILITY ?
+                "알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다." :
+                "기본 설치판은 접근성·화면 위 표시 권한을 요청하지 않습니다.")+
+                "\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요합니다."+usbText)
             .setNegativeButton("완료",(d,w)->{
                 firstPermissionSetupPending=false;
                 maybeAutoConnect();
@@ -878,6 +905,10 @@ public final class MainActivity extends Activity {
     }
 
     private void requestTextMacroAccessibility() {
+        if(!BuildConfig.HAS_ACCESSIBILITY){
+            updateStatus("기본 설치판은 접근성 서비스를 사용하지 않습니다");
+            return;
+        }
         new AlertDialog.Builder(this)
             .setTitle("편집 단축키 접근성 사용")
             .setMessage("PN12·PN15의 편집 단축키(CTRL+C, CTRL+V, CTRL+X, CTRL+A)를 사용하려면 Android 접근성 서비스 활성화가 필요합니다. 사용자가 지정한 버튼을 누를 때에만 현재 입력창의 텍스트와 커서 위치를 확인합니다. 복사·잘라내기는 클립보드 내용을 변경하고 붙여넣기는 현재 클립보드 내용을 사용합니다. 비밀번호 입력창은 제외하며 화면 내용을 저장하거나 외부로 전송하지 않습니다. Windows의 임의 단축키를 주입하지는 않습니다. Android 설정에서 언제든 비활성화할 수 있습니다.\n\n동의하는 경우에만 접근성 설정을 열어 직접 활성화하세요.")
@@ -900,6 +931,7 @@ public final class MainActivity extends Activity {
         if(page==2)renderPage();
     }
     private void syncOverlayPermission(){
+        if(!BuildConfig.HAS_OVERLAY)return;
         if(!Settings.canDrawOverlays(this))return;
         android.content.SharedPreferences prefs=getSharedPreferences("pn12_permissions",MODE_PRIVATE);
         if(!prefs.getBoolean("direct_launch_explicit_off",false) &&
@@ -912,6 +944,10 @@ public final class MainActivity extends Activity {
         }
     }
     private void requestOverlayPermission() {
+        if(!BuildConfig.HAS_OVERLAY){
+            updateStatus("기본 설치판은 화면 위 표시 권한을 사용하지 않습니다");
+            return;
+        }
         if(Settings.canDrawOverlays(this)){
             setDirectLaunch(true);
             return;

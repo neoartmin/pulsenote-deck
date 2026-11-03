@@ -60,3 +60,16 @@ Android USB Host (CDC-ACM) application, no firmware modification required.
 - 다른 기능 아이콘과 동일한 투명 512×512 PNG를 Windows와 공유합니다.
 - 작은 버튼에서 동일한 Bitmap 축소 방식을 사용합니다.
 - USB·프로필·권한·기능 실행 동작은 변경하지 않았습니다.
+
+## v1.3.7 · Google Play 프로텍트 설치 차단 위험 감소
+
+Google Play 프로텍트는 외부에서 설치한 APK가 화면 정보·기기 조작 권한 등을 요청할 때 설치를 차단할 수 있습니다. 설치 차단을 우회하기 위해 Play 프로텍트를 해제하지 마세요.
+
+이번 릴리스는 두 가지 설치판을 제공합니다.
+
+- **기본 설치판(권장)**: `PulseNote_PN12_PN15_Android_v1.3.7.apk`. Android manifest에서 `BIND_ACCESSIBILITY_SERVICE` 접근성 서비스를 제거하고 `SYSTEM_ALERT_WINDOW`(다른 앱 위 표시) 권한도 제거했습니다. 기존 PN12·PN15 USB 통신, 버튼·프로필 설정, 볼륨·미디어 제어, 웹사이트/앱 실행 요청, 화면 캡처 및 캡처 시 시스템 승인 절차를 유지합니다. 편집 단축키(Ctrl+C/V/X/A) 및 화면 위 표시 기반 백그라운드 직접 실행은 지원하지 않습니다.
+- **확장 설치판(선택)**: `PulseNote_PN12_PN15_Android_v1.3.7_Extended.apk`. 기존 v1.3.6의 선택형 접근성 편집 단축키와 화면 위 표시를 유지합니다. Play 프로텍트에서 계속 설치 차단할 수 있으므로 보안 경고를 무시하거나 보호 기능을 해제하지 마세요.
+
+두 APK는 같은 `applicationId`를 사용하므로 동시에 설치할 수 없습니다. APK는 CI의 **디버그 서명** 빌드이며 Android 보안 검사를 통과한다고 보장하지 않습니다. 기존 앱과 서명이 일치하지 않는 경우 덮어쓰기 설치는 실패할 수 있습니다. 운영 배포에는 소유자가 관리하는 고정 릴리스 서명과 공식 배포 심사가 별도로 필요합니다.
+
+빌드 검증: `assembleStandardDebug assembleExtendedDebug`와 `tools/check_android_permissions.py`로 최종 병합된 기본 설치판의 manifest에 접근성 서비스·오버레이 권한이 실제로 없는지 검사합니다. 기기에서 Play 프로텍트 설치 여부와 실행 기능은 별도 확인이 필요합니다.

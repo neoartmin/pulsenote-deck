@@ -27,7 +27,7 @@ public final class DirectLaunchOverlay {
     }
     public static boolean isVisible(){return visible;}
     public static boolean allowed(Context ctx) {
-        return Settings.canDrawOverlays(ctx) &&
+        return BuildConfig.HAS_OVERLAY && Settings.canDrawOverlays(ctx) &&
             ctx.getSharedPreferences("pn12_permissions",Context.MODE_PRIVATE)
                .getBoolean("direct_launch_enabled",false);
     }

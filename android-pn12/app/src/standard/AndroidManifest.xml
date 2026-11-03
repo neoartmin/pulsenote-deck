@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Standard build intentionally never requests screen overlay access. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"
+        tools:node="remove" />
+    <application>
+        <!-- Accessibility was solely for text editing shortcuts. Android
+             screenshot capture works without this component. -->
+        <service android:name=".TextMacroAccessibilityService"
+            tools:node="remove" />
+    </application>
+</manifest>

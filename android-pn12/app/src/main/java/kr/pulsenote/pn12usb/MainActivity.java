@@ -919,13 +919,12 @@ public final class MainActivity extends Activity {
         if(isFinishing()||isDestroyed())return;
         if(ScreenshotCaptureService.isSessionReady()||
            ScreenshotCaptureService.isSessionStarting()){
-            if(captureImmediately){
-                try{startService(new Intent(this,ScreenshotCaptureService.class)
-                    .setAction(ScreenshotCaptureService.CAPTURE));}
-                catch(RuntimeException error){
-                    updateStatus("캡처 세션 저장 요청 실패: "+error.getClass().getSimpleName());
-                }
-            }
+            if(captureImmediately&&!ScreenshotCaptureService.captureExisting())
+                updateStatus("캡처 세션 준비 중 · 잠시 후 다시 누르세요");
+            return;
+        }
+        if(ScreenshotCaptureService.isStopping()){
+            updateStatus("이전 캡처 모드 종료 중 · 종료 후 다시 시작하세요");
             return;
         }
         if(capturePromptActive)return;

@@ -31,5 +31,9 @@ jobs:
           git add -- 'Windows/소스/app/assets/' 'android-pn12/app/src/main/assets/action_icons/'
           if ! git diff --cached --quiet; then
             git commit -m "Add new PNG macro icons to both platform assets"
+            # Other source edits may land during icon rendering. Rebase the
+            # generated binaries before pushing; never force-push any ref.
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
             git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
           fi

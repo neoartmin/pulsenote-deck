@@ -20,7 +20,7 @@ public final class KeyArtwork {
     private static final Map<String,Bitmap> pcIconCache=new HashMap<>();
     private static final String[] PC_ACTION_ICONS={
         "none","volume_up","volume_down","volume_mute","media_play",
-        "media_next","media_prev","website","program","shortcut","folder"
+        "media_next","media_prev","website","program","shortcut","folder","capture"
     };
     private KeyArtwork(){}
     private static int dp(Context c,int value){return Math.round(value*c.getResources().getDisplayMetrics().density);}
@@ -44,7 +44,6 @@ public final class KeyArtwork {
         // Use the byte-identical Windows illustrations as the default art.
         // Android application logos and website favicons still override their
         // corresponding generic PC image, as they did in earlier releases.
-        if(kind==11)return screenshotArtwork(ctx,size);
         if(kind>=0&&kind<PC_ACTION_ICONS.length){
             Bitmap pcIcon=pcIcon(ctx,PC_ACTION_ICONS[kind]);
             if(pcIcon!=null){
@@ -112,51 +111,6 @@ public final class KeyArtwork {
                 return result;
             }catch(IOException ignored){return null;}
         }
-    }
-
-    // Screenshot camera & framing corners correspond to the shared capture.svg.
-    private static View screenshotArtwork(Context ctx,int size){
-        return new View(ctx){
-            private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-            @Override protected void onDraw(Canvas canvas){
-                super.onDraw(canvas);
-                canvas.save();
-                canvas.scale(getWidth()/100f,getHeight()/100f);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setShader(new LinearGradient(0,0,100,100,
-                    0xff7151be,0xff261b54,Shader.TileMode.CLAMP));
-                canvas.drawRoundRect(1,1,99,99,19,19,paint);
-                paint.setShader(null);
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(2);
-                paint.setColor(0xffa786f1);
-                canvas.drawRoundRect(1,1,99,99,19,19,paint);
-                paint.setColor(0xfff8f6ff);
-                paint.setStrokeWidth(6);
-                paint.setStrokeCap(Paint.Cap.ROUND);
-                for(int h:new int[]{0,1}){
-                    for(int v:new int[]{0,1}){
-                        float x=h==0?15:85,y=v==0?19:81;
-                        float sx=h==0?1:-1,sy=v==0?1:-1;
-                        canvas.drawLine(x,y,x+sx*10,y,paint);
-                        canvas.drawLine(x,y,x,y+sy*10,paint);
-                    }
-                }
-                Path body=new Path();
-                body.moveTo(29,41);body.lineTo(36,41);body.lineTo(41,35);
-                body.lineTo(59,35);body.lineTo(64,41);body.lineTo(71,41);
-                body.quadTo(77,41,77,47);body.lineTo(77,66);
-                body.quadTo(77,71,71,71);body.lineTo(29,71);
-                body.quadTo(23,71,23,66);body.lineTo(23,47);
-                body.quadTo(23,41,29,41);body.close();
-                paint.setStrokeJoin(Paint.Join.ROUND);
-                paint.setStrokeWidth(5);
-                canvas.drawPath(body,paint);
-                canvas.drawCircle(50,55,10.5f,paint);
-                paint.setStyle(Paint.Style.FILL);
-                canvas.restore();
-            }
-        };
     }
 
     private static ImageView image(Context ctx){

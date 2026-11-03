@@ -34,3 +34,15 @@ func TestMultilineEditorNewlines(t *testing.T) {
         t.Fatalf("multiline macro: got %q (%v), want %q", expanded, err, want)
     }
 }
+
+func TestWindowsEditorNewlines(t *testing.T) {
+    want := "첫 줄\r\n둘째 줄\r\n마지막"
+    for _, raw := range []string{
+        "첫 줄\n둘째 줄\n마지막",
+        "첫 줄\r\n둘째 줄\r\n마지막",
+    } {
+        if got := windowsEditorNewlines(raw); got != want {
+            t.Fatalf("Windows editor: %q -> %q, want %q", raw, got, want)
+        }
+    }
+}

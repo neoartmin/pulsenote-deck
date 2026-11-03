@@ -756,6 +756,7 @@ public final class MainActivity extends Activity {
         add(parent,click("필요한 권한 한 번에 설정 · 단계별 승인",()->startPermissionWizard()),-1,49);
         space(parent,10);
         add(parent,txt("권한 및 직접 실행",19,WHITE,true),-1,39);
+        if(BuildConfig.HAS_OVERLAY){
         add(parent,txt("PulseNote 장치는 화면 밖에서 USB 연결과 버튼 입력을 유지합니다. 백그라운드 앱 실행을 위해 '다른 앱 위에 표시' 권한을 이용하며, 선택적으로 작은 PN 상태 표시를 띄웁니다. 일부 Android 버전은 직접 실행을 제한할 수 있습니다.",12,MUTED,false),-1,88);
 
         boolean granted=Settings.canDrawOverlays(this);
@@ -780,18 +781,29 @@ public final class MainActivity extends Activity {
             }else setDirectLaunch(true);
         }),300,43);
         space(parent,13);
+        }else{
+            add(parent,txt("기본 설치판 · 민감 권한 최소화",13,0xff3edba8,true),-1,35);
+            add(parent,txt("기본 설치판은 화면 위 표시 권한을 요청하지 않습니다. USB·볼륨·미디어 제어, 웹사이트 및 앱 알림 실행, 화면 캡처는 계속 지원합니다. 화면 위 표시를 사용하는 백그라운드 직접 실행만 제외됩니다.",11,MUTED,false),-1,98);
+        }
         boolean notificationGranted=Build.VERSION.SDK_INT<33 ||
           checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED;
         add(parent,txt("알림  ·  "+(notificationGranted?"허용됨":"허용 필요"),13,notificationGranted?0xff3edba8:WHITE,true),-1,32);
         add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
         space(parent,13);
+        if(BuildConfig.HAS_ACCESSIBILITY){
         add(parent,txt("편집 단축키  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
         add(parent,txt("사용자가 지정한 단축키 버튼을 누를 때에만 선택한 일반 입력창에서 CTRL+C/V/X/A 편집 동작을 실행합니다. 복사·잘라내기는 시스템 클립보드를 변경하고 붙여넣기는 클립보드의 기존 내용을 사용합니다. 비밀번호 필드는 차단하고 화면 내용을 수집·전송하지 않습니다.",11,MUTED,false),-1,135);
         add(parent,click("편집 단축키 접근성 권한 설정",()->requestTextMacroAccessibility()),325,43);
         space(parent,10);
         add(parent,txt("편집 단축키  ·  CTRL+C/V/X/A만 지원 · 다른 조합은 미지원",12,MUTED,false),-1,40);
+        }else{
+            add(parent,txt("접근성 서비스를 포함하지 않는 기본 설치판",13,0xff3edba8,true),-1,38);
+            add(parent,txt("Google Play 프로텍트에서 민감 권한을 이유로 차단하는 위험을 줄이기 위해 편집 단축키 Ctrl+C/V/X/A만 사용할 수 없습니다. 다른 USB 버튼 기능과 스크린샷은 유지됩니다.",11,MUTED,false),-1,100);
+        }
         add(parent,txt("USB 접근 권한은 'PulseNote USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
-        add(parent,txt("볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 백그라운드 앱 실행을 위해 화면 위 표시 권한을 요청하며, Android 보안 정책에 따라 일부 실행이 제한될 수 있습니다.",11,MUTED,false),-1,65);
+        add(parent,txt(BuildConfig.HAS_OVERLAY ?
+            "볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 선택적으로 화면 위 표시 권한을 요청할 수 있습니다." :
+            "볼륨과 미디어 제어는 별도 민감 권한 없이 작동합니다. 기본 설치판은 접근성 및 화면 위 표시 권한을 포함하지 않습니다.",11,MUTED,false),-1,65);
     }
     private void startPermissionWizard(){
         permissionWizardStage=0;

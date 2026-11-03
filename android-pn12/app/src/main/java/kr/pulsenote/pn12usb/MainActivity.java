@@ -529,24 +529,32 @@ public final class MainActivity extends Activity {
         }));
         String hint=null;
         if(kind==11)hint="입력할 문장 (한글·영문·이모지, 줄바꿈 가능)";
-        else if(kind==9)hint="편집 단축키 (CTRL+C / CTRL+V / CTRL+X / CTRL+A)";
+        else if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
         if(hint!=null){
             space(rightHost,8);add(rightHost,txt(hint,12,WHITE,true),-1,27);
-            EditText value=edit(store.value(k),hint);
-            if(kind==11){
-                value.setSingleLine(false);
-                value.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
-                    android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|
-                    android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-                value.setMinLines(3);
-                value.setMaxLines(6);
-                value.setGravity(Gravity.TOP|Gravity.START);
+            if(kind==9){
+                int selected=AndroidEditShortcut.pickerIndex(store.value(k));
+                String displayed=selected>=0?AndroidEditShortcut.PICKER_LABELS[selected]:
+                    (store.value(k).isEmpty()?"선택 안 됨":"미지원: "+store.value(k));
+                add(rightHost,click("스크롤해서 단축키 선택  ·  "+displayed,
+                    ()->showShortcutWheel(k)), -1,49);
+            }else{
+                EditText value=edit(store.value(k),hint);
+                if(kind==11){
+                    value.setSingleLine(false);
+                    value.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
+                        android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|
+                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+                    value.setMinLines(3);
+                    value.setMaxLines(6);
+                    value.setGravity(Gravity.TOP|Gravity.START);
+                }
+                add(rightHost,value,-1,kind==11?108:39);
+                value.addTextChangedListener(watcher(v->store.setValue(k,v)));
             }
-            add(rightHost,value,-1,kind==11?108:39);
-            value.addTextChangedListener(watcher(s->store.setValue(k,s)));
             if(kind==8){
                 space(rightHost,5);add(rightHost,click("▦  설치된 앱에서 선택",()->pickApp(k)),208,35);
             }
@@ -578,6 +586,30 @@ public final class MainActivity extends Activity {
         if(kind==8) add(rightHost,txt("참고: Windows .exe 실행은 Android에서 지원되지 않습니다.",10,MUTED,false),-1,26);
         if(kind==10) add(rightHost,txt("폴더는 Android 문서 선택기를 통해 엽니다.",10,MUTED,false),-1,24);
     }
+    // NumberPicker is a genuine vertically scrolling wheel, not a free-text
+    // shortcut field. Only operations supported by Android are selectable.
+    private void showShortcutWheel(int key){
+        int index=AndroidEditShortcut.pickerIndex(store.value(key));
+        NumberPicker picker=new NumberPicker(this);
+        picker.setMinValue(0);
+        picker.setMaxValue(AndroidEditShortcut.PICKER_VALUES.length-1);
+        picker.setDisplayedValues(AndroidEditShortcut.PICKER_LABELS.clone());
+        picker.setWrapSelectorWheel(true);
+        picker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
+        picker.setValue(index>=0?index:0);
+        LinearLayout wrapper=vertical();
+        pad(wrapper,24,12);
+        add(wrapper,picker,-1,190);
+        new AlertDialog.Builder(this)
+            .setTitle("편집 단축키 선택 · 위아래로 스크롤")
+            .setView(wrapper)
+            .setNegativeButton("취소",null)
+            .setPositiveButton("적용",(dialog,which)->{
+                store.setValue(key,AndroidEditShortcut.PICKER_VALUES[picker.getValue()]);
+                renderRight();
+            }).show();
+    }
+
     private EditText edit(String value,String hint){
         EditText e=new EditText(this);e.setText(value);e.setSingleLine(true);e.setTextSize(12);
         e.setSelectAllOnFocus(false);e.setTextColor(WHITE);e.setHintTextColor(MUTED);e.setHint(hint);

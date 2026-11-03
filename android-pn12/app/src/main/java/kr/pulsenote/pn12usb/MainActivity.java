@@ -83,7 +83,7 @@ public final class MainActivity extends Activity {
             selectedKey=Math.max(1,Math.min(15,savedInstanceState.getInt("pn12.selectedKey",7)));
         }
         firstPermissionSetupPending=!getSharedPreferences("pn12_permissions",MODE_PRIVATE)
-            .getBoolean("permission_guide_v135",false);
+            .getBoolean("permission_guide_v137",false);
         store=new ActionStore(this);
         activeKeyCount=store.keyCount();
         activeSide=store.deviceSide();
@@ -159,10 +159,10 @@ public final class MainActivity extends Activity {
         // The system owns every approval. We show a guided first-run entry,
         // never attempt to silently grant permissions or cache screen consent.
         boolean shown=getSharedPreferences("pn12_permissions",MODE_PRIVATE)
-                .getBoolean("permission_guide_v135",false);
+                .getBoolean("permission_guide_v137",false);
         if(!shown){
             getSharedPreferences("pn12_permissions",MODE_PRIVATE)
-                .edit().putBoolean("permission_guide_v135",true).apply();
+                .edit().putBoolean("permission_guide_v137",true).apply();
             new Handler(Looper.getMainLooper()).postDelayed(()->{
                 if(isFinishing()||isDestroyed())return;
                 new AlertDialog.Builder(this).setTitle("PulseNote 첫 실행 · 권한 설정")
@@ -748,7 +748,9 @@ public final class MainActivity extends Activity {
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
         TextView state=txt(Pn12UsbService.status,14,0xff3edba8,true);add(card,state,-1,41);
         add(card,txt("연결 후 상태는 상단의 USB 표시에도 반영됩니다. Android에서는 COM 포트 번호 대신 USB Host 장치 경로를 사용합니다.",12,MUTED,false),-1,55);
-        add(card,txt("USB 통신은 화면 밖에서도 유지됩니다. 직접 실행을 켜면 PulseNote 연결 중 작은 PN 상태 표시가 나타나며, 앱·웹사이트를 곧바로 여는 기능을 시도합니다.",12,MUTED,false),-1,69);
+        add(card,txt(BuildConfig.HAS_OVERLAY ?
+            "USB 통신은 화면 밖에서도 유지됩니다. 직접 실행을 켜면 작은 PN 상태 표시가 나타납니다." :
+            "USB 연결은 화면 밖에서도 유지됩니다. 기본 설치판은 화면 위 표시 권한을 요청하지 않으며 앱 열기는 Android가 허용하는 경우 또는 알림을 통해 실행됩니다.",12,MUTED,false),-1,69);
         space(card,16);
         buildPermissionSection(card);
         space(card,14);
@@ -824,7 +826,7 @@ public final class MainActivity extends Activity {
                     checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED){
                 nextPermissionWizard();return;
             }
-            new AlertDialog.Builder(this).setTitle("1/3 · 알림 권한")
+            new AlertDialog.Builder(this).setTitle(BuildConfig.HAS_ACCESSIBILITY ? "1/3 · 알림 권한" : "1/1 · 알림 권한")
                 .setMessage("USB 연결 상태와 앱 실행 요청을 알림으로 표시합니다. 허용하지 않아도 일부 기본 기능은 사용할 수 있지만 백그라운드 알림 동작이 제한됩니다.")
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
                 .setPositiveButton("Android 승인 창 열기",(d,w)->

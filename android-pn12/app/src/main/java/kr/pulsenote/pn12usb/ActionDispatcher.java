@@ -43,7 +43,14 @@ public final class ActionDispatcher {
                 .getSystemService(Context.CLIPBOARD_SERVICE);
             if(clipboard==null)return "클립보드를 사용할 수 없습니다";
             try{
-                clipboard.setPrimaryClip(ClipData.newPlainText(s.name(key),copied));
+                ClipData clip=ClipData.newPlainText(s.name(key),copied);
+                if(Build.VERSION.SDK_INT>=33){
+                    // Hide saved macro text in Android 13+ clipboard previews.
+                    android.os.PersistableBundle extras=new android.os.PersistableBundle();
+                    extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE,true);
+                    clip.getDescription().setExtras(extras);
+                }
+                clipboard.setPrimaryClip(clip);
                 // Android 13+ supplies its own copied-content overlay.
                 return "문구를 클립보드에 복사했습니다 · 대상 앱에서 붙여넣으세요";
             }catch(RuntimeException ex){

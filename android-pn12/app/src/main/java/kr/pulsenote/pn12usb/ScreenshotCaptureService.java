@@ -34,6 +34,7 @@ public final class ScreenshotCaptureService extends Service {
     public static final String CAPTURE="kr.pulsenote.pn12usb.CAPTURE_FRAME";
     public static final String STOP="kr.pulsenote.pn12usb.CAPTURE_STOP";
     public static final String STATE="kr.pulsenote.pn12usb.CAPTURE_STATE";
+    public static final String INITIAL_CAPTURE="initial_capture";
     public static final String RESULT_CODE="consent_result_code";
     public static final String RESULT_DATA="consent_result_data";
 
@@ -106,6 +107,7 @@ public final class ScreenshotCaptureService extends Service {
         if(!START.equals(action))return START_NOT_STICKY;
         // Never use a MediaProjection result token more than once.
         if(thread!=null||ready||initializing||stopping.get())return START_NOT_STICKY;
+        final boolean firstShot=intent.getBooleanExtra(INITIAL_CAPTURE,true);
         final int result=intent.getIntExtra(RESULT_CODE,Activity.RESULT_CANCELED);
         final Intent grant;
         if(Build.VERSION.SDK_INT>=33)
@@ -124,14 +126,14 @@ public final class ScreenshotCaptureService extends Service {
             thread.start();
             worker=new Handler(thread.getLooper());
             // Return to the app being captured before saving the first frame.
-            worker.postDelayed(()->begin(result,grant),700);
+            worker.postDelayed(()->begin(result,grant,firstShot),700);
         }catch(RuntimeException e){
             stopSession("캡처 세션 시작 실패: "+e.getClass().getSimpleName());
         }
         return START_NOT_STICKY;
     }
 
-    private void begin(int result,Intent grant){
+    private void begin(int result,Intent grant,boolean firstShot){
         if(stopping.get())return;
         try{
             WindowManager wm=(WindowManager)getSystemService(WINDOW_SERVICE);
@@ -161,7 +163,7 @@ public final class ScreenshotCaptureService extends Service {
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 reader.getSurface(),null,worker);
             if(display==null)throw new IOException("화면 캡처 디스플레이를 만들 수 없습니다");
-            pendingCaptures=1;
+            pendingCaptures=firstShot?1:0;
             ready=true;
             initializing=false;
             broadcastState();

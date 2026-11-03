@@ -584,7 +584,8 @@ public final class MainActivity extends Activity {
             if(programmatic)return;store.setName(k,s);renderKeys();
         }));
         String hint=null;
-        if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
+        if(kind==9)hint=BuildConfig.HAS_ACCESSIBILITY ?
+            "편집 단축키 · 스크롤 휠에서 선택" : "기본 설치판은 편집 단축키 미지원";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
@@ -610,6 +611,9 @@ public final class MainActivity extends Activity {
             if(kind==9){
                 add(rightHost,txt("선택한 텍스트 입력창에서 복사·붙여넣기·잘라내기·전체 선택을 지원합니다. 기타 Windows 단축키는 지원하지 않습니다. 접근성 서비스 활성화가 필요합니다.",10,MUTED,false),-1,75);
             }
+        }
+        if(kind==9&&!BuildConfig.HAS_ACCESSIBILITY){
+            add(rightHost,txt("기본 설치판은 Play 프로텍트 설치 차단 위험을 줄이기 위해 접근성 편집 단축키를 실행하지 않습니다. 다른 버튼 기능을 선택해 주세요.",11,MUTED,false),-1,85);
         }
         if(kind==11){
             add(rightHost,txt("PN12/PN15 캡처 버튼을 누르면 Android 화면 공유 승인 창이 열립니다. 승인 후 PNG를 사진/PulseNote Deck에 저장합니다. Android 14 이상에서는 매번 사용자 동의가 필요합니다.",11,MUTED,false),-1,85);
@@ -899,6 +903,10 @@ public final class MainActivity extends Activity {
     }
 
     private void requestTextMacroAccessibility() {
+        if(!BuildConfig.HAS_ACCESSIBILITY){
+            updateStatus("기본 설치판은 접근성 서비스를 사용하지 않습니다");
+            return;
+        }
         new AlertDialog.Builder(this)
             .setTitle("편집 단축키 접근성 사용")
             .setMessage("PN12·PN15의 편집 단축키(CTRL+C, CTRL+V, CTRL+X, CTRL+A)를 사용하려면 Android 접근성 서비스 활성화가 필요합니다. 사용자가 지정한 버튼을 누를 때에만 현재 입력창의 텍스트와 커서 위치를 확인합니다. 복사·잘라내기는 클립보드 내용을 변경하고 붙여넣기는 현재 클립보드 내용을 사용합니다. 비밀번호 입력창은 제외하며 화면 내용을 저장하거나 외부로 전송하지 않습니다. Windows의 임의 단축키를 주입하지는 않습니다. Android 설정에서 언제든 비활성화할 수 있습니다.\n\n동의하는 경우에만 접근성 설정을 열어 직접 활성화하세요.")
@@ -921,6 +929,7 @@ public final class MainActivity extends Activity {
         if(page==2)renderPage();
     }
     private void syncOverlayPermission(){
+        if(!BuildConfig.HAS_OVERLAY)return;
         if(!Settings.canDrawOverlays(this))return;
         android.content.SharedPreferences prefs=getSharedPreferences("pn12_permissions",MODE_PRIVATE);
         if(!prefs.getBoolean("direct_launch_explicit_off",false) &&
@@ -933,6 +942,10 @@ public final class MainActivity extends Activity {
         }
     }
     private void requestOverlayPermission() {
+        if(!BuildConfig.HAS_OVERLAY){
+            updateStatus("기본 설치판은 화면 위 표시 권한을 사용하지 않습니다");
+            return;
+        }
         if(Settings.canDrawOverlays(this)){
             setDirectLaunch(true);
             return;

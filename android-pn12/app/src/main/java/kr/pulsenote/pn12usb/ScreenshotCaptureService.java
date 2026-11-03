@@ -42,8 +42,16 @@ public final class ScreenshotCaptureService extends Service {
     private static final int NOTIFICATION_ID=48;
     private static volatile boolean ready=false;
     private static volatile boolean initializing=false;
+    private static volatile ScreenshotCaptureService current;
     public static boolean isSessionReady(){return ready;}
     public static boolean isSessionStarting(){return initializing;}
+    /** Dispatch directly to the existing service worker while the app is in
+     * the background. This avoids Android background service-start limits. */
+    public static boolean captureExisting(){
+        ScreenshotCaptureService service=current;
+        if(service==null||service.worker==null||service.stopping.get())return false;
+        return service.worker.post(()->service.queueCapture());
+    }
 
     private final AtomicBoolean stopping=new AtomicBoolean(false);
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -60,6 +68,7 @@ public final class ScreenshotCaptureService extends Service {
 
     @Override public void onCreate(){
         super.onCreate();
+        current=this;
         NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
         if(nm!=null)nm.createNotificationChannel(new NotificationChannel(CHANNEL,
             "PulseNote 캡처 세션",NotificationManager.IMPORTANCE_LOW));
@@ -331,6 +340,7 @@ public final class ScreenshotCaptureService extends Service {
     }
 
     @Override public void onDestroy(){
+        if(current==this)current=null;
         if(!stopping.get())stopSession(null);
         super.onDestroy();
     }

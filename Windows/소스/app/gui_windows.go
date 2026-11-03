@@ -573,7 +573,7 @@ const (
 
 func glyphForAction(t string) rune {
 	switch t {
-	case "shortcut":
+	case "shortcut", "text":
 		return icoKeyboard
 	case "program":
 		return icoApps
@@ -883,6 +883,8 @@ func typeName(t string) string {
 		return "기능 없음"
 	case "shortcut":
 		return "단축키"
+	case "text":
+		return "텍스트 입력"
 	case "program":
 		return "프로그램"
 	case "website":
@@ -906,12 +908,12 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
+var types = []string{"shortcut", "text", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
 
 // Only action types with parameters enable the parameter field.
 func needsValue(t string) bool {
 	switch t {
-	case "program", "website", "folder", "shortcut":
+	case "program", "website", "folder", "shortcut", "text":
 		return true
 	}
 	return false
@@ -926,6 +928,8 @@ func valueFieldTitle(t string) string {
 		return "폴더 경로"
 	case "shortcut":
 		return "키보드 단축키 (예: CTRL+S)"
+	case "text":
+		return "입력할 텍스트 (줄바꿈은 \\n)"
 	default:
 		return "추가 입력 없이 바로 실행"
 	}
@@ -940,6 +944,8 @@ func valueCue(t string) string {
 		return `C:\Users\...\Documents`
 	case "shortcut":
 		return "CTRL+SHIFT+S 또는 ALT+TAB"
+	case "text":
+		return "키를 누르면 활성 입력창에 한글·영문 입력"
 	default:
 		return "이 기능은 별도 값이 필요하지 않습니다"
 	}
@@ -962,7 +968,7 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.text(key.Label, 989, 281, 392, 25, 17, theme("text"), false)
 	d.text(typeName(key.Type), 989, 305, 390, 21, 12, theme("muted"), false)
 	d.textBold("기능", 931, 343, 250, 28, 16, theme("text"), false)
-	// Eleven original actions remain available, but are consistently grouped.
+	// All original action types remain available; text macros fill the 12th slot.
 	for i, t := range types {
 		col := i % 3
 		row := i / 3

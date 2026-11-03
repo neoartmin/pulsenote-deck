@@ -152,7 +152,7 @@ func registerUninstall(dir string) error {
 	return nil
 }
 func install() error {
-	if alert("PulseNote Deck v7.5.10로 업데이트할까요?\n\n실행 중인 기존 버전은 자동으로 종료한 후 새 버전으로 교체합니다.\n설치가 끝나면 새 버전이 자동으로 실행됩니다.\n기존 버튼 설정과 프로필은 보존합니다.\nWindows 로그인 자동 시작은 새로 등록하지 않습니다.\n관리자 권한은 필요하지 않습니다.", 0x24) != 6 {
+	if alert("PulseNote Deck v"+productVersion+"로 업데이트할까요?\n\n실행 중인 기존 버전은 자동으로 종료한 후 새 버전으로 교체합니다.\n설치가 끝나면 새 버전이 자동으로 실행됩니다.\n기존 버튼 설정과 프로필은 보존합니다.\nWindows 로그인 자동 시작은 새로 등록하지 않습니다.\n관리자 권한은 필요하지 않습니다.", 0x24) != 6 {
 		return nil
 	}
 	dir, e := installDir()
@@ -240,10 +240,10 @@ func install() error {
 	}
 	// Start the new version now; no extra click or tray-menu exit needed.
 	if e = exec.Command(target).Start(); e != nil {
-		alert("v7.5.2 설치 완료. 자동 실행은 실패했습니다.\n바탕화면의 PulseNote Deck 아이콘으로 실행하세요.\n"+e.Error(), 0x30)
+		alert("v"+productVersion+" 설치 완료. 자동 실행은 실패했습니다.\n바탕화면의 PulseNote Deck 아이콘으로 실행하세요.\n"+e.Error(), 0x30)
 		return nil
 	}
-	notice := "v7.5.2 설치 완료 및 실행\n\n기존 설정과 프로필을 유지했습니다.\nWindows 로그인 자동 시작을 임의로 등록하지 않았습니다." + startupWarning
+	notice := "v"+productVersion+" 설치 완료 및 실행\n\n기존 설정과 프로필을 유지했습니다.\nWindows 로그인 자동 시작을 임의로 등록하지 않았습니다." + startupWarning
 	if len(leftovers) != 0 {
 		notice += "\n\n이전 버전 실행 파일을 잠금 때문에 정리하지 못했습니다: " + strings.Join(leftovers, ", ") + "\n다음 업데이트 또는 제거 시 다시 정리합니다."
 	}

@@ -1960,6 +1960,7 @@ func (g *ui) trayMenu() {
 func (g *ui) quit() {
 	g.flushProfileName()
 	g.flushEdits()
+	releaseAllHeldShortcuts()
 	if editBgBrush != 0 {
 		deleteObject.Call(editBgBrush)
 	}
@@ -2082,6 +2083,16 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		}
 		g.redraw()
 		return 0
+	case WM_SHORTCUT_TOGGLE:
+        for {
+            select{
+            case notice:=<-shortcutToggleEvents:
+                g.showShortcutToggleNotice(notice)
+            default:
+                g.redraw()
+                return 0
+            }
+        }
 	case WM_DEVICE_NOTICE:
 		for {
 			select {

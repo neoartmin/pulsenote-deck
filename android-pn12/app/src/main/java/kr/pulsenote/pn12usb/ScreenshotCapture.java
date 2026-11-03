@@ -23,14 +23,12 @@ public final class ScreenshotCapture {
             ScreenshotCaptureService.isSessionStarting(),
             MainActivity.visible,notifications);
         if(route==CaptureSessionPolicy.Route.CAPTURE){
-            try{
-                context.startService(new Intent(context,ScreenshotCaptureService.class)
-                    .setAction(ScreenshotCaptureService.CAPTURE));
-                return "캡처 세션에서 PNG 저장 요청";
-            }catch(RuntimeException error){
-                return "캡처 세션에 연결하지 못했습니다: "+error.getClass().getSimpleName();
-            }
+            return ScreenshotCaptureService.captureExisting() ?
+                "활성 캡처 세션에서 PNG 저장 요청" :
+                "캡처 모드 준비 중 · 잠시 후 다시 누르세요";
         }
+        if(ScreenshotCaptureService.isStopping())
+            return "이전 캡처 모드 종료 중 · 종료 후 다시 시도하세요";
         if(route==CaptureSessionPolicy.Route.PROMPT){
             context.sendBroadcast(new Intent(REQUEST).setPackage(context.getPackageName()));
             return "화면 공유 최초 승인 요청";

@@ -74,10 +74,39 @@ public final class ActionStore {
     public void renameProfile(int id,String name) {
         String safe=name.trim();if(!safe.isEmpty() && profiles().contains(id))prefs.edit().putString(profileKey("profile_name_"+id),safe).apply();
     }
+    // Clone the selected profile rather than creating empty keys, matching
+    // Windows. Capture all values before switching active profile.
     public int newProfile(String name) {
-        int next=prefs.getInt(profileKey("next_profile"),1);List<Integer> list=profiles();list.add(next);
-        StringBuilder all=new StringBuilder();for(int id:list)if(id>0){if(all.length()>0)all.append(',');all.append(id);}
-        prefs.edit().putString(profileKey("profile_ids"),all.toString()).putString(profileKey("profile_name_"+next),name.trim().isEmpty()?"새 프로필":name.trim()).putInt(profileKey("active_profile"),next).putInt(profileKey("next_profile"),next+1).apply();
+        List<Integer> list=profiles();
+        if(list.size()>=ProfileSnapshot.MAX_PROFILES)return -1;
+        int count=keyCount();
+        ProfileSnapshot.Key[] keys=new ProfileSnapshot.Key[count];
+        for(int i=1;i<=count;i++){
+            keys[i-1]=new ProfileSnapshot.Key(kind(i),name(i),value(i),color(i));
+        }
+        ProfileSnapshot snapshot=new ProfileSnapshot(keys);
+        int next=prefs.getInt(profileKey("next_profile"),1);
+        StringBuilder ids=new StringBuilder();
+        for(int id:list)if(id>0){
+            if(ids.length()>0)ids.append(',');
+            ids.append(id);
+        }
+        if(ids.length()>0)ids.append(',');
+        ids.append(next);
+        String dest=modelPrefix()+"p"+next+"_";
+        SharedPreferences.Editor editor=prefs.edit();
+        for(int i=1;i<=snapshot.size();i++){
+            ProfileSnapshot.Key key=snapshot.key(i-1);
+            editor.putInt(dest+"type_"+i,key.kind);
+            editor.putString(dest+"name_"+i,key.name);
+            editor.putString(dest+"value_"+i,key.value);
+            editor.putInt(dest+"color_"+i,key.color);
+        }
+        editor.putString(profileKey("profile_ids"),ids.toString())
+              .putString(profileKey("profile_name_"+next),name.trim().isEmpty()?"새 프로필":name.trim())
+              .putInt(profileKey("active_profile"),next)
+              .putInt(profileKey("next_profile"),next+1)
+              .apply();
         return next;
     }
     public boolean deleteCurrent() {

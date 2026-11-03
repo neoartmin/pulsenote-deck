@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
     private boolean autoReconnectPaused=false;
     private int permissionWizardStage=-1;
     private boolean capturePromptActive=false;
+    private boolean captureFirstImage=true;
     private boolean firstPermissionSetupPending=false;
     private long permissionPromptStarted=-1;
     private final Set<String> rejectedUsb=new HashSet<>();
@@ -121,6 +122,12 @@ public final class MainActivity extends Activity {
               }
               else if(ScreenshotCapture.REQUEST.equals(a)){
                   requestScreenCapture();
+              }else if(ScreenshotCaptureService.STATE.equals(a)){
+                  if(page==2&&pageHost!=null)renderPage();
+                  if(statusFooter!=null)statusFooter.setText(
+                      intent.getBooleanExtra("ready",false) ?
+                      "●  캡처 대기 모드 활성화 · 버튼으로 반복 저장" :
+                      "●  캡처 세션 종료 · 다음 캡처 때 다시 승인");
               }else if(Pn12UsbService.KEY.equals(a)){
                  int number=intent.getIntExtra(Pn12UsbService.NUMBER,0);
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
@@ -147,7 +154,7 @@ public final class MainActivity extends Activity {
            }
         };
         IntentFilter filter=new IntentFilter();
-        for(String a:new String[]{PERMISSION,Pn12UsbService.STATUS,Pn12UsbService.KEY,ScreenshotCapture.REQUEST,UsbManager.ACTION_USB_DEVICE_ATTACHED,UsbManager.ACTION_USB_DEVICE_DETACHED})filter.addAction(a);
+        for(String a:new String[]{PERMISSION,Pn12UsbService.STATUS,Pn12UsbService.KEY,ScreenshotCapture.REQUEST,ScreenshotCaptureService.STATE,UsbManager.ACTION_USB_DEVICE_ATTACHED,UsbManager.ACTION_USB_DEVICE_DETACHED})filter.addAction(a);
         if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,filter,Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(receiver,filter);
         scan();
@@ -616,7 +623,7 @@ public final class MainActivity extends Activity {
             add(rightHost,txt("기본 설치판은 Play 프로텍트 설치 차단 위험을 줄이기 위해 접근성 편집 단축키를 실행하지 않습니다. 다른 버튼 기능을 선택해 주세요.",11,MUTED,false),-1,85);
         }
         if(kind==11){
-            add(rightHost,txt("PN12/PN15 캡처 버튼을 누르면 Android 화면 공유 승인 창이 열립니다. 승인 후 PNG를 사진/PulseNote Deck에 저장합니다. Android 14 이상에서는 매번 사용자 동의가 필요합니다.",11,MUTED,false),-1,85);
+            add(rightHost,txt("첫 캡처에서 Android 화면 공유를 한 번 승인하면, 캡처 대기 모드가 유지되는 동안 PN12/PN15 키를 누를 때마다 승인 없이 PNG가 저장됩니다. 알림에서 언제든 세션을 종료할 수 있습니다.",11,MUTED,false),-1,90);
             add(rightHost,click("화면 캡처 테스트",()->requestScreenCapture()),-1,43);
         }
         space(rightHost,9);
@@ -745,6 +752,24 @@ public final class MainActivity extends Activity {
         }),contentWidthDp<680?-1:170,48);
         add(card,row,-1,-2);
         space(card,15);
+        add(card,txt("화면 캡처 대기 모드",15,WHITE,true),-1,33);
+        boolean ready=ScreenshotCaptureService.isSessionReady();
+        boolean starting=ScreenshotCaptureService.isSessionStarting();
+        add(card,txt(ready?
+            "● 화면 공유 활성화 · 버튼을 누를 때마다 별도 승인 없이 사진 저장":
+            starting?"● 화면 공유 시작 중":
+            "○ 캡처 세션 꺼짐 · 시작 시 Android 화면 공유 승인 필요",
+            12,ready?0xff3edba8:MUTED,false),-1,59);
+        add(card,click(ready||starting?"■  캡처 대기 모드 종료":"▷  캡처 대기 모드 시작",()->{
+            if(ScreenshotCaptureService.isSessionReady()||
+               ScreenshotCaptureService.isSessionStarting()){
+                try{startService(new Intent(this,ScreenshotCaptureService.class)
+                    .setAction(ScreenshotCaptureService.STOP));}
+                catch(RuntimeException error){updateStatus("캡처 모드 종료 실패");}
+            }else requestCaptureSession(false);
+        }),Math.min(320,contentWidthDp-44),47);
+        add(card,txt("캡처 모드는 알림에 표시되는 동안 화면 공유가 유지됩니다. 알림의 ‘캡처 모드 종료’ 또는 위 버튼으로 언제든 중단할 수 있습니다. 세션 종료·화면 잠금·시스템 중지 후에는 다시 승인해야 합니다.",11,MUTED,false),-1,98);
+        space(card,13);
         add(card,txt("현재 상태",14,WHITE,true),-1,29);
         TextView state=txt(Pn12UsbService.status,14,0xff3edba8,true);add(card,state,-1,41);
         add(card,txt("연결 후 상태는 상단의 USB 표시에도 반영됩니다. Android에서는 COM 포트 번호 대신 USB Host 장치 경로를 사용합니다.",12,MUTED,false),-1,55);
@@ -888,18 +913,36 @@ public final class MainActivity extends Activity {
     }
 
     private void requestScreenCapture(){
-        if(capturePromptActive||isFinishing()||isDestroyed())return;
-        MediaProjectionManager mgr=(MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);
+        requestCaptureSession(true);
+    }
+    private void requestCaptureSession(boolean captureImmediately){
+        if(isFinishing()||isDestroyed())return;
+        if(ScreenshotCaptureService.isSessionReady()||
+           ScreenshotCaptureService.isSessionStarting()){
+            if(captureImmediately&&!ScreenshotCaptureService.captureExisting())
+                updateStatus("캡처 세션 준비 중 · 잠시 후 다시 누르세요");
+            return;
+        }
+        if(ScreenshotCaptureService.isStopping()){
+            updateStatus("이전 캡처 모드 종료 중 · 종료 후 다시 시작하세요");
+            return;
+        }
+        if(capturePromptActive)return;
+        MediaProjectionManager mgr=(MediaProjectionManager)
+            getSystemService(MEDIA_PROJECTION_SERVICE);
         if(mgr==null){updateStatus("Android 화면 캡처 서비스를 사용할 수 없습니다");return;}
         try{
             capturePromptActive=true;
+            captureFirstImage=captureImmediately;
             Intent approve;
             if(Build.VERSION.SDK_INT>=34)
-                approve=mgr.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay());
+                approve=mgr.createScreenCaptureIntent(
+                    MediaProjectionConfig.createConfigForDefaultDisplay());
             else approve=mgr.createScreenCaptureIntent();
             startActivityForResult(approve,CAPTURE_REQUEST_CODE);
         }catch(RuntimeException error){
             capturePromptActive=false;
+            captureFirstImage=true;
             updateStatus("화면 캡처 승인 요청 실패: "+error.getClass().getSimpleName());
         }
     }
@@ -1000,17 +1043,20 @@ public final class MainActivity extends Activity {
         super.onActivityResult(request,result,data);
         if(request==CAPTURE_REQUEST_CODE){
             capturePromptActive=false;
-            if(result!=RESULT_OK||data==null){updateStatus("화면 캡처가 취소됐습니다");return;}
+            boolean firstShot=captureFirstImage;
+            captureFirstImage=true;
+            if(result!=RESULT_OK||data==null){updateStatus("화면 공유가 취소됐습니다");return;}
             Intent start=new Intent(this,ScreenshotCaptureService.class)
                 .setAction(ScreenshotCaptureService.START);
             start.putExtra(ScreenshotCaptureService.RESULT_CODE,result);
             start.putExtra(ScreenshotCaptureService.RESULT_DATA,data);
+            start.putExtra(ScreenshotCaptureService.INITIAL_CAPTURE,firstShot);
             try{
                 if(Build.VERSION.SDK_INT>=26)startForegroundService(start);
                 else startService(start);
-                moveTaskToBack(true);
+                if(firstShot)moveTaskToBack(true);
             }catch(RuntimeException error){
-                updateStatus("화면 캡처 실행 실패: "+error.getClass().getSimpleName());
+                updateStatus("캡처 세션 실행 실패: "+error.getClass().getSimpleName());
             }
             return;
         }

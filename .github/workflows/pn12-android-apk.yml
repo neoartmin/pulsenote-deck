@@ -57,8 +57,11 @@ jobs:
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/AndroidEditShortcut.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/ProfileSnapshot.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/UsbAutoConnectPolicy.java \
-            android-pn12/tests/AndroidParitySelfTest.java
+            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/CaptureSessionPolicy.java \
+            android-pn12/tests/AndroidParitySelfTest.java \
+            android-pn12/tests/CaptureSessionSelfTest.java
           java -cp "${RUNNER_TEMP}/parity-test" kr.pulsenote.pn12usb.AndroidParitySelfTest
+          java -cp "${RUNNER_TEMP}/parity-test" kr.pulsenote.pn12usb.CaptureSessionSelfTest
       - name: Build standard and extended APKs
         working-directory: android-pn12
         run: gradle --no-daemon --stacktrace assembleStandardDebug assembleExtendedDebug
@@ -86,11 +89,11 @@ jobs:
           cat > "${ROOT}/README_KO.txt" <<'EOF'
           PulseNote Deck Android PN12 + PN15 - 전체 파일집
           APK/     : Android 설치 파일 2종 (CI 디버그 서명)
-          기본 설치판(추천): PulseNote_PN12_PN15_Android_v1.3.7.apk
+          기본 설치판(추천): PulseNote_PN12_PN15_Android_v1.3.8.apk
             접근성 서비스 및 다른 앱 위에 표시 권한 없음.
             USB, 볼륨/미디어, 스크린샷, 앱/웹사이트 열기는 유지.
             편집 단축키(Ctrl+C/V/X/A), 화면 위 표시 기반 직접 실행은 제한.
-          확장 설치판: PulseNote_PN12_PN15_Android_v1.3.7_Extended.apk
+          확장 설치판: PulseNote_PN12_PN15_Android_v1.3.8_Extended.apk
             접근성 서비스와 다른 앱 위 표시 권한 포함.
             사용자에게 Android 보안 경고 또는 설치 차단이 발생할 수 있음.
           Play 프로텍트 차단 시 보안 기능을 끄거나 우회하지 마세요.
@@ -137,6 +140,6 @@ jobs:
             gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "${RUNNER_TEMP}/${EXTENDED_NAME}" "$COMPLETE_ARCHIVE" \
               --target "$GITHUB_SHA" \
               --title "PulseNote Deck PN12 + PN15 Android v${VERSION}" \
-              --notes "Standard APK has no AccessibilityService or overlay permission; preserves USB and screenshot actions. Extended APK retains opt-in shortcuts and overlay and may be blocked by Play Protect. Both are debug-signed testing builds; no guarantee of Play Protect approval; device validation required." \
+              --notes "Android v1.3.8 keeps one user-approved MediaProjection active for repeated screenshots without fresh consent until stopped. Notification includes an explicit stop control. Standard APK has no AccessibilityService or overlay permission; extended APK keeps optional features. Both are debug-signed test builds; Play Protect approval and real-device behavior not guaranteed." \
               --prerelease
           fi

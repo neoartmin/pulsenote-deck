@@ -6,8 +6,8 @@ android {
         applicationId = "kr.pulsenote.pn12usb"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23
-        versionName = "1.3.7"
+        versionCode = 24
+        versionName = "1.3.8"
     }
     buildFeatures {
         buildConfig = true

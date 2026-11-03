@@ -21,6 +21,24 @@ func windowActionIndex(value string) int{
 }
 func windowActionName(value string)string{return windowActionNames[windowActionIndex(value)]}
 
+func searchEngine(raw string)string{
+    if before,_,found:=strings.Cut(raw,"|");found{
+        for _,id:=range []string{"google","naver","youtube"}{
+            if strings.EqualFold(strings.TrimSpace(before),id){return id}
+        }
+    }
+    return "google"
+}
+func searchQuery(raw string)string{
+    if before,after,ok:=strings.Cut(raw,"|");ok{
+        for _,id:=range []string{"google","naver","youtube"}{
+            if strings.EqualFold(strings.TrimSpace(before),id){return after}
+        }
+    }
+    return raw
+}
+func makeSearchValue(engine,query string)string{return engine+"|"+query}
+
 func webSearchURL(raw string)(string,error){
     text:=strings.TrimSpace(raw)
     engine:="google"
@@ -39,12 +57,28 @@ func webSearchURL(raw string)(string,error){
 }
 
 type emailDraft struct{to,subject,body string}
+// New structured email editor persists all three fields with escaped
+// delimiters. Old legacy "to|subject|body" profiles remain readable.
+func encodeEmailDraft(d emailDraft)string{
+    return "mail2:"+url.QueryEscape(d.to)+"|"+url.QueryEscape(d.subject)+"|"+url.QueryEscape(d.body)
+}
 func parseEmailDraft(raw string)(emailDraft,error){
-    parts:=strings.SplitN(raw,"|",3)
+    var parts []string
+    if strings.HasPrefix(raw,"mail2:"){
+        parts=strings.SplitN(strings.TrimPrefix(raw,"mail2:"),"|",3)
+        if len(parts)!=3{return emailDraft{},fmt.Errorf("이메일 편집기 데이터가 손상되었습니다")}
+        for i:=range parts{
+            unescaped,err:=url.QueryUnescape(parts[i])
+            if err!=nil{return emailDraft{},fmt.Errorf("이메일 데이터 디코딩 실패: %w",err)}
+            parts[i]=unescaped
+        }
+    }else{
+        parts=strings.SplitN(raw,"|",3)
+    }
     draft:=emailDraft{to:strings.TrimSpace(parts[0])}
     if len(parts)>1{draft.subject=parts[1]}
     if len(parts)>2{draft.body=parts[2]}
-    if len(raw)==0||len(raw)>3000{return draft,fmt.Errorf("이메일 초안은 1~3000자여야 합니다")}
+    if len(raw)==0||len(raw)>4096{return draft,fmt.Errorf("이메일 초안은 1~4096자여야 합니다")}
     for _,r:=range draft.to {
         if r=='\r'||r=='\n'||r==' '||r=='?'||r=='#'||r=='&'||r==';'{
             return draft,fmt.Errorf("받는 사람은 단일 이메일 주소만 입력하세요")

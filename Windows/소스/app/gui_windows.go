@@ -218,6 +218,7 @@ type click struct {
 type ui struct {
 	hwnd                                                 uintptr
 	labelEdit, valueEdit, textValueEdit, appSearchEdit, profileNameEdit uintptr
+	emailToEdit, emailSubjectEdit, emailBodyEdit uintptr
 	editing                                              bool
 	selected                                             int
 	actionPage                                           int
@@ -252,6 +253,10 @@ type ui struct {
 	mutex                                                uintptr
 	editsVisible                                         bool
 	singleValueShown, textValueShown                     bool
+	emailFieldsVisible bool
+	emailModel int
+	emailSide string
+	emailProfile, emailKey int
 	labelRect, valueRect, textValueRect                  rect
 	editsPlaced                                          bool
 	pendingEdits                                         bool
@@ -810,6 +815,8 @@ func (g *ui) paint() {
 		g.drawProfiles(d, count, m)
 	} else if g.page == 2 {
 		g.drawSettings(d, c, count)
+	} else if g.page == 4 {
+		g.drawEmailEditor(d)
 	} else {
 		g.drawAppPicker(d)
 	}
@@ -960,7 +967,7 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "compose_email", "qr_code", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
@@ -1001,9 +1008,9 @@ func valueFieldTitle(t string) string {
 	case "system_settings":
 		return "설정 종류 (오른쪽 설정 선택)"
 	case "web_search":
-		return "검색 엔진|검색어 (예: google|전기회로)"
+		return "검색어"
 	case "compose_email":
-		return "받는 사람|제목|본문 (메일 자동 전송 안 함)"
+		return "이메일 초안 (받는 사람·제목·본문)"
 	case "qr_code":
 		return "QR로 만들 내용 (900바이트 이내)"
 	case "sequence":
@@ -1031,13 +1038,13 @@ func valueCue(t string) string {
 	case "system_settings":
 		return "설정 선택 버튼으로 Wi-Fi·블루투스 등 지정"
 	case "web_search":
-		return "google|검색어, naver|검색어, youtube|검색어"
+		return "검색어만 입력하세요"
 	case "compose_email":
-		return "받는사람|제목|본문 (메일 앱 작성 화면)"
+		return "아래 이메일 설정에서 항목별로 입력"
 	case "qr_code":
 		return "UTF-8 900바이트 이내 · 오프라인 PNG 생성"
 	case "sequence":
-		return "2,wait:250,4 (최대 8단계, 대기 0~1000ms)"
+		return "이전 버전에서 저장된 고급 기능입니다"
 	case "window_control":
 		return "오른쪽 창 동작 선택 메뉴에서 지정"
 	default:
@@ -1046,12 +1053,13 @@ func valueCue(t string) string {
 }
 func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.textBold(fmt.Sprintf("키 %02d 설정", g.selected+1), 929, 194, 365, 45, 24, theme("text"), false)
+	g.pill(d,1293,200,101,31,"기능 설명",false,"actionhelp",0)
 	if key.Type == "program" && key.Value != "" {
 		d.text("프로그램 로고 설정", 929, 237, 234, 25, 13, theme("muted"), false)
 		g.pill(d, 1167, 238, 122, 30, "투명 PNG", false, "iconpick", 0)
 		g.pill(d, 1297, 238, 101, 30, "원본 로고", false, "iconreset", 0)
 	} else {
-		d.text("기능·이름·색상을 원하는 대로 지정하세요.", 929, 235, 459, 24, 13, theme("muted"), false)
+		d.text(guideForAction(key.Type).summary, 929, 235, 458, 28, 12, theme("muted"), false)
 	}
 	d.rounded(928, 273, 470, 60, 12, theme("panel2"), theme("border"))
 	if key.Type == "program" && key.Value != "" && g.drawAppIcon(d, key.Value, 943, 279, 47) {
@@ -1093,6 +1101,28 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 		d.text(windowActionName(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
 	} else if key.Type == "web_search" {
 		g.pill(d, 1247, 669, 146, 31, "검색 엔진", false, "searchpick", 0)
+        d.text("선택한 엔진: "+searchEngine(key.Value), 932, 746, 430, 18, 11, theme("muted"), false)
+    } else if key.Type == "compose_email" {
+        g.pill(d,1247,669,146,31,"이메일 설정",false,"emailconfig",0)
+        mail,_:=parseEmailDraft(key.Value)
+        to:=mail.to
+        if to==""{to="(미입력)"}
+        d.text("받는 사람: "+to,932,707,459,20,12,theme("muted"),false)
+        title:=mail.subject
+        if title==""{title="(미입력)"}
+        d.text("제목: "+title,932,732,459,20,12,theme("muted"),false)
+    } else if key.Type == "shortcut" {
+        caption:="누름 유지: 끔"
+        if key.Toggle{caption="누름 유지: 켬"}
+        g.pill(d,1247,669,146,31,caption,key.Toggle,"shortcutToggle",0)
+        state:="일반 단축키 · 누르면 즉시 해제"
+        if key.Toggle{
+            state="토글 대기 · 다음 누름에 키 고정"
+            cfg:=snap()
+            m:=cfg.Models[modelKey(cfg)]
+            if isHeldShortcut(modelKey(cfg),m.Active,g.selected+1){state="토글 활성 · 지정 키가 눌린 상태"}
+        }
+        d.text(state,932,746,460,18,11,theme("muted"),false)
 	}
 	d.textBold("키캡 색상", 931, 763, 280, 27, 16, theme("text"), false)
 	for i, name := range palette {
@@ -1101,6 +1131,20 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 		g.clickable(d, x-3, 789, 59, 43, "color", i)
 	}
 }
+// Dedicated, accessible native fields. Never ask users to write pipe
+// delimiters, encoded data or a DSL to configure their email macro.
+func (g *ui) drawEmailEditor(d *drawCtx){
+    d.rounded(263,175,1150,660,19,theme("panel"),theme("border"))
+    d.textBold("이메일 작성 설정",300,203,690,49,26,theme("text"),false)
+    d.text("받는 사람·제목·본문을 각각 입력합니다. 버튼 실행 시 초안만 열리고 메일은 전송되지 않습니다.",308,260,1035,29,15,theme("muted"),false)
+    d.textBold("받는 사람 (이메일 주소)",352,303,950,31,17,theme("text"),false)
+    d.textBold("제목",352,405,950,31,17,theme("text"),false)
+    d.textBold("본문 (여러 줄 입력 가능)",352,503,950,31,17,theme("text"),false)
+    d.text("자동 저장이 아닌 별도 설정 창입니다. 아래 '저장'으로 등록하세요.",352,725,850,24,13,theme("muted"),false)
+    g.pill(d,848,763,187,47,"취소",false,"emailcancel",0)
+    g.pill(d,1051,763,201,47,"이메일 설정 저장",true,"emailsave",0)
+}
+
 func (g *ui) drawProfiles(d *drawCtx, count int, m Model) {
 	// Main page title/subtitle are painted once by paint() above the card.
 	d.rounded(263, 187, 1150, 645, 19, theme("panel"), theme("border"))
@@ -1196,8 +1240,8 @@ func (g *ui) moveEdits(d *drawCtx) {
 		g.editsVisible = show
 	}
 	key, ok := selectedKey(snap(), g.selected)
-	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence")
-	showSingleValue := show && !showTextValue
+	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence")
+	showSingleValue := show && !showTextValue && (!ok || key.Type!="compose_email")
 	if !g.editsPlaced || g.singleValueShown != showSingleValue {
 		if showSingleValue {
 			showWindow.Call(g.valueEdit, SW_SHOW)
@@ -1232,6 +1276,7 @@ func (g *ui) moveEdits(d *drawCtx) {
 		}
 	}
 	g.editsPlaced = true
+    g.moveEmailEdits(d)
 	searchShow := g.page == 3
 	if !g.searchPlaced || g.searchVisible != searchShow {
 		if searchShow {
@@ -1267,6 +1312,28 @@ func (g *ui) moveEdits(d *drawCtx) {
 	}
 	g.profileNamePlaced = true
 }
+func (g *ui) moveEmailEdits(d *drawCtx){
+    visible:=g.page==4
+    if visible!=g.emailFieldsVisible{
+        how:=uintptr(SW_HIDE)
+        if visible{how=SW_SHOW}
+        for _,field:=range []uintptr{g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit}{
+            if field!=0{showWindow.Call(field,how)}
+        }
+        g.emailFieldsVisible=visible
+    }
+    if !visible{return}
+    for _,slot:=range []struct{h uintptr;x,y,w,height int}{
+        {g.emailToEdit,352,343,904,44},
+        {g.emailSubjectEdit,352,444,904,44},
+        {g.emailBodyEdit,352,541,904,172},
+    }{
+        r:=d.ab(slot.x,slot.y,slot.w,slot.height)
+        moveWindow.Call(slot.h,uintptr(r.Left),uintptr(r.Top),
+            uintptr(r.Right-r.Left),uintptr(r.Bottom-r.Top),0)
+    }
+}
+
 func (g *ui) redraw() { invalidateRect.Call(g.hwnd, 0, 0) }
 func (g *ui) edits() {
 	c := snap()
@@ -1276,12 +1343,12 @@ func (g *ui) edits() {
 	}
 	g.editing = true
 	setWindowText.Call(g.labelEdit, ptr(key.Label))
-	setWindowText.Call(g.valueEdit, ptr(key.Value))
+	setWindowText.Call(g.valueEdit, ptr(func()string{if key.Type=="web_search"{return searchQuery(key.Value)};return key.Value}()))
 	setWindowText.Call(g.textValueEdit, ptr(windowsEditorNewlines(key.Value)))
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
-	if needsValue(key.Type) {
-		if key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence" {
+	if needsValue(key.Type) && key.Type!="compose_email" {
+		if key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence" {
 			enableWindow.Call(g.textValueEdit, 1)
 		} else {
 			enableWindow.Call(g.valueEdit, 1)
@@ -1387,13 +1454,21 @@ func (g *ui) perform(hit click) {
 	case "actionpage":
 		if hit.id>=0 && hit.id < (len(types)+15)/16 {g.actionPage=hit.id}
 	case "action":
+        if hit.id<0||hit.id>=len(types){break}
 		t := types[hit.id]
 		err := update(func(c *Config) {
 			mutateKey(c, g.selected, func(k *Key) {
+                // Preserve user-customized labels while fixing stale default
+                // labels like "화면캡처" after changing to Email.
+                oldCaption:=strings.ReplaceAll(typeName(k.Type)," ","")
+                current:=strings.ReplaceAll(k.Label," ","")
+                auto:=current==oldCaption || strings.HasPrefix(k.Label,"버튼 ")
 				if k.Type != t {
 					k.Value = ""
+                    if auto{k.Label=typeName(t)}
 				}
 				k.Type = t
+                if t!="shortcut"{k.Toggle=false}
 			})
 		})
 		if err != nil {
@@ -1404,6 +1479,10 @@ func (g *ui) perform(hit click) {
 			g.pickApp()
 		}
 	case "page":
+        if g.page==4{
+            messageBox.Call(g.hwnd,ptr("이메일 설정을 먼저 저장하거나 취소하세요."),ptr("PulseNote · 이메일 작성"),0x30)
+            break
+        }
 		g.page = hit.id
 		if g.page == 1 {
 			g.profileEdits()
@@ -1494,6 +1573,74 @@ func (g *ui) perform(hit click) {
 			}))
 			g.edits()
 		}
+	case "actionhelp":
+        key,ok:=selectedKey(snap(),g.selected)
+        if !ok{break}
+        h:=guideForAction(key.Type)
+        messageBox.Call(g.hwnd,ptr(typeName(key.Type)+"\\n\\n"+h.summary+"\\n\\n"+h.detail),ptr("PulseNote · 기능 설명"),0x40)
+    case "shortcutToggle":
+        c:=snap()
+        k,ok:=selectedKey(c,g.selected)
+        if !ok||k.Type!="shortcut"{break}
+        if k.Value!=""{
+            if _,err:=parseShortcut(k.Value);err!=nil{
+                messageBox.Call(g.hwnd,ptr("키 조합을 먼저 올바르게 입력하세요.\\n"+err.Error()),ptr("PulseNote · 단축키 토글"),0x30)
+                break
+            }
+        }
+        g.showSaveError(update(func(c *Config){
+            mutateKey(c,g.selected,func(k *Key){if k.Type=="shortcut"{k.Toggle=!k.Toggle}})
+        }))
+        g.edits()
+    case "emailconfig":
+        c:=snap()
+        key,ok:=selectedKey(c,g.selected)
+        if !ok||key.Type!="compose_email"{break}
+        email:=emailDraft{}
+        if key.Value!=""{
+            var err error
+            email,err=parseEmailDraft(key.Value)
+            if err!=nil{
+                messageBox.Call(g.hwnd,ptr("저장된 이메일 값 해석 실패: "+err.Error()),ptr("PulseNote · 이메일 설정"),0x30)
+                break
+            }
+        }
+        model:=c.Models[modelKey(c)]
+        g.emailModel,g.emailSide,g.emailProfile,g.emailKey=c.Selected,c.SelectedSide,model.Active,g.selected
+        g.editing=true
+        setWindowText.Call(g.emailToEdit,ptr(email.to))
+        setWindowText.Call(g.emailSubjectEdit,ptr(email.subject))
+        setWindowText.Call(g.emailBodyEdit,ptr(windowsEditorNewlines(email.body)))
+        g.editing=false
+        g.page=4
+    case "emailsave":
+        if g.page!=4{break}
+        email:=emailDraft{
+            to:getText(g.emailToEdit),
+            subject:getText(g.emailSubjectEdit),
+            body:normalizeEditorNewlines(getText(g.emailBodyEdit)),
+        }
+        value:=encodeEmailDraft(email)
+        if _,err:=parseEmailDraft(value);err!=nil{
+            messageBox.Call(g.hwnd,ptr("입력한 이메일을 확인하세요.\\n"+err.Error()),ptr("PulseNote · 이메일 설정"),0x30)
+            break
+        }
+        err:=update(func(c *Config){
+            mkey:=modelKeyFor(g.emailModel,g.emailSide)
+            m,ok:=c.Models[mkey]
+            if !ok||g.emailProfile<0||g.emailProfile>=len(m.Profiles){return}
+            p:=&m.Profiles[g.emailProfile]
+            if g.emailKey<0||g.emailKey>=len(p.Keys){return}
+            if p.Keys[g.emailKey].Type=="compose_email"{
+                p.Keys[g.emailKey].Value=value
+                c.Models[mkey]=m
+            }
+        })
+        if err!=nil{g.showSaveError(err);break}
+        g.page=0
+        g.edits()
+    case "emailcancel":
+        if g.page==4{g.page=0;g.edits()}
 	case "test":
 		// Use the same sequential dispatcher as physical key events so that
 		// keyboard shortcuts cannot overlap with a USB-triggered shortcut.
@@ -1855,10 +2002,11 @@ func (g *ui) writeFromEdit(which int) {
 	_, m, _ := active(c)
 	g.pendingEdits = true
 	g.pendingLabel = getText(g.labelEdit)
-	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence") {
+	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence") {
 		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
 	} else {
 		g.pendingValue = getText(g.valueEdit)
+		if key,ok:=selectedKey(c,g.selected);ok&&key.Type=="web_search"{g.pendingValue=makeSearchValue(searchEngine(key.Value),g.pendingValue)}
 	}
 	g.pendingModel = c.Selected
 	g.pendingSide = c.SelectedSide
@@ -1960,6 +2108,7 @@ func (g *ui) trayMenu() {
 func (g *ui) quit() {
 	g.flushProfileName()
 	g.flushEdits()
+	releaseAllHeldShortcuts()
 	if editBgBrush != 0 {
 		deleteObject.Call(editBgBrush)
 	}
@@ -2082,6 +2231,16 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		}
 		g.redraw()
 		return 0
+	case WM_SHORTCUT_TOGGLE:
+        for {
+            select{
+            case notice:=<-shortcutToggleEvents:
+                g.showShortcutToggleNotice(notice)
+            default:
+                g.redraw()
+                return 0
+            }
+        }
 	case WM_DEVICE_NOTICE:
 		for {
 			select {
@@ -2226,6 +2385,16 @@ func main() {
 	profile, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_CHILD|WS_BORDER|ES_AUTOHSCROLL, 0, 0, 50, 30, hwnd, uintptr(1204), ins, 0)
 	g.profileNameEdit = profile
 	sendMessage.Call(g.profileNameEdit, EM_SETLIMITTEXT, 40, 0)
+    to,_,_:=createWindow.Call(0,ptr("EDIT"),ptr(""),WS_CHILD|WS_BORDER|ES_AUTOHSCROLL,
+        0,0,50,30,hwnd,uintptr(1210),ins,0)
+    subject,_,_:=createWindow.Call(0,ptr("EDIT"),ptr(""),WS_CHILD|WS_BORDER|ES_AUTOHSCROLL,
+        0,0,50,30,hwnd,uintptr(1211),ins,0)
+    body,_,_:=createWindow.Call(0,ptr("EDIT"),ptr(""),WS_CHILD|WS_BORDER|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_WANTRETURN,
+        0,0,50,60,hwnd,uintptr(1212),ins,0)
+    g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit=to,subject,body
+    sendMessage.Call(to,EM_SETLIMITTEXT,320,0)
+    sendMessage.Call(subject,EM_SETLIMITTEXT,700,0)
+    sendMessage.Call(body,EM_SETLIMITTEXT,3000,0)
 	editFont, _, _ := createFont.Call(uintptr(^uint32(17)), 0, 0, 0, uintptr(500), 0, 0, 0, 1, 0, 0, 0, 0, ptr(preferredFace))
 	g.fonts[17*1000+500] = editFont
 	sendMessage.Call(g.labelEdit, WM_SETFONT, editFont, 1)
@@ -2233,6 +2402,7 @@ func main() {
 	sendMessage.Call(g.textValueEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.appSearchEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.profileNameEdit, WM_SETFONT, editFont, 1)
+    for _,field:=range []uintptr{g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit}{sendMessage.Call(field,WM_SETFONT,editFont,1)}
 	g.edits()
 	g.tray(true)
 	if background {

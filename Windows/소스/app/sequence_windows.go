@@ -11,6 +11,11 @@ import (
 // The serial action worker already enforces ordered key execution. We prohibit
 // nested sequences and cap delays to avoid unbounded loops or queue starvation.
 func runActionForDevice(k Key, c Config, model int, side string, self int) error {
+    if k.Type=="shortcut" && k.Toggle {
+        m:=c.Models[modelKeyFor(model,side)]
+        _,err:=toggleShortcut(k.Value,k.Label,modelKeyFor(model,side),side,m.Active,self)
+        return err
+    }
     if k.Type!="sequence" { return runAction(k) }
     steps,err:=parseChain(k.Value,model,self)
     if err!=nil{return err}

@@ -9,6 +9,20 @@ import java.util.Locale;
  */
 public final class AndroidEditShortcut {
     public enum Action { COPY, PASTE, CUT, SELECT_ALL }
+    public static final String[] PICKER_VALUES = {"CTRL+C","CTRL+V","CTRL+X","CTRL+A"};
+    public static final String[] PICKER_LABELS = {
+        "복사   ·   Ctrl+C", "붙여넣기   ·   Ctrl+V",
+        "잘라내기   ·   Ctrl+X", "전체 선택   ·   Ctrl+A"
+    };
+
+    public static int pickerIndex(String existing) {
+        Action action=parse(existing);
+        if(action==null)return -1;
+        for(int i=0;i<PICKER_VALUES.length;i++){
+            if(parse(PICKER_VALUES[i])==action)return i;
+        }
+        return -1;
+    }
     private AndroidEditShortcut() {}
 
     public static Action parse(String raw) {

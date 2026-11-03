@@ -13,6 +13,28 @@ public final class AndroidParitySelfTest {
             check(AndroidEditShortcut.parse(unsupported) == null, "unsafe shortcut accepted: "+unsupported);
         }
         check(AndroidEditShortcut.parse(null) == null, "null shortcut accepted");
+        check(AndroidEditShortcut.PICKER_VALUES.length==4,"only four supported Android shortcuts");
+        check(AndroidEditShortcut.PICKER_LABELS.length==AndroidEditShortcut.PICKER_VALUES.length,
+            "wheel labels and actions differ");
+        for(int i=0;i<AndroidEditShortcut.PICKER_VALUES.length;i++)
+            check(AndroidEditShortcut.pickerIndex(AndroidEditShortcut.PICKER_VALUES[i])==i,
+                "wheel index round-trip "+i);
+        check(AndroidEditShortcut.pickerIndex("CTRL+S")==-1,"unsupported shortcut should stay unselected");
+        check(UsbAutoConnectPolicy.shouldAttempt(true,false,false,false,-1,1000),
+            "initial USB auto connect");
+        check(!UsbAutoConnectPolicy.shouldAttempt(false,false,false,false,-1,1000),
+            "disabled auto connect must be respected");
+        check(!UsbAutoConnectPolicy.shouldAttempt(true,true,false,false,-1,1000),
+            "never prompt twice");
+        check(!UsbAutoConnectPolicy.shouldAttempt(true,false,true,false,-1,1000),
+            "already connected");
+        check(!UsbAutoConnectPolicy.shouldAttempt(true,false,false,true,-1,1000),
+            "user rejected permission");
+        check(!UsbAutoConnectPolicy.shouldAttempt(true,false,false,false,1000,5000),
+            "USB handshake retry is too early");
+        check(UsbAutoConnectPolicy.shouldAttempt(true,false,false,false,1000,
+            1000+UsbAutoConnectPolicy.RETRY_AFTER_MILLIS),"USB retry after timeout");
+
         for (int count : new int[]{12,15}) {
             ProfileSnapshot.Key[] source = new ProfileSnapshot.Key[count];
             for (int i=0;i<count;i++) {

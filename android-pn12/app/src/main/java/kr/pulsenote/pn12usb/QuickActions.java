@@ -35,17 +35,52 @@ public final class QuickActions {
             default:throw new IllegalArgumentException("검색 엔진은 google, naver, youtube만 지원합니다");
         }
     }
+    public static String searchEngine(String raw){
+        if(raw!=null&&raw.contains("|")){
+            String id=raw.substring(0,raw.indexOf('|')).trim().toLowerCase(java.util.Locale.ROOT);
+            if(id.equals("google")||id.equals("naver")||id.equals("youtube"))return id;
+        }
+        return "google";
+    }
+    public static String searchTerm(String raw){
+        if(raw==null)return "";
+        int sep=raw.indexOf('|');
+        if(sep>=0&&raw.substring(0,sep).trim().equalsIgnoreCase(searchEngine(raw)))
+            return raw.substring(sep+1);
+        return raw;
+    }
+    public static String encodeSearch(String engine,String term){
+        return engine+"|"+(term==null?"":term);
+    }
+
     public static final class EmailDraft {
         public final String to,subject,body;
         EmailDraft(String a,String s,String b){to=a;subject=s;body=b;}
     }
+    // Internal form storage protects pipes, newlines and emoji; old
+    // "to|subject|body" values in existing profiles are still supported.
+    public static String encodeEmail(String to,String subject,String body){
+        return "mail2:"+java.net.URLEncoder.encode(to==null?"":to,StandardCharsets.UTF_8)
+            +"|"+java.net.URLEncoder.encode(subject==null?"":subject,StandardCharsets.UTF_8)
+            +"|"+java.net.URLEncoder.encode(body==null?"":body,StandardCharsets.UTF_8);
+    }
     public static EmailDraft email(String raw){
-        String[] data=(raw==null?"":raw).split("\\|",3);
+        String[] data;
+        if(raw!=null&&raw.startsWith("mail2:")){
+            data=raw.substring(6).split("\\|",-1);
+            if(data.length!=3)throw new IllegalArgumentException("이메일 데이터가 손상됐습니다");
+            try{
+                for(int i=0;i<data.length;i++)data[i]=java.net.URLDecoder.decode(
+                    data[i],StandardCharsets.UTF_8);
+            }catch(IllegalArgumentException error){
+                throw new IllegalArgumentException("이메일 데이터 디코딩 실패",error);
+            }
+        }else data=(raw==null?"":raw).split("\\|",3);
         String recipient=data.length>0?data[0].trim():"";
         String subject=data.length>1?data[1]:"";
         String body=data.length>2?data[2]:"";
         if(raw==null||raw.trim().isEmpty())throw new IllegalArgumentException("받는 사람|제목|본문을 입력하세요");
-        if(raw.length()>3000)throw new IllegalArgumentException("이메일 초안이 너무 깁니다");
+        if(raw.length()>4096)throw new IllegalArgumentException("이메일 초안이 너무 깁니다");
         // Prevent URI/header injection through the recipient address.
         if(recipient.contains("\n")||recipient.contains("\r")||recipient.contains("?")||
            recipient.contains("#")||recipient.contains("&")||recipient.contains(" "))

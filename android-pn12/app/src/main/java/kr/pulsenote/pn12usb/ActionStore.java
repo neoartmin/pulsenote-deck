@@ -9,9 +9,9 @@ public final class ActionStore {
     // Keep v1.0.1 numeric types 0..8 and its default-profile preference keys.
     public static final String[] NAMES = {
        "기능 없음", "볼륨 +", "볼륨 -", "음소거", "재생 / 정지",
-       "다음 곡", "이전 곡", "웹사이트", "프로그램", "단축키", "폴더"
+       "다음 곡", "이전 곡", "웹사이트", "프로그램", "단축키", "폴더", "텍스트 입력"
     };
-    public static final String[] SYMBOLS = {"＋","◖","◗","×","▶","⏭","⏮","◎","▦","⌨","▣"};
+    public static final String[] SYMBOLS = {"＋","◖","◗","×","▶","⏭","⏮","◎","▦","⌨","▣","✎"};
     public static final int[] COLORS = {0xffa8c9e9,0xffdf9fa9,0xffe2e9f5,0xffc4aedc,0xffedbb95,0xffa8d4bf,0xffe4d99e};
     private static final int[] DEFAULT_TYPES = {7,7,4,7,7,0,9,9,0,6,5,10};
     private static final int[] DEFAULT_COLORS = {1,1,2,2,2,1,2,2,1,2,2,1};

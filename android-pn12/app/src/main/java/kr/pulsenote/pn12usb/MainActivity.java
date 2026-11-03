@@ -169,7 +169,7 @@ public final class MainActivity extends Activity {
                     .setMessage("PN12/PN15 USB, 알림, 화면 위 표시, 선택형 편집 단축키의 접근성 권한을 한 곳에서 설정할 수 있습니다. 항목별 Android 시스템 승인 화면에서 직접 결정합니다.\n\n스크린샷은 Android 정책상 캡처할 때마다 별도로 화면 공유 승인을 받아야 합니다.")
                     .setNegativeButton("나중에",(d,w)->{firstPermissionSetupPending=false;maybeAutoConnect();})
                     .setPositiveButton("필요한 권한 설정",(d,w)->startPermissionWizard())
-                    .show();
+                    .setCancelable(false).show();
             },900);
         }
     }
@@ -811,7 +811,7 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
                 .setPositiveButton("Android 승인 창 열기",(d,w)->
                     requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST))
-                .show();
+                .setCancelable(false).show();
             return;
         }
         if(stage==1){
@@ -824,7 +824,7 @@ public final class MainActivity extends Activity {
                         startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                 Uri.parse("package:"+getPackageName())),ONBOARD_OVERLAY);
                     }catch(Exception e){nextPermissionWizard();}
-                }).show();
+                }).setCancelable(false).show();
             return;
         }
         if(stage==2){
@@ -835,7 +835,7 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("접근성 설정 열기",(d,w)->{
                     try{startActivityForResult(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),ONBOARD_ACCESSIBILITY);}
                     catch(Exception e){nextPermissionWizard();}
-                }).show();
+                }).setCancelable(false).show();
             return;
         }
         permissionWizardStage=-1;

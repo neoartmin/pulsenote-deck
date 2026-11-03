@@ -218,6 +218,7 @@ type click struct {
 type ui struct {
 	hwnd                                                 uintptr
 	labelEdit, valueEdit, textValueEdit, appSearchEdit, profileNameEdit uintptr
+	emailToEdit, emailSubjectEdit, emailBodyEdit uintptr
 	editing                                              bool
 	selected                                             int
 	actionPage                                           int
@@ -252,6 +253,10 @@ type ui struct {
 	mutex                                                uintptr
 	editsVisible                                         bool
 	singleValueShown, textValueShown                     bool
+	emailFieldsVisible bool
+	emailModel int
+	emailSide string
+	emailProfile, emailKey int
 	labelRect, valueRect, textValueRect                  rect
 	editsPlaced                                          bool
 	pendingEdits                                         bool
@@ -810,6 +815,8 @@ func (g *ui) paint() {
 		g.drawProfiles(d, count, m)
 	} else if g.page == 2 {
 		g.drawSettings(d, c, count)
+	} else if g.page == 4 {
+		g.drawEmailEditor(d)
 	} else {
 		g.drawAppPicker(d)
 	}
@@ -960,7 +967,7 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "compose_email", "qr_code", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
@@ -1001,9 +1008,9 @@ func valueFieldTitle(t string) string {
 	case "system_settings":
 		return "설정 종류 (오른쪽 설정 선택)"
 	case "web_search":
-		return "검색 엔진|검색어 (예: google|전기회로)"
+		return "검색어"
 	case "compose_email":
-		return "받는 사람|제목|본문 (메일 자동 전송 안 함)"
+		return "이메일 초안 (받는 사람·제목·본문)"
 	case "qr_code":
 		return "QR로 만들 내용 (900바이트 이내)"
 	case "sequence":
@@ -1031,13 +1038,13 @@ func valueCue(t string) string {
 	case "system_settings":
 		return "설정 선택 버튼으로 Wi-Fi·블루투스 등 지정"
 	case "web_search":
-		return "google|검색어, naver|검색어, youtube|검색어"
+		return "검색어만 입력하세요"
 	case "compose_email":
-		return "받는사람|제목|본문 (메일 앱 작성 화면)"
+		return "아래 이메일 설정에서 항목별로 입력"
 	case "qr_code":
 		return "UTF-8 900바이트 이내 · 오프라인 PNG 생성"
 	case "sequence":
-		return "2,wait:250,4 (최대 8단계, 대기 0~1000ms)"
+		return "이전 버전에서 저장된 고급 기능입니다"
 	case "window_control":
 		return "오른쪽 창 동작 선택 메뉴에서 지정"
 	default:

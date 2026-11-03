@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Fail the build if Android's packaged action art diverges from Windows.
 
-The 11 PNG files are shared by content hash, not a re-illustrated Android
-approximation. Text macro art is drawn as matching native geometry on Android.
+The 12 PNG files, including capture, must match byte-for-byte across platforms.
 """
 from pathlib import Path
 
@@ -12,7 +11,7 @@ ANDROID = ROOT / "android-pn12" / "app" / "src" / "main" / "assets" / "action_ic
 ICONS = (
     "none", "volume_up", "volume_down", "volume_mute",
     "media_play", "media_next", "media_prev", "website",
-    "program", "shortcut", "folder",
+    "program", "shortcut", "folder", "capture",
 )
 
 def main() -> int:
@@ -29,19 +28,11 @@ def main() -> int:
             failed.append(f"{name}: not a PNG")
         elif expected != actual:
             failed.append(f"{name}: different bytes")
-    # Capture icon has a shared vector master and is rendered natively at
-    # the actual UI size to keep sharp screenshot corners on both platforms.
-    pc_vector=SOURCE / "capture.svg"
-    android_vector=ANDROID / "capture.svg"
-    if not pc_vector.is_file() or not android_vector.is_file():
-        failed.append("capture: matching vector source missing")
-    elif pc_vector.read_bytes()!=android_vector.read_bytes():
-        failed.append("capture: cross-platform vector artwork differs")
     for fail in failed:
         print(f"ERROR: {fail}")
     if failed:
         return 1
-    print(f"OK: {len(ICONS)} PNG icons and capture.svg match across PC and Android")
+    print(f"OK: {len(ICONS)} shared PNG icons match across PC and Android")
     return 0
 
 if __name__ == "__main__":

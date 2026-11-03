@@ -565,8 +565,8 @@ public final class MainActivity extends Activity {
         add(rightHost,preview,-1,64);space(rightHost,13);
         add(rightHost,txt("기능",13,WHITE,true),-1,27);
         int[] types=BuildConfig.HAS_ACCESSIBILITY ?
-            new int[]{11,9,8,7,10,1,2,3,4,5,6,0} :
-            new int[]{11,8,7,10,1,2,3,4,5,6,0};
+            new int[]{11,12,13,14,15,9,8,7,10,1,2,3,4,5,6,0} :
+            new int[]{11,12,13,14,15,8,7,10,1,2,3,4,5,6,0};
         int cols=rightWidthDp<395?2:3;
         for(int r=0;r<(types.length+cols-1)/cols;r++){
             LinearLayout line=horizontal();
@@ -594,6 +594,8 @@ public final class MainActivity extends Activity {
         }));
         String hint=null;
         if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
+        else if(kind==12)hint="복사할 문구 · 직접 붙여넣기 (최대 4096자)";
+        else if(kind==13)hint="열려는 시스템 설정을 스크롤로 선택";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
@@ -605,9 +607,23 @@ public final class MainActivity extends Activity {
                     (store.value(k).isEmpty()?"선택 안 됨":"미지원: "+store.value(k));
                 add(rightHost,click("스크롤해서 단축키 선택  ·  "+displayed,
                     ()->showShortcutWheel(k)), -1,49);
+            }else if(kind==13){
+                add(rightHost,click("설정 종류 · "+PermissionFreeActions.settingsLabel(store.value(k)),
+                    ()->showSettingsWheel(k)), -1,49);
             }else{
                 EditText value=edit(store.value(k),hint);
-                add(rightHost,value,-1,39);
+                if(kind==12){
+                    value.setSingleLine(false);
+                    value.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
+                        android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+                    value.setMinLines(3);
+                    value.setMaxLines(7);
+                    value.setGravity(Gravity.TOP|Gravity.START);
+                    value.setFilters(new android.text.InputFilter[]{
+                        new android.text.InputFilter.LengthFilter(PermissionFreeActions.MAX_CLIPBOARD_CHARS)
+                    });
+                }
+                add(rightHost,value,-1,kind==12?115:39);
                 value.addTextChangedListener(watcher(v->store.setValue(k,v)));
             }
             if(kind==8){
@@ -623,6 +639,13 @@ public final class MainActivity extends Activity {
         if(kind==11){
             add(rightHost,txt("첫 캡처에서 Android 화면 공유를 한 번 승인하면, 캡처 대기 모드가 유지되는 동안 PN12/PN15 키를 누를 때마다 승인 없이 PNG가 저장됩니다. 알림에서 언제든 세션을 종료할 수 있습니다.",11,MUTED,false),-1,90);
             add(rightHost,click("화면 캡처 테스트",()->requestScreenCapture()),-1,43);
+        }
+        if(kind==12){
+            add(rightHost,txt("버튼을 누르면 입력한 문구가 시스템 클립보드에 복사됩니다. 다른 앱에서 직접 붙여넣어야 하며 자동 입력이나 접근성 권한은 사용하지 않습니다. 비밀번호와 민감한 문구는 저장하지 마세요.",11,MUTED,false),-1,107);
+        }else if(kind==13){
+            add(rightHost,txt("Wi-Fi·블루투스·화면·소리·절전·전체 설정 화면만 엽니다. 기기 설정을 임의로 바꾸지 않으며 추가 권한이 없습니다. 백그라운드에서는 Android 제한에 따라 알림을 탭해야 할 수 있습니다.",11,MUTED,false),-1,103);
+        }else if(kind==14||kind==15){
+            add(rightHost,txt("Android 시계 앱의 "+(kind==14?"타이머":"알람")+" 화면을 엽니다. 타이머·알람은 사용자가 시계 앱에서 직접 설정합니다. 별도 권한 없이 동작하며 설치된 시계 앱에 따라 지원 여부가 다릅니다.",11,MUTED,false),-1,98);
         }
         space(rightHost,9);
         add(rightHost,txt("키캡 색상",12,WHITE,true),-1,27);
@@ -660,6 +683,28 @@ public final class MainActivity extends Activity {
             .setNegativeButton("취소",null)
             .setPositiveButton("적용",(dialog,which)->{
                 store.setValue(key,EditShortcutBridge.PICKER_VALUES[picker.getValue()]);
+                renderRight();
+            }).show();
+    }
+
+    private void showSettingsWheel(int key){
+        NumberPicker picker=new NumberPicker(this);
+        picker.setMinValue(0);
+        picker.setMaxValue(PermissionFreeActions.SETTINGS_VALUES.length-1);
+        picker.setDisplayedValues(PermissionFreeActions.SETTINGS_LABELS.clone());
+        picker.setWrapSelectorWheel(true);
+        picker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
+        picker.setValue(PermissionFreeActions.settingsIndex(store.value(key)));
+        LinearLayout wrapper=vertical();
+        pad(wrapper,24,12);
+        add(wrapper,picker,-1,190);
+        new AlertDialog.Builder(this)
+            .setTitle("시스템 설정 바로가기 선택")
+            .setMessage("버튼으로 설정 화면만 엽니다. Wi-Fi나 블루투스를 임의로 켜거나 끄지 않습니다.")
+            .setView(wrapper)
+            .setNegativeButton("취소",null)
+            .setPositiveButton("적용",(dialog,which)->{
+                store.setValue(key,PermissionFreeActions.SETTINGS_VALUES[picker.getValue()]);
                 renderRight();
             }).show();
     }

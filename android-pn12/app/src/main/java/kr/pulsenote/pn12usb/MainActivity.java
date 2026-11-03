@@ -356,7 +356,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.2.2 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.3.5 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){

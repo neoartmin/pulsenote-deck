@@ -45,6 +45,7 @@ public final class MainActivity extends Activity {
     private String pendingUsbDevice=null;
     private boolean permissionPromptActive=false;
     private boolean showingConnectionHome=false;
+    private boolean autoReconnectPaused=false;
     private long permissionPromptStarted=-1;
     private final Set<String> rejectedUsb=new HashSet<>();
     private final Map<String,Long> recentUsbStart=new HashMap<>();
@@ -114,12 +115,14 @@ public final class MainActivity extends Activity {
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
                  if(statusFooter!=null)statusFooter.setText("KEY: "+number+" · "+result);
               }else if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)){
+                  autoReconnectPaused=false;
                   showControllerHome();
                   scan();
                   UsbDevice newlyAttached=usbFromIntent(intent);
                   if(newlyAttached!=null)maybeAutoConnect(newlyAttached);
                   else maybeAutoConnect();
               }else if(UsbManager.ACTION_USB_DEVICE_DETACHED.equals(a)){
+                  autoReconnectPaused=false;
                   UsbDevice removed=usbFromIntent(intent);
                   if(removed!=null){
                       rejectedUsb.remove(removed.getDeviceName());
@@ -704,7 +707,7 @@ public final class MainActivity extends Activity {
         add(card,click(autoEnabled()?"●  USB 자동 연결: 켜짐":"○  USB 자동 연결: 꺼짐",()->{
             boolean next=!autoEnabled();
             getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("auto_connect",next).apply();
-            if(next)rejectedUsb.clear();
+            if(next){autoReconnectPaused=false;rejectedUsb.clear();}
             renderPage();
             if(next)maybeAutoConnect();
         }),Math.min(300,contentWidthDp-44),43);
@@ -724,7 +727,10 @@ public final class MainActivity extends Activity {
         add(row,click("■  연결 종료",()->{
             // An explicit user disconnect must not be immediately reversed
             // by a later Activity.onResume callback.
-            getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("auto_connect",false).apply();
+            // Disconnect is for this session only. The previous implementation
+            // permanently disabled auto-connect, so the next launch required
+            // pressing Connect. Keep the user's auto-connect preference intact.
+            autoReconnectPaused=true;
             startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.STOP));
             renderPage();
         }),contentWidthDp<680?-1:170,48);
@@ -891,7 +897,7 @@ public final class MainActivity extends Activity {
         return intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
     }
     private void maybeAutoConnect(){
-        if(!autoEnabled()||usb==null||permissionPromptActive)return;
+        if(!autoEnabled()||autoReconnectPaused||usb==null||permissionPromptActive)return;
         Map<String,UsbDevice> attached=usb.getDeviceList();
         rejectedUsb.retainAll(attached.keySet());
         recentUsbStart.keySet().retainAll(attached.keySet());
@@ -905,7 +911,7 @@ public final class MainActivity extends Activity {
     private boolean autoConnectAllowed(UsbDevice device){
         String name=device.getDeviceName();
         Long last=recentUsbStart.get(name);
-        return UsbAutoConnectPolicy.shouldAttempt(autoEnabled(),permissionPromptActive,
+        return UsbAutoConnectPolicy.shouldAttempt(autoEnabled()&&!autoReconnectPaused,permissionPromptActive,
             Pn12UsbService.isConnected(name),rejectedUsb.contains(name),
             last==null?-1:last,SystemClock.elapsedRealtime());
     }
@@ -919,6 +925,7 @@ public final class MainActivity extends Activity {
         if(device==null){updateStatus("USB CDC 장치 없음");return;}
         // An explicit press is a user request to retry a previously denied
         // permission or failed handshake; do not wait for the automatic backoff.
+        autoReconnectPaused=false;
         rejectedUsb.remove(device.getDeviceName());
         recentUsbStart.remove(device.getDeviceName());
         requestOrStart(device);
@@ -974,6 +981,7 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())){
+            autoReconnectPaused=false;
             showControllerHome();
             scan();
             UsbDevice device=usbFromIntent(intent);
@@ -1005,7 +1013,7 @@ public final class MainActivity extends Activity {
             try{startService(new Intent(this,Pn12UsbService.class).setAction(Pn12UsbService.REFRESH));}
             catch(RuntimeException ignored){}
         }
-        if(autoEnabled()&&!permissionPromptActive)maybeAutoConnect();
+        if(autoEnabled()&&!autoReconnectPaused&&!permissionPromptActive)maybeAutoConnect();
     }
     @Override protected void onPause(){
         visible=false;

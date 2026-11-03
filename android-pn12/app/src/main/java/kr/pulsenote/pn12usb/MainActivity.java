@@ -166,7 +166,9 @@ public final class MainActivity extends Activity {
             new Handler(Looper.getMainLooper()).postDelayed(()->{
                 if(isFinishing()||isDestroyed())return;
                 new AlertDialog.Builder(this).setTitle("PulseNote 첫 실행 · 권한 설정")
-                    .setMessage("PN12/PN15 USB, 알림, 화면 위 표시, 선택형 편집 단축키의 접근성 권한을 한 곳에서 설정할 수 있습니다. 항목별 Android 시스템 승인 화면에서 직접 결정합니다.\n\n스크린샷은 Android 정책상 캡처할 때마다 별도로 화면 공유 승인을 받아야 합니다.")
+                    .setMessage(BuildConfig.HAS_ACCESSIBILITY ?
+                        "확장 설치판: USB·알림·화면 위 표시·편집 단축키 접근성 권한을 순서대로 설정합니다. 화면 캡처는 사용할 때마다 별도 승인이 필요합니다." :
+                        "기본 설치판: USB·알림 권한을 설정합니다. 민감한 접근성 및 화면 위 표시 권한을 요청하지 않습니다. 화면 캡처는 실행할 때마다 Android 시스템 동의가 필요합니다.")
                     .setNegativeButton("나중에",(d,w)->{firstPermissionSetupPending=false;maybeAutoConnect();})
                     .setPositiveButton("필요한 권한 설정",(d,w)->startPermissionWizard())
                     .setCancelable(false).show();
@@ -815,7 +817,9 @@ public final class MainActivity extends Activity {
             return;
         }
         if(stage==1){
-            if(Settings.canDrawOverlays(this)){nextPermissionWizard();return;}
+            if(!BuildConfig.HAS_OVERLAY || Settings.canDrawOverlays(this)){
+                nextPermissionWizard();return;
+            }
             new AlertDialog.Builder(this).setTitle("2/3 · 다른 앱 위에 표시")
                 .setMessage("화면 위 표시를 허용하면 USB 연결 중 상태 표시와 일부 백그라운드 앱 실행에 사용할 수 있습니다. 선택 사항이며 언제든 설정에서 해제할 수 있습니다.")
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
@@ -828,7 +832,9 @@ public final class MainActivity extends Activity {
             return;
         }
         if(stage==2){
-            if(TextMacroAccessibilityService.enabled()){nextPermissionWizard();return;}
+            if(!BuildConfig.HAS_ACCESSIBILITY || TextMacroAccessibilityService.enabled()){
+                nextPermissionWizard();return;
+            }
             new AlertDialog.Builder(this).setTitle("3/3 · 편집 단축키 (선택 사항)")
                 .setMessage("복사·붙여넣기·잘라내기·전체 선택 버튼에만 접근성 서비스가 필요합니다. 서비스는 선택된 입력창의 텍스트를 읽고 변경할 수 있으므로 신뢰하는 앱에만 허용하세요. 스크린샷 기능에는 접근성 권한이 필요하지 않습니다.\n\n외부 APK는 Android의 '제한된 설정'으로 활성화가 막힐 수 있으며, 이 제한을 앱이 자동으로 해제할 수 없습니다.")
                 .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
@@ -847,7 +853,10 @@ public final class MainActivity extends Activity {
             "\n\nUSB 장치가 감지됐습니다. 장치 접근 권한은 Android 시스템 창에서 추가 승인해야 합니다.":
             "\n\nUSB 장치가 연결되지 않았다면 케이블을 연결한 뒤 나오는 시스템 권한 창을 승인하세요.";
         new AlertDialog.Builder(this).setTitle("권한 설정 안내 완료")
-            .setMessage("알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다.\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요하며 이 과정에서 미리 허용해 둘 수 없습니다."+usbText)
+            .setMessage((BuildConfig.HAS_ACCESSIBILITY ?
+                "알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다." :
+                "기본 설치판은 접근성·화면 위 표시 권한을 요청하지 않습니다.")+
+                "\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요합니다."+usbText)
             .setNegativeButton("완료",(d,w)->{
                 firstPermissionSetupPending=false;
                 maybeAutoConnect();

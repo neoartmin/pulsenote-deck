@@ -14,6 +14,12 @@ func normalizeEditorNewlines(raw string) string {
     return strings.ReplaceAll(strings.ReplaceAll(raw, "\r\n", "\n"), "\r", "\n")
 }
 
+// Win32 multiline EDIT controls render CRLF as actual line breaks.
+// The persisted configuration still uses LF, independent of Windows.
+func windowsEditorNewlines(raw string) string {
+    return strings.ReplaceAll(normalizeEditorNewlines(raw), "\n", "\r\n")
+}
+
 // expandTextMacro accepts real line breaks from the multiline editor and
 // continues to decode legacy escaped \\n / \\t / \\\\ macros.
 // Unknown backslash sequences remain unchanged (e.g. Windows paths).

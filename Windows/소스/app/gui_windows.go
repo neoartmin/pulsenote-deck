@@ -1172,7 +1172,7 @@ func (g *ui) edits() {
 	g.editing = true
 	setWindowText.Call(g.labelEdit, ptr(key.Label))
 	setWindowText.Call(g.valueEdit, ptr(key.Value))
-	setWindowText.Call(g.textValueEdit, ptr(key.Value))
+	setWindowText.Call(g.textValueEdit, ptr(windowsEditorNewlines(key.Value)))
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
 	if needsValue(key.Type) {

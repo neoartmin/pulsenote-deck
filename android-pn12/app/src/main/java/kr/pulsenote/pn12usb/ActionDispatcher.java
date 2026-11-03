@@ -34,7 +34,7 @@ public final class ActionDispatcher {
             return ActionStore.NAMES[kind];
         }
         if(kind==9)return TextMacroAccessibilityService.shortcut(s.value(key));
-        if(kind==11)return TextMacroAccessibilityService.insert(s.value(key));
+        if(kind==11)return ScreenshotCapture.request(context);
         String value=s.value(key).trim();
         Intent target=null;
         if(kind==7) {

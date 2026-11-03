@@ -56,7 +56,7 @@ func initRoundedArtwork() {
 		return
 	}
 	roundedIcons = map[string]roundedAsset{}
-	for _, name := range []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev"} {
+	for _, name := range []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture"} {
 		b, err := artwork.ReadFile("assets/" + name + ".png")
 		if err != nil {
 			continue
@@ -126,10 +126,6 @@ func (d *drawCtx) drawTextMacroArtwork(x, y, size int) {
 // The icon renderer targets the existing double-buffered HDC and reuses one
 // GDI+ Graphics per paint, avoiding per-key font rasterization and upscaling.
 func (d *drawCtx) actionArtwork(name string, x, y, size int) bool {
-    if name == "capture" {
-        d.drawCaptureArtwork(x, y, size)
-        return true
-    }
     if name == "text" {
         d.drawTextMacroArtwork(x, y, size)
         return true

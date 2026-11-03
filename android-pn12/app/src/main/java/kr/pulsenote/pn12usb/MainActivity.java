@@ -562,11 +562,18 @@ public final class MainActivity extends Activity {
         add(preview,createSymbol(kind,44,k),44,44);space(preview,11);
         LinearLayout text=vertical();add(text,txt(store.name(k),14,WHITE,true),-1,23);
         add(text,txt(ActionStore.NAMES[kind],10,MUTED,false),-1,19);add(preview,text,-1,-1);
-        add(rightHost,preview,-1,64);space(rightHost,13);
+        add(rightHost,preview,-1,64);space(rightHost,9);
+        add(rightHost,txt(ActionHelp.summary(kind),11,MUTED,false),-1,55);
+        add(rightHost,click("ⓘ  기능 설명 · 사용 방법과 주의사항",
+            ()->new AlertDialog.Builder(this)
+                .setTitle(ActionStore.NAMES[store.kind(k)])
+                .setMessage(ActionHelp.summary(store.kind(k))+"\n\n"+ActionHelp.detail(store.kind(k)))
+                .setPositiveButton("확인",null).show()),-1,42);
+        space(rightHost,10);
         add(rightHost,txt("기능",13,WHITE,true),-1,27);
         int[] types=BuildConfig.HAS_ACCESSIBILITY ?
-            new int[]{11,16,17,18,19,20,12,13,14,15,9,8,7,10,1,2,3,4,5,6,0} :
-            new int[]{11,16,17,18,19,20,12,13,14,15,8,7,10,1,2,3,4,5,6,0};
+            new int[]{11,16,17,18,20,12,13,14,15,9,8,7,10,1,2,3,4,5,6,0} :
+            new int[]{11,16,17,18,20,12,13,14,15,8,7,10,1,2,3,4,5,6,0};
         int cols=rightWidthDp<395?2:3;
         for(int r=0;r<(types.length+cols-1)/cols;r++){
             LinearLayout line=horizontal();
@@ -578,7 +585,13 @@ public final class MainActivity extends Activity {
                 b.setGravity(Gravity.CENTER);b.setSingleLine(true);
                 b.setBackground(shape(type==kind?ACTIVE:0xff0e1d34,10,type==kind?BLUE:BORDER));
                 b.setOnClickListener(v->{
+                    String oldName=store.name(k);
+                    String previous=ActionStore.NAMES[store.kind(k)];
+                    String defaultKey=String.format(Locale.US,"버튼 %02d",k);
+                    boolean generated=oldName.replace(" ","").equals(previous.replace(" ",""))
+                        ||oldName.equals(defaultKey);
                     store.setKind(k,type);
+                    if(generated)store.setName(k,ActionStore.NAMES[type]);
                     renderKeys();renderRight();
                 });
                 LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,dp(39),1);pp.setMargins(dp(3),dp(3),dp(3),dp(3));
@@ -596,10 +609,10 @@ public final class MainActivity extends Activity {
         if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
         else if(kind==12)hint="복사할 문구 · 직접 붙여넣기 (최대 4096자)";
         else if(kind==13)hint="열려는 시스템 설정을 스크롤로 선택";
-        else if(kind==16)hint="검색 엔진|검색어 (google|, naver|, youtube|)";
-        else if(kind==17)hint="받는사람|제목|본문 (메일은 전송하지 않음)";
+        else if(kind==16)hint="검색어";
+        else if(kind==17)hint="받는 사람·제목·본문을 각각 입력하세요";
         else if(kind==18)hint="QR코드로 만들 내용 (UTF-8 900바이트 이하)";
-        else if(kind==19)hint="연속 실행 키 번호 (예: 2,wait:300,4)";
+        else if(kind==19)hint="이전 연속 동작 설정 (신규 등록 제외)";
         else if(kind==20)hint="공유할 텍스트 (1~1600자)";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
@@ -615,6 +628,45 @@ public final class MainActivity extends Activity {
             }else if(kind==13){
                 add(rightHost,click("설정 종류 · "+PermissionFreeActions.settingsLabel(store.value(k)),
                     ()->showSettingsWheel(k)), -1,49);
+            }else if(kind==16){
+                add(rightHost,click("검색 엔진 · "+searchEngineLabel(QuickActions.searchEngine(store.value(k))),
+                    ()->showSearchWheel(k)), -1,47);
+                space(rightHost,5);
+                add(rightHost,txt("검색어",11,WHITE,true),-1,27);
+                EditText keyword=edit(QuickActions.searchTerm(store.value(k)),"예: 전자기학 공식");
+                add(rightHost,keyword,-1,43);
+                keyword.addTextChangedListener(watcher(v->store.setValue(k,
+                    QuickActions.encodeSearch(QuickActions.searchEngine(store.value(k)),v))));
+            }else if(kind==17){
+                QuickActions.EmailDraft mail;
+                try{mail=store.value(k).isEmpty() ?
+                    new QuickActions.EmailDraft("","","") : QuickActions.email(store.value(k));}
+                catch(IllegalArgumentException ex){
+                    mail=new QuickActions.EmailDraft("","","");
+                    add(rightHost,txt("기존 이메일 데이터를 읽지 못했습니다: "+ex.getMessage(),11,MUTED,false),-1,52);
+                }
+                add(rightHost,txt("받는 사람",11,WHITE,true),-1,28);
+                EditText recipient=edit(mail.to,"example@example.com");
+                recipient.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
+                    android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+                add(rightHost,recipient,-1,43);space(rightHost,7);
+                add(rightHost,txt("메일 제목",11,WHITE,true),-1,28);
+                EditText subject=edit(mail.subject,"메일 제목 입력");
+                add(rightHost,subject,-1,43);space(rightHost,7);
+                add(rightHost,txt("메일 본문",11,WHITE,true),-1,28);
+                EditText body=edit(mail.body,"내용을 입력하세요 (여러 줄 지원)");
+                body.setSingleLine(false);
+                body.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
+                    android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+                body.setMinLines(4);body.setMaxLines(9);
+                body.setGravity(Gravity.TOP|Gravity.START);
+                add(rightHost,body,-1,145);
+                TextChanged saveMail=unused->store.setValue(k,
+                    QuickActions.encodeEmail(recipient.getText().toString(),
+                        subject.getText().toString(),body.getText().toString()));
+                recipient.addTextChangedListener(watcher(saveMail));
+                subject.addTextChangedListener(watcher(saveMail));
+                body.addTextChangedListener(watcher(saveMail));
             }else{
                 EditText value=edit(store.value(k),hint);
                 if(kind==12||kind==17||kind==19||kind==20){
@@ -655,9 +707,9 @@ public final class MainActivity extends Activity {
         }else if(kind==14||kind==15){
             add(rightHost,txt("Android 시계 앱의 "+(kind==14?"타이머":"알람")+" 화면을 엽니다. 타이머·알람은 사용자가 시계 앱에서 직접 설정합니다. 별도 권한 없이 동작하며 설치된 시계 앱에 따라 지원 여부가 다릅니다.",11,MUTED,false),-1,98);
         }else if(kind==16){
-            add(rightHost,txt("검색어를 URL 인코딩하여 지정한 엔진에서 검색합니다. google|저항 계산, naver|날씨, youtube|회로 강의 형식입니다.",11,MUTED,false),-1,76);
+            add(rightHost,txt("검색 엔진을 고르고 검색어만 입력하면 결과 페이지가 열립니다. 별도 구분 기호를 입력할 필요가 없습니다.",11,MUTED,false),-1,76);
         }else if(kind==17){
-            add(rightHost,txt("받는 사람|제목|본문을 입력하면 메일 앱의 작성 화면을 엽니다. 자동 전송하지 않습니다. 본문에 줄바꿈을 넣을 수 있습니다.",11,MUTED,false),-1,75);
+            add(rightHost,txt("위 입력칸의 수신자·제목·본문을 이메일 작성 화면에 채웁니다. 보내기 버튼은 사용자가 직접 눌러야 합니다.",11,MUTED,false),-1,75);
         }else if(kind==18){
             add(rightHost,txt("내용을 기기에서 오프라인 QR로 표시합니다. PNG 저장 버튼을 누르면 직접 위치를 선택할 수 있습니다. 별도 카메라·저장소 권한은 없습니다.",11,MUTED,false),-1,90);
         }else if(kind==19){
@@ -701,6 +753,35 @@ public final class MainActivity extends Activity {
             .setNegativeButton("취소",null)
             .setPositiveButton("적용",(dialog,which)->{
                 store.setValue(key,EditShortcutBridge.PICKER_VALUES[picker.getValue()]);
+                renderRight();
+            }).show();
+    }
+
+    private String searchEngineLabel(String id){
+        if("naver".equals(id))return "네이버";
+        if("youtube".equals(id))return "YouTube";
+        return "Google";
+    }
+    private void showSearchWheel(int key){
+        String[] values={"google","naver","youtube"};
+        String[] labels={"Google","네이버","YouTube"};
+        NumberPicker picker=new NumberPicker(this);
+        picker.setMinValue(0);picker.setMaxValue(2);
+        picker.setDisplayedValues(labels);
+        picker.setWrapSelectorWheel(true);
+        picker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
+        String current=QuickActions.searchEngine(store.value(key));
+        int selected="naver".equals(current)?1:"youtube".equals(current)?2:0;
+        picker.setValue(selected);
+        LinearLayout wrapper=vertical();pad(wrapper,24,12);
+        add(wrapper,picker,-1,190);
+        new AlertDialog.Builder(this)
+            .setTitle("검색 엔진 선택")
+            .setView(wrapper)
+            .setNegativeButton("취소",null)
+            .setPositiveButton("적용",(dialog,which)->{
+                String term=QuickActions.searchTerm(store.value(key));
+                store.setValue(key,QuickActions.encodeSearch(values[picker.getValue()],term));
                 renderRight();
             }).show();
     }

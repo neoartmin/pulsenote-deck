@@ -66,3 +66,20 @@ func TestAppIconHasNoDarkBackplateOrJaggedClip(t *testing.T) {
 		t.Error("double focus ring may have returned")
 	}
 }
+
+func TestCaptureUsesEmbeddedPNGInsteadOfPrimitiveDrawing(t *testing.T) {
+    src, err := os.ReadFile("icon_assets_windows.go")
+    if err != nil {
+        t.Fatal(err)
+    }
+    code := string(src)
+    if !strings.Contains(code, `"capture"`) {
+        t.Fatal("capture.png must be loaded with other embedded icons")
+    }
+    if strings.Contains(code, "drawCaptureArtwork") {
+        t.Fatal("primitive capture icon drawing reintroduced")
+    }
+    if _, err := os.Stat("capture_artwork_windows.go"); !os.IsNotExist(err) {
+        t.Fatalf("obsolete primitive capture drawer still exists: %v", err)
+    }
+}

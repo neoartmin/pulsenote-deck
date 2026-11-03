@@ -6,8 +6,8 @@ android {
         applicationId = "kr.pulsenote.pn12usb"
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.4.0"
+        versionCode = 27
+        versionName = "1.4.1
     }
     buildFeatures {
         buildConfig = true
@@ -32,3 +32,5 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+dependencies { implementation("com.google.zxing:core:3.5.4") }
+

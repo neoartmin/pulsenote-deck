@@ -103,9 +103,33 @@ func shutdownRoundedArtwork() {
 	}
 }
 
+// drawTextMacroArtwork renders a dedicated T + text-lines symbol. This is
+// deliberately different from the purple keyboard shortcut icon and uses
+// scalable native GDI shapes so it remains sharp on both the 15-key grid and
+// the right-side action picker, without requiring a downloaded font/image.
+func (d *drawCtx) drawTextMacroArtwork(x, y, size int) {
+    blue := RGB(35, 99, 235)
+    border := RGB(100, 157, 255)
+    white := RGB(255, 255, 255)
+    d.rounded(x, y, size, size, maxInt(5, size/5), blue, border)
+    d.textBold("T", x+size/10, y+size/8, size*47/100, size*76/100,
+        maxInt(13, size*57/100), white, true)
+    left := x+size*61/100
+    lineWidth := maxInt(5,size*25/100)
+    lineHeight := maxInt(2,size*7/100)
+    for i:=0;i<3;i++ {
+        lineY:=y+size*(31+17*i)/100
+        d.rounded(left,lineY,lineWidth,lineHeight,maxInt(1,lineHeight/2),white,white)
+    }
+}
+
 // The icon renderer targets the existing double-buffered HDC and reuses one
 // GDI+ Graphics per paint, avoiding per-key font rasterization and upscaling.
 func (d *drawCtx) actionArtwork(name string, x, y, size int) bool {
+    if name == "text" {
+        d.drawTextMacroArtwork(x, y, size)
+        return true
+    }
 	asset, ok := roundedIcons[name]
 	if !ok || asset.image == 0 {
 		return false

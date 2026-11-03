@@ -8,7 +8,20 @@ import (
 
 const maxTextMacroBytes = 4096
 
-// expandTextMacro decodes literal \\n / \\t / \\\\ typed in the one-line editor.
+// Win32 multiline EDIT controls return CRLF line endings. Save text macros
+// with canonical LF, regardless of whether a line was pasted or typed.
+func normalizeEditorNewlines(raw string) string {
+    return strings.ReplaceAll(strings.ReplaceAll(raw, "\r\n", "\n"), "\r", "\n")
+}
+
+// Win32 multiline EDIT controls render CRLF as actual line breaks.
+// The persisted configuration still uses LF, independent of Windows.
+func windowsEditorNewlines(raw string) string {
+    return strings.ReplaceAll(normalizeEditorNewlines(raw), "\n", "\r\n")
+}
+
+// expandTextMacro accepts real line breaks from the multiline editor and
+// continues to decode legacy escaped \\n / \\t / \\\\ macros.
 // Unknown backslash sequences remain unchanged (e.g. Windows paths).
 // No clipboard contents or environment expansion are used for text macros.
 func expandTextMacro(raw string) (string, error) {

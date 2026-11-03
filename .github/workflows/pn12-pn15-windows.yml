@@ -124,6 +124,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             git commit -m "Sync tracked Windows setup binary with canonical PN12/PN15 firmware"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            # Other platform commits may arrive while this Windows build runs.
+            # Rebase the tested binary-only commit before pushing; never force-push.
+            git fetch origin $env:GITHUB_REF_NAME
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git rebase "origin/$env:GITHUB_REF_NAME"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } else {

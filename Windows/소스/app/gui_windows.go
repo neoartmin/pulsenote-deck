@@ -1454,13 +1454,21 @@ func (g *ui) perform(hit click) {
 	case "actionpage":
 		if hit.id>=0 && hit.id < (len(types)+15)/16 {g.actionPage=hit.id}
 	case "action":
+        if hit.id<0||hit.id>=len(types){break}
 		t := types[hit.id]
 		err := update(func(c *Config) {
 			mutateKey(c, g.selected, func(k *Key) {
+                // Preserve user-customized labels while fixing stale default
+                // labels like "화면캡처" after changing to Email.
+                oldCaption:=strings.ReplaceAll(typeName(k.Type)," ","")
+                current:=strings.ReplaceAll(k.Label," ","")
+                auto:=current==oldCaption || strings.HasPrefix(k.Label,"버튼 ")
 				if k.Type != t {
 					k.Value = ""
+                    if auto{k.Label=typeName(t)}
 				}
 				k.Type = t
+                if t!="shortcut"{k.Toggle=false}
 			})
 		})
 		if err != nil {
@@ -1471,6 +1479,10 @@ func (g *ui) perform(hit click) {
 			g.pickApp()
 		}
 	case "page":
+        if g.page==4{
+            messageBox.Call(g.hwnd,ptr("이메일 설정을 먼저 저장하거나 취소하세요."),ptr("PulseNote · 이메일 작성"),0x30)
+            break
+        }
 		g.page = hit.id
 		if g.page == 1 {
 			g.profileEdits()
@@ -1561,6 +1573,74 @@ func (g *ui) perform(hit click) {
 			}))
 			g.edits()
 		}
+	case "actionhelp":
+        key,ok:=selectedKey(snap(),g.selected)
+        if !ok{break}
+        h:=guideForAction(key.Type)
+        messageBox.Call(g.hwnd,ptr(typeName(key.Type)+"\\n\\n"+h.summary+"\\n\\n"+h.detail),ptr("PulseNote · 기능 설명"),0x40)
+    case "shortcutToggle":
+        c:=snap()
+        k,ok:=selectedKey(c,g.selected)
+        if !ok||k.Type!="shortcut"{break}
+        if k.Value!=""{
+            if _,err:=parseShortcut(k.Value);err!=nil{
+                messageBox.Call(g.hwnd,ptr("키 조합을 먼저 올바르게 입력하세요.\\n"+err.Error()),ptr("PulseNote · 단축키 토글"),0x30)
+                break
+            }
+        }
+        g.showSaveError(update(func(c *Config){
+            mutateKey(c,g.selected,func(k *Key){if k.Type=="shortcut"{k.Toggle=!k.Toggle}})
+        }))
+        g.edits()
+    case "emailconfig":
+        c:=snap()
+        key,ok:=selectedKey(c,g.selected)
+        if !ok||key.Type!="compose_email"{break}
+        email:=emailDraft{}
+        if key.Value!=""{
+            var err error
+            email,err=parseEmailDraft(key.Value)
+            if err!=nil{
+                messageBox.Call(g.hwnd,ptr("저장된 이메일 값 해석 실패: "+err.Error()),ptr("PulseNote · 이메일 설정"),0x30)
+                break
+            }
+        }
+        model:=c.Models[modelKey(c)]
+        g.emailModel,g.emailSide,g.emailProfile,g.emailKey=c.Selected,c.SelectedSide,model.Active,g.selected
+        g.editing=true
+        setWindowText.Call(g.emailToEdit,ptr(email.to))
+        setWindowText.Call(g.emailSubjectEdit,ptr(email.subject))
+        setWindowText.Call(g.emailBodyEdit,ptr(windowsEditorNewlines(email.body)))
+        g.editing=false
+        g.page=4
+    case "emailsave":
+        if g.page!=4{break}
+        email:=emailDraft{
+            to:getText(g.emailToEdit),
+            subject:getText(g.emailSubjectEdit),
+            body:normalizeEditorNewlines(getText(g.emailBodyEdit)),
+        }
+        value:=encodeEmailDraft(email)
+        if _,err:=parseEmailDraft(value);err!=nil{
+            messageBox.Call(g.hwnd,ptr("입력한 이메일을 확인하세요.\\n"+err.Error()),ptr("PulseNote · 이메일 설정"),0x30)
+            break
+        }
+        err:=update(func(c *Config){
+            mkey:=modelKeyFor(g.emailModel,g.emailSide)
+            m,ok:=c.Models[mkey]
+            if !ok||g.emailProfile<0||g.emailProfile>=len(m.Profiles){return}
+            p:=&m.Profiles[g.emailProfile]
+            if g.emailKey<0||g.emailKey>=len(p.Keys){return}
+            if p.Keys[g.emailKey].Type=="compose_email"{
+                p.Keys[g.emailKey].Value=value
+                c.Models[mkey]=m
+            }
+        })
+        if err!=nil{g.showSaveError(err);break}
+        g.page=0
+        g.edits()
+    case "emailcancel":
+        if g.page==4{g.page=0;g.edits()}
 	case "test":
 		// Use the same sequential dispatcher as physical key events so that
 		// keyboard shortcuts cannot overlap with a USB-triggered shortcut.

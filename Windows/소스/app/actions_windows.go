@@ -57,6 +57,8 @@ func runAction(k Key) error {
 		return nil
 	case "shortcut":
 		return shortcut(k.Value)
+	case "text":
+		return sendTextMacro(k.Value)
 	case "program":
 		path := os.ExpandEnv(strings.TrimSpace(k.Value))
 		if path == "" {

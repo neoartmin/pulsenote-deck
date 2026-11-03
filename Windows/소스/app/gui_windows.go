@@ -1053,12 +1053,13 @@ func valueCue(t string) string {
 }
 func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.textBold(fmt.Sprintf("키 %02d 설정", g.selected+1), 929, 194, 365, 45, 24, theme("text"), false)
+	g.pill(d,1293,200,101,31,"기능 설명",false,"actionhelp",0)
 	if key.Type == "program" && key.Value != "" {
 		d.text("프로그램 로고 설정", 929, 237, 234, 25, 13, theme("muted"), false)
 		g.pill(d, 1167, 238, 122, 30, "투명 PNG", false, "iconpick", 0)
 		g.pill(d, 1297, 238, 101, 30, "원본 로고", false, "iconreset", 0)
 	} else {
-		d.text("기능·이름·색상을 원하는 대로 지정하세요.", 929, 235, 459, 24, 13, theme("muted"), false)
+		d.text(guideForAction(key.Type).summary, 929, 235, 458, 28, 12, theme("muted"), false)
 	}
 	d.rounded(928, 273, 470, 60, 12, theme("panel2"), theme("border"))
 	if key.Type == "program" && key.Value != "" && g.drawAppIcon(d, key.Value, 943, 279, 47) {
@@ -1100,6 +1101,28 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 		d.text(windowActionName(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
 	} else if key.Type == "web_search" {
 		g.pill(d, 1247, 669, 146, 31, "검색 엔진", false, "searchpick", 0)
+        d.text("선택한 엔진: "+searchEngine(key.Value), 932, 746, 430, 18, 11, theme("muted"), false)
+    } else if key.Type == "compose_email" {
+        g.pill(d,1247,669,146,31,"이메일 설정",false,"emailconfig",0)
+        mail,_:=parseEmailDraft(key.Value)
+        to:=mail.to
+        if to==""{to="(미입력)"}
+        d.text("받는 사람: "+to,932,707,459,20,12,theme("muted"),false)
+        title:=mail.subject
+        if title==""{title="(미입력)"}
+        d.text("제목: "+title,932,732,459,20,12,theme("muted"),false)
+    } else if key.Type == "shortcut" {
+        caption:="누름 유지: 끔"
+        if key.Toggle{caption="누름 유지: 켬"}
+        g.pill(d,1247,669,146,31,caption,key.Toggle,"shortcutToggle",0)
+        state:="일반 단축키 · 누르면 즉시 해제"
+        if key.Toggle{
+            state="토글 대기 · 다음 누름에 키 고정"
+            cfg:=snap()
+            m:=cfg.Models[modelKey(cfg)]
+            if isHeldShortcut(modelKey(cfg),m.Active,g.selected+1){state="토글 활성 · 지정 키가 눌린 상태"}
+        }
+        d.text(state,932,746,460,18,11,theme("muted"),false)
 	}
 	d.textBold("키캡 색상", 931, 763, 280, 27, 16, theme("text"), false)
 	for i, name := range palette {
@@ -1203,8 +1226,8 @@ func (g *ui) moveEdits(d *drawCtx) {
 		g.editsVisible = show
 	}
 	key, ok := selectedKey(snap(), g.selected)
-	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence")
-	showSingleValue := show && !showTextValue
+	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence")
+	showSingleValue := show && !showTextValue && (!ok || key.Type!="compose_email")
 	if !g.editsPlaced || g.singleValueShown != showSingleValue {
 		if showSingleValue {
 			showWindow.Call(g.valueEdit, SW_SHOW)
@@ -1283,12 +1306,12 @@ func (g *ui) edits() {
 	}
 	g.editing = true
 	setWindowText.Call(g.labelEdit, ptr(key.Label))
-	setWindowText.Call(g.valueEdit, ptr(key.Value))
+	setWindowText.Call(g.valueEdit, ptr(func()string{if key.Type=="web_search"{return searchQuery(key.Value)};return key.Value}()))
 	setWindowText.Call(g.textValueEdit, ptr(windowsEditorNewlines(key.Value)))
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
-	if needsValue(key.Type) {
-		if key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence" {
+	if needsValue(key.Type) && key.Type!="compose_email" {
+		if key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence" {
 			enableWindow.Call(g.textValueEdit, 1)
 		} else {
 			enableWindow.Call(g.valueEdit, 1)
@@ -1862,10 +1885,11 @@ func (g *ui) writeFromEdit(which int) {
 	_, m, _ := active(c)
 	g.pendingEdits = true
 	g.pendingLabel = getText(g.labelEdit)
-	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence") {
+	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence") {
 		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
 	} else {
 		g.pendingValue = getText(g.valueEdit)
+		if key,ok:=selectedKey(c,g.selected);ok&&key.Type=="web_search"{g.pendingValue=makeSearchValue(searchEngine(key.Value),g.pendingValue)}
 	}
 	g.pendingModel = c.Selected
 	g.pendingSide = c.SelectedSide

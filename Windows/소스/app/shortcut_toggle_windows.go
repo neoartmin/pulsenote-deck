@@ -15,6 +15,8 @@ type heldShortcut struct {
     value, label string
     codes []byte
 }
+var emitToggleKey=press // overridable only by Win32 regression tests
+
 var shortcutHolds=struct {
     sync.Mutex
     holds map[string]heldShortcut
@@ -43,7 +45,7 @@ func toggleShortcut(value,label string,model,side string,profile,key int)(bool,e
         return false,nil
     }
     for _,code:=range codes{
-        if shortcutHolds.refs[code]==0{press(code,false)}
+        if shortcutHolds.refs[code]==0{emitToggleKey(code,false)}
         shortcutHolds.refs[code]++
     }
     shortcutHolds.holds[id]=heldShortcut{
@@ -60,7 +62,7 @@ func releaseHeldCodesLocked(codes []byte){
         code:=codes[i]
         if shortcutHolds.refs[code]<=1{
             delete(shortcutHolds.refs,code)
-            press(code,true)
+            emitToggleKey(code,true)
         }else{
             shortcutHolds.refs[code]--
         }
@@ -75,10 +77,10 @@ func shortcutRespectingHolds(value string)error{
     shortcutHolds.Lock()
     defer shortcutHolds.Unlock()
     for _,code:=range codes{
-        if shortcutHolds.refs[code]==0{press(code,false)}
+        if shortcutHolds.refs[code]==0{emitToggleKey(code,false)}
     }
     for i:=len(codes)-1;i>=0;i--{
-        if shortcutHolds.refs[codes[i]]==0{press(codes[i],true)}
+        if shortcutHolds.refs[codes[i]]==0{emitToggleKey(codes[i],true)}
     }
     return nil
 }
@@ -127,4 +129,10 @@ func heldShortcutCount()int{
     shortcutHolds.Lock()
     defer shortcutHolds.Unlock()
     return len(shortcutHolds.holds)
+}
+func isHeldShortcut(model string,profile,key int)bool{
+    shortcutHolds.Lock()
+    defer shortcutHolds.Unlock()
+    _,ok:=shortcutHolds.holds[shortcutHoldID(model,"",profile,key)]
+    return ok
 }

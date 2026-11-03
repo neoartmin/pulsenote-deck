@@ -551,6 +551,7 @@ func (d *drawCtx) icon(glyph rune, x, y, w, h, size int, color uint32) {
 // such as squares, music-note characters, and mathematical operators.
 const (
 	icoKeyboard rune = '\ue765'
+	icoTextEdit rune = '\ue70f'
 	icoApps     rune = '\ue71d'
 	icoGlobe    rune = '\ue774'
 	icoFolder   rune = '\ue8b7'
@@ -573,8 +574,10 @@ const (
 
 func glyphForAction(t string) rune {
 	switch t {
-	case "shortcut", "text":
+	case "shortcut":
 		return icoKeyboard
+	case "text":
+		return icoTextEdit
 	case "program":
 		return icoApps
 	case "website":

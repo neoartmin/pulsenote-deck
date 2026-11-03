@@ -649,7 +649,7 @@ func (g *ui) actionPill(d *drawCtx, x, y, w, h int, glyph rune, label string, se
 	d.rounded(x, y, w, h, 10, fill, border)
 	// Render the same colorful premium artwork here as on the physical-key
 	// preview. The monochrome Fluent glyph remains a safe fallback.
-	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+7, y+3, minInt(32,h-6)) {
+	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+7, y+3, min(32,h-6)) {
 		d.icon(glyph, x+10, y+5, 27, h-10, 18, fg)
 	}
 	d.textBold(label, x+47, y+1, w-52, h-2, 13, fg, false)

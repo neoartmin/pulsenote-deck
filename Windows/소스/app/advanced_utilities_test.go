@@ -59,8 +59,12 @@ func TestAdvancedActionsAndSettingsPersistence(t *testing.T){
         if needsValue(tc.name)!=tc.field{t.Errorf("action input mismatch: %s",tc.name)}
         index:=-1
         for i,v:=range types{if v==tc.name{index=i;break}}
-        if index<0{t.Fatalf("GUI picker lacks %s",tc.name)}
-        if index/16>=((len(types)+15)/16){t.Fatalf("pager unreachable %s",tc.name)}
+        if tc.name=="sequence" {
+            if index>=0{t.Fatal("legacy advanced sequence must not be newly selectable")}
+        }else{
+            if index<0{t.Fatalf("GUI picker lacks %s",tc.name)}
+            if index/16>=((len(types)+15)/16){t.Fatalf("pager unreachable %s",tc.name)}
+        }
         for _,model:=range []int{12,15}{
             c:=defaults()
             c.Selected=model

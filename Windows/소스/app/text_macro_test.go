@@ -21,3 +21,16 @@ func TestExpandTextMacroRejectsUnsafeInput(t *testing.T) {
         if _,err:=expandTextMacro(s);err==nil {t.Errorf("expected rejection for %q",s)}
     }
 }
+
+func TestMultilineEditorNewlines(t *testing.T) {
+    // Windows EDIT exposes CRLF; pasting may also introduce lone CR.
+    saved := normalizeEditorNewlines("첫 줄\r\n둘째 줄\r셋째 줄\n마지막 😀")
+    want := "첫 줄\n둘째 줄\n셋째 줄\n마지막 😀"
+    if saved != want {
+        t.Fatalf("line ending normalization: got %q, want %q", saved, want)
+    }
+    expanded, err := expandTextMacro(saved)
+    if err != nil || expanded != want {
+        t.Fatalf("multiline macro: got %q (%v), want %q", expanded, err, want)
+    }
+}

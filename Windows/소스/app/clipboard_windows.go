@@ -27,7 +27,7 @@ var (
     clipboardGlobalLock   = clipboardKernelDLL.NewProc("GlobalLock")
     clipboardGlobalUnlock = clipboardKernelDLL.NewProc("GlobalUnlock")
     clipboardGlobalFree   = clipboardKernelDLL.NewProc("GlobalFree")
-    clipboardMoveMemory   = clipboardKernelDLL.NewProc("RtlMoveMemory")
+    clipboardMoveMemory   = syscall.NewLazyDLL("ntdll.dll").NewProc("RtlMoveMemory")
 )
 
 // The clipboard receives a COPY of the user's text. No synthetic keystrokes

@@ -10,9 +10,10 @@ public final class ActionStore {
     public static final String[] NAMES = {
        "기능 없음", "볼륨 +", "볼륨 -", "음소거", "재생 / 정지",
        "다음 곡", "이전 곡", "웹사이트", "프로그램", "단축키", "폴더", "화면 캡처",
-       "문구 복사", "설정 바로가기", "타이머 열기", "알람 열기"
+       "문구 복사", "설정 바로가기", "타이머 열기", "알람 열기",
+       "웹 검색", "이메일 작성", "QR코드 생성", "연속 동작", "문구 공유"
     };
-    public static final String[] SYMBOLS = {"＋","◖","◗","×","▶","⏭","⏮","◎","▦","⌨","▣","▣","▤","⚙","◷","◴"};
+    public static final String[] SYMBOLS = {"＋","◖","◗","×","▶","⏭","⏮","◎","▦","⌨","▣","▣","▤","⚙","◷","◴","⌕","✉","▦","⇉","↗"};
     public static final int[] COLORS = {0xffa8c9e9,0xffdf9fa9,0xffe2e9f5,0xffc4aedc,0xffedbb95,0xffa8d4bf,0xffe4d99e};
     private static final int[] DEFAULT_TYPES = {7,7,4,7,7,0,9,9,0,6,5,10};
     private static final int[] DEFAULT_COLORS = {1,1,2,2,2,1,2,2,1,2,2,1};

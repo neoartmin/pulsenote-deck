@@ -565,8 +565,8 @@ public final class MainActivity extends Activity {
         add(rightHost,preview,-1,64);space(rightHost,13);
         add(rightHost,txt("기능",13,WHITE,true),-1,27);
         int[] types=BuildConfig.HAS_ACCESSIBILITY ?
-            new int[]{11,12,13,14,15,9,8,7,10,1,2,3,4,5,6,0} :
-            new int[]{11,12,13,14,15,8,7,10,1,2,3,4,5,6,0};
+            new int[]{11,16,17,18,19,20,12,13,14,15,9,8,7,10,1,2,3,4,5,6,0} :
+            new int[]{11,16,17,18,19,20,12,13,14,15,8,7,10,1,2,3,4,5,6,0};
         int cols=rightWidthDp<395?2:3;
         for(int r=0;r<(types.length+cols-1)/cols;r++){
             LinearLayout line=horizontal();
@@ -596,6 +596,11 @@ public final class MainActivity extends Activity {
         if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
         else if(kind==12)hint="복사할 문구 · 직접 붙여넣기 (최대 4096자)";
         else if(kind==13)hint="열려는 시스템 설정을 스크롤로 선택";
+        else if(kind==16)hint="검색 엔진|검색어 (google|, naver|, youtube|)";
+        else if(kind==17)hint="받는사람|제목|본문 (메일은 전송하지 않음)";
+        else if(kind==18)hint="QR코드로 만들 내용 (UTF-8 900바이트 이하)";
+        else if(kind==19)hint="연속 실행 키 번호 (예: 2,wait:300,4)";
+        else if(kind==20)hint="공유할 텍스트 (1~1600자)";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
@@ -612,7 +617,7 @@ public final class MainActivity extends Activity {
                     ()->showSettingsWheel(k)), -1,49);
             }else{
                 EditText value=edit(store.value(k),hint);
-                if(kind==12){
+                if(kind==12||kind==17||kind==19||kind==20){
                     value.setSingleLine(false);
                     value.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
                         android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
@@ -620,10 +625,13 @@ public final class MainActivity extends Activity {
                     value.setMaxLines(7);
                     value.setGravity(Gravity.TOP|Gravity.START);
                     value.setFilters(new android.text.InputFilter[]{
-                        new android.text.InputFilter.LengthFilter(PermissionFreeActions.MAX_CLIPBOARD_CHARS)
+                        new android.text.InputFilter.LengthFilter(kind==12 ?
+                            PermissionFreeActions.MAX_CLIPBOARD_CHARS :
+                            kind==17?3000:kind==19?140:QuickActions.MAX_VALUE_LENGTH)
                     });
                 }
-                add(rightHost,value,-1,kind==12?115:39);
+                add(rightHost,value,-1,
+                    (kind==12||kind==17||kind==19||kind==20)?115:39);
                 value.addTextChangedListener(watcher(v->store.setValue(k,v)));
             }
             if(kind==8){
@@ -646,6 +654,16 @@ public final class MainActivity extends Activity {
             add(rightHost,txt("Wi-Fi·블루투스·화면·소리·절전·전체 설정 화면만 엽니다. 기기 설정을 임의로 바꾸지 않으며 추가 권한이 없습니다. 백그라운드에서는 Android 제한에 따라 알림을 탭해야 할 수 있습니다.",11,MUTED,false),-1,103);
         }else if(kind==14||kind==15){
             add(rightHost,txt("Android 시계 앱의 "+(kind==14?"타이머":"알람")+" 화면을 엽니다. 타이머·알람은 사용자가 시계 앱에서 직접 설정합니다. 별도 권한 없이 동작하며 설치된 시계 앱에 따라 지원 여부가 다릅니다.",11,MUTED,false),-1,98);
+        }else if(kind==16){
+            add(rightHost,txt("검색어를 URL 인코딩하여 지정한 엔진에서 검색합니다. google|저항 계산, naver|날씨, youtube|회로 강의 형식입니다.",11,MUTED,false),-1,76);
+        }else if(kind==17){
+            add(rightHost,txt("받는 사람|제목|본문을 입력하면 메일 앱의 작성 화면을 엽니다. 자동 전송하지 않습니다. 본문에 줄바꿈을 넣을 수 있습니다.",11,MUTED,false),-1,75);
+        }else if(kind==18){
+            add(rightHost,txt("내용을 기기에서 오프라인 QR로 표시합니다. PNG 저장 버튼을 누르면 직접 위치를 선택할 수 있습니다. 별도 카메라·저장소 권한은 없습니다.",11,MUTED,false),-1,90);
+        }else if(kind==19){
+            add(rightHost,txt("같은 기기의 현재 프로필 키를 순서대로 실행합니다. 예: 2,wait:300,4. 최대 8단계, 대기 0~1000ms. 자기 자신이나 다른 연속 동작 키는 포함할 수 없습니다.",11,MUTED,false),-1,103);
+        }else if(kind==20){
+            add(rightHost,txt("입력한 문구를 Android 공유 메뉴로 전달합니다. 사용자가 공유 대상을 선택해야 전송됩니다. 백그라운드에서는 알림을 눌러 열 수 있습니다.",11,MUTED,false),-1,88);
         }
         space(rightHost,9);
         add(rightHost,txt("키캡 색상",12,WHITE,true),-1,27);

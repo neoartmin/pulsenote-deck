@@ -220,6 +220,7 @@ type ui struct {
 	labelEdit, valueEdit, textValueEdit, appSearchEdit, profileNameEdit uintptr
 	editing                                              bool
 	selected                                             int
+	actionPage                                           int
 	page                                                 int
 	status                                               string
 	scale                                                float64
@@ -363,7 +364,7 @@ func keyInput(i int) {
 	}
 	var err error
 	if key.Type != "none" {
-		err = runAction(key)
+		err = runActionForDevice(key, c, c.Selected, c.SelectedSide, i)
 	}
 	s := fmt.Sprintf("KEY:%d · %s", i, key.Label)
 	if key.Type == "none" {
@@ -392,7 +393,7 @@ func keyInputForDevice(e deviceKeyEvent) {
 	}
 	var err error
 	if key.Type != "none" {
-		err = runAction(key)
+		err = runActionForDevice(key, c, e.Model, e.Side, e.Key)
 	}
 	result := fmt.Sprintf("%s KEY:%d · %s", deviceIdentityLabel(e.Model, e.Side), e.Key, key.Label)
 	if key.Type == "none" {
@@ -592,6 +593,18 @@ func glyphForAction(t string) rune {
 		return icoApps
 	case "open_timers", "open_alarms":
 		return icoPlay
+	case "web_search":
+		return icoGlobe
+	case "compose_email":
+		return icoTextEdit
+	case "qr_code":
+		return icoCamera
+	case "sequence":
+		return icoNext
+	case "clipboard_history":
+		return icoTextEdit
+	case "window_control":
+		return icoApps
 	case "program":
 		return icoApps
 	case "website":
@@ -912,6 +925,18 @@ func typeName(t string) string {
 		return "타이머 열기"
 	case "open_alarms":
 		return "알람 열기"
+	case "web_search":
+		return "웹 검색"
+	case "compose_email":
+		return "이메일 작성"
+	case "qr_code":
+		return "QR코드 생성"
+	case "sequence":
+		return "연속 동작"
+	case "clipboard_history":
+		return "클립보드 기록"
+	case "window_control":
+		return "창 제어"
 	case "program":
 		return "프로그램"
 	case "website":
@@ -935,7 +960,7 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
@@ -943,6 +968,10 @@ func pickerActionName(t string) string {
     case "open_timers": return "타이머"
     case "open_alarms": return "알람"
     case "media_play": return "재생/정지"
+    case "clipboard_history": return "복사 기록"
+    case "compose_email": return "이메일"
+    case "qr_code": return "QR 생성"
+    case "window_control": return "창 제어"
     default: return typeName(t)
     }
 }
@@ -950,7 +979,7 @@ func pickerActionName(t string) string {
 // Only action types with parameters enable the parameter field.
 func needsValue(t string) bool {
 	switch t {
-	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings":
+	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings", "web_search", "compose_email", "qr_code", "sequence", "window_control":
 		return true
 	}
 	return false
@@ -971,6 +1000,16 @@ func valueFieldTitle(t string) string {
 		return "복사할 문구 (Enter로 줄바꿈)"
 	case "system_settings":
 		return "설정 종류 (오른쪽 설정 선택)"
+	case "web_search":
+		return "검색 엔진|검색어 (예: google|전기회로)"
+	case "compose_email":
+		return "받는 사람|제목|본문 (메일 자동 전송 안 함)"
+	case "qr_code":
+		return "QR로 만들 내용 (900바이트 이내)"
+	case "sequence":
+		return "키 번호·대기 단계 (예: 2,wait:250,4)"
+	case "window_control":
+		return "창 동작 선택 (오른쪽 메뉴)"
 	default:
 		return "추가 입력 없이 바로 실행"
 	}
@@ -991,6 +1030,16 @@ func valueCue(t string) string {
 		return "키를 누르면 시스템 클립보드에 복사 (붙여넣기는 수동)"
 	case "system_settings":
 		return "설정 선택 버튼으로 Wi-Fi·블루투스 등 지정"
+	case "web_search":
+		return "google|검색어, naver|검색어, youtube|검색어"
+	case "compose_email":
+		return "받는사람|제목|본문 (메일 앱 작성 화면)"
+	case "qr_code":
+		return "UTF-8 900바이트 이내 · 오프라인 PNG 생성"
+	case "sequence":
+		return "2,wait:250,4 (최대 8단계, 대기 0~1000ms)"
+	case "window_control":
+		return "오른쪽 창 동작 선택 메뉴에서 지정"
 	default:
 		return "이 기능은 별도 값이 필요하지 않습니다"
 	}
@@ -1013,14 +1062,24 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.text(key.Label, 989, 281, 392, 25, 17, theme("text"), false)
 	d.text(typeName(key.Type), 989, 305, 390, 21, 12, theme("muted"), false)
 	d.textBold("기능", 931, 343, 250, 28, 16, theme("text"), false)
-	// Four compact columns fit all 17 types in five rows without overlapping
-	// the existing button-name and macro-value editors below.
-	for i, t := range types {
-		col := i % 4
-		row := i / 4
+	// 16 actions per page. Avoid overlapping the name/value editor when
+	// adding new functions; keep earlier button choices visible on page 1.
+	pageCount := (len(types)+15)/16
+	if g.actionPage >= pageCount {g.actionPage=pageCount-1}
+	if g.actionPage < 0 {g.actionPage=0}
+	start := g.actionPage*16
+	for index:=start; index<len(types) && index<start+16; index++ {
+		col := (index-start)%4
+		row := (index-start)/4
 		x := 928 + col*118
 		y := 377 + row*42
-		g.actionPill(d, x, y, 111, 38, glyphForAction(t), pickerActionName(t), key.Type == t, i)
+		t := types[index]
+		g.actionPill(d,x,y,111,38,glyphForAction(t),pickerActionName(t),key.Type==t,index)
+	}
+	if pageCount>1{
+		g.pill(d,929,550,113,32,"◀ 이전",false,"actionpage",0)
+		d.textBold(fmt.Sprintf("기능 %d / %d",g.actionPage+1,pageCount),1050,551,226,29,12,theme("muted"),true)
+		g.pill(d,1277,550,117,32,"다음 ▶",false,"actionpage",1)
 	}
 	d.textBold("버튼 이름", 931, 598, 326, 25, 16, theme("text"), false)
 	d.textBold(valueFieldTitle(key.Type), 931, 674, 330, 25, 15, theme("text"), false)
@@ -1028,8 +1087,12 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 		g.pill(d, 1247, 669, 146, 31, "프로그램 선택", false, "apps", 0)
 	} else if key.Type == "system_settings" {
 		g.pill(d, 1247, 669, 146, 31, "설정 선택", false, "settingspick", 0)
-		// Show the actual target, not just its stored ASCII identifier.
 		d.text(settingLabel(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
+	} else if key.Type == "window_control" {
+		g.pill(d, 1247, 669, 146, 31, "창 동작 선택", false, "windowpick", 0)
+		d.text(windowActionName(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
+	} else if key.Type == "web_search" {
+		g.pill(d, 1247, 669, 146, 31, "검색 엔진", false, "searchpick", 0)
 	}
 	d.textBold("키캡 색상", 931, 763, 280, 27, 16, theme("text"), false)
 	for i, name := range palette {
@@ -1133,7 +1196,7 @@ func (g *ui) moveEdits(d *drawCtx) {
 		g.editsVisible = show
 	}
 	key, ok := selectedKey(snap(), g.selected)
-	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text")
+	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence")
 	showSingleValue := show && !showTextValue
 	if !g.editsPlaced || g.singleValueShown != showSingleValue {
 		if showSingleValue {
@@ -1218,7 +1281,7 @@ func (g *ui) edits() {
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
 	if needsValue(key.Type) {
-		if key.Type == "text" || key.Type == "copy_text" {
+		if key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence" {
 			enableWindow.Call(g.textValueEdit, 1)
 		} else {
 			enableWindow.Call(g.valueEdit, 1)
@@ -1321,6 +1384,8 @@ func (g *ui) perform(hit click) {
 
 	case "color":
 		g.showSaveError(update(func(c *Config) { mutateKey(c, g.selected, func(k *Key) { k.Color = palette[hit.id] }) }))
+	case "actionpage":
+		if hit.id>=0 && hit.id < (len(types)+15)/16 {g.actionPage=hit.id}
 	case "action":
 		t := types[hit.id]
 		err := update(func(c *Config) {
@@ -1396,6 +1461,35 @@ func (g *ui) perform(hit click) {
 			g.showSaveError(update(func(c *Config) {
 				mutateKey(c, g.selected, func(k *Key) {
 					if k.Type == "system_settings" { k.Value = settingIDs[choice-1] }
+				})
+			}))
+			g.edits()
+		}
+	case "windowpick":
+		k,ok:=selectedKey(snap(),g.selected)
+		if !ok || k.Type!="window_control"{break}
+		choice:=g.menu(windowActionNames)
+		if choice>0 && choice<=len(windowActionIDs){
+			g.showSaveError(update(func(c *Config){
+				mutateKey(c,g.selected,func(k *Key){
+					if k.Type=="window_control"{k.Value=windowActionIDs[choice-1]}
+				})
+			}))
+			g.edits()
+		}
+	case "searchpick":
+		k,ok:=selectedKey(snap(),g.selected)
+		if !ok||k.Type!="web_search"{break}
+		choices:=[]string{"Google","Naver","YouTube"}
+		engines:=[]string{"google","naver","youtube"}
+		choice:=g.menu(choices)
+		if choice>0&&choice<=len(engines){
+			g.showSaveError(update(func(c *Config){
+				mutateKey(c,g.selected,func(k *Key){
+					if k.Type!="web_search"{return}
+					query:=k.Value
+					if _,after,ok:=strings.Cut(query,"|");ok{query=after}
+					k.Value=engines[choice-1]+"|"+query
 				})
 			}))
 			g.edits()
@@ -1761,7 +1855,7 @@ func (g *ui) writeFromEdit(which int) {
 	_, m, _ := active(c)
 	g.pendingEdits = true
 	g.pendingLabel = getText(g.labelEdit)
-	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text") {
+	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "compose_email" || key.Type == "sequence") {
 		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
 	} else {
 		g.pendingValue = getText(g.valueEdit)

@@ -8,6 +8,7 @@ on:
       - 'tools/firmware_sync.py'
       - 'tools/check_action_icon_sync.py'
       - 'tools/check_android_permissionfree_icons.py'
+      - 'tools/check_advanced_action_icons.py'
       - 'tools/check_android_permissions.py'
       - 'Windows/소스/app/assets/**'
 
@@ -25,6 +26,8 @@ jobs:
         run: python3 tools/check_action_icon_sync.py
       - name: Validate Android permission-free action artwork
         run: python3 tools/check_android_permissionfree_icons.py
+      - name: Validate new advanced action icon artwork
+        run: python3 tools/check_advanced_action_icons.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -50,14 +53,17 @@ jobs:
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/UsbAutoConnectPolicy.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/CaptureSessionPolicy.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/PermissionFreeActions.java \
+            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/QuickActions.java \
             android-pn12/tests/TextMacroSelfTest.java \
             android-pn12/tests/AndroidParitySelfTest.java \
             android-pn12/tests/CaptureSessionSelfTest.java \
-            android-pn12/tests/PermissionFreeActionsSelfTest.java
+            android-pn12/tests/PermissionFreeActionsSelfTest.java \
+            android-pn12/tests/QuickActionsSelfTest.java
           java -cp "${RUNNER_TEMP}/java-test" kr.pulsenote.pn12usb.TextMacroSelfTest
           java -cp "${RUNNER_TEMP}/java-test" kr.pulsenote.pn12usb.AndroidParitySelfTest
           java -cp "${RUNNER_TEMP}/java-test" kr.pulsenote.pn12usb.CaptureSessionSelfTest
           java -cp "${RUNNER_TEMP}/java-test" kr.pulsenote.pn12usb.PermissionFreeActionsSelfTest
+          java -cp "${RUNNER_TEMP}/java-test" kr.pulsenote.pn12usb.QuickActionsSelfTest
       - name: Compile Android debug APK
         working-directory: android-pn12
         run: gradle --no-daemon --stacktrace assembleStandardDebug assembleExtendedDebug

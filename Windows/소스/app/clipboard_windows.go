@@ -27,6 +27,7 @@ var (
     clipboardGlobalLock   = clipboardKernelDLL.NewProc("GlobalLock")
     clipboardGlobalUnlock = clipboardKernelDLL.NewProc("GlobalUnlock")
     clipboardGlobalFree   = clipboardKernelDLL.NewProc("GlobalFree")
+    clipboardMoveMemory   = clipboardKernelDLL.NewProc("RtlMoveMemory")
 )
 
 // The clipboard receives a COPY of the user's text. No synthetic keystrokes
@@ -46,7 +47,9 @@ func copyMacroToClipboard(text string) error {
     defer func(){if owned{clipboardGlobalFree.Call(block)}}()
     mem,_,lockErr:=clipboardGlobalLock.Call(block)
     if mem==0{return fmt.Errorf("클립보드 메모리 잠금 실패: %v",lockErr)}
-    copy(unsafe.Slice((*uint16)(unsafe.Pointer(mem)),len(units)),units)
+    // Copy into the GlobalLock allocation through the Win32 API. Avoid
+    // uintptr -> unsafe.Pointer conversion, which Go vet rightly rejects.
+    clipboardMoveMemory.Call(mem,uintptr(unsafe.Pointer(&units[0])),byteCount)
     clipboardGlobalUnlock.Call(block)
     runtime.KeepAlive(units)
 

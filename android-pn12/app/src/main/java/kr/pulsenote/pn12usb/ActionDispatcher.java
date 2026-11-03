@@ -33,7 +33,11 @@ public final class ActionDispatcher {
             audio.dispatchMediaKeyEvent(new KeyEvent(now,now,KeyEvent.ACTION_UP,code,0));
             return ActionStore.NAMES[kind];
         }
-        if(kind==9)return TextMacroAccessibilityService.shortcut(s.value(key));
+        if(kind==9){
+            if(!BuildConfig.HAS_ACCESSIBILITY)
+                return "기본 설치판은 접근성 권한을 사용하지 않아 편집 단축키를 실행하지 않습니다";
+            return TextMacroAccessibilityService.shortcut(s.value(key));
+        }
         if(kind==11)return ScreenshotCapture.request(context);
         String value=s.value(key).trim();
         Intent target=null;

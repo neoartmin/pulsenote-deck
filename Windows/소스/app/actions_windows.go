@@ -62,6 +62,14 @@ func runAction(k Key) error {
 	case "capture":
 		// Windows snipping UI: user selects the region, then it is copied to clipboard.
 		return shortcut("WIN+SHIFT+S")
+	case "copy_text":
+		return copyMacroToClipboard(k.Value)
+	case "system_settings":
+		return shellOpen(settingTarget(k.Value))
+	case "open_timers", "open_alarms":
+		// Microsoft's Clock application offers both Timer and Alarm tabs.
+		// There is no documented stable launch URI for a specific Clock tab.
+		return shellOpen(`shell:AppsFolder\Microsoft.WindowsAlarms_8wekyb3d8bbwe!App`)
 	case "program":
 		path := os.ExpandEnv(strings.TrimSpace(k.Value))
 		if path == "" {

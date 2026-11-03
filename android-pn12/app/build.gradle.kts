@@ -6,8 +6,8 @@ android {
         applicationId = "kr.pulsenote.pn12usb"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "1.3.2"
+        versionCode = 19
+        versionName = "1.3.3"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

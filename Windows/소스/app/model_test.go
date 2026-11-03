@@ -85,3 +85,32 @@ func TestLegacyDoesNotOverwriteOriginal(t *testing.T) {
 		t.Fatal("migration")
 	}
 }
+
+func TestSaveLoadMultilineTextForEachDevice(t *testing.T) {
+    sample := "첫 줄\n두 번째 줄 😀\n끝"
+    for _, tc := range []struct {
+        count int
+        side string
+        model string
+    }{{12, "R", "12"}, {15, "L", "15L"}, {15, "R", "15"}} {
+        c := defaults()
+        c.Selected, c.SelectedSide = tc.count, tc.side
+        if !mutateKey(&c, 0, func(k *Key) {
+            k.Type, k.Value = "text", sample
+        }) {
+            t.Fatalf("could not edit model %s", tc.model)
+        }
+        path := filepath.Join(t.TempDir(), tc.model+".json")
+        if err := saveJSON(path, c); err != nil {
+            t.Fatal(err)
+        }
+        read, err := readJSON(path)
+        if err != nil {
+            t.Fatal(err)
+        }
+        key := read.Models[tc.model].Profiles[0].Keys[0]
+        if key.Type != "text" || key.Value != sample {
+            t.Fatalf("model %s: got %#v", tc.model, key)
+        }
+    }
+}

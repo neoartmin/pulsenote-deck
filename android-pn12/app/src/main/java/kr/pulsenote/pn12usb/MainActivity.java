@@ -174,8 +174,8 @@ public final class MainActivity extends Activity {
                 if(isFinishing()||isDestroyed())return;
                 new AlertDialog.Builder(this).setTitle("PulseNote 첫 실행 · 권한 설정")
                     .setMessage(BuildConfig.HAS_ACCESSIBILITY ?
-                        "확장 설치판: USB·알림·화면 위 표시·편집 단축키 접근성 권한을 순서대로 설정합니다. 화면 캡처는 사용할 때마다 별도 승인이 필요합니다." :
-                        "기본 설치판: USB·알림 권한을 설정합니다. 민감한 접근성 및 화면 위 표시 권한을 요청하지 않습니다. 화면 캡처는 실행할 때마다 Android 시스템 동의가 필요합니다.")
+                        "확장 설치판: USB·알림·화면 위 표시·편집 단축키 권한을 순서대로 설정합니다. 화면 캡처는 첫 승인 후 활성 세션에서 반복 사용할 수 있습니다." :
+                        "기본 설치판: USB·알림 권한을 설정합니다. 화면 캡처는 첫 승인 후 활성 세션에서 반복 사용할 수 있습니다.")
                     .setNegativeButton("나중에",(d,w)->{firstPermissionSetupPending=false;maybeAutoConnect();})
                     .setPositiveButton("필요한 권한 설정",(d,w)->startPermissionWizard())
                     .setCancelable(false).show();
@@ -564,7 +564,9 @@ public final class MainActivity extends Activity {
         add(text,txt(ActionStore.NAMES[kind],10,MUTED,false),-1,19);add(preview,text,-1,-1);
         add(rightHost,preview,-1,64);space(rightHost,13);
         add(rightHost,txt("기능",13,WHITE,true),-1,27);
-        int[] types={11,9,8,7,10,1,2,3,4,5,6,0};
+        int[] types=BuildConfig.HAS_ACCESSIBILITY ?
+            new int[]{11,9,8,7,10,1,2,3,4,5,6,0} :
+            new int[]{11,8,7,10,1,2,3,4,5,6,0};
         int cols=rightWidthDp<395?2:3;
         for(int r=0;r<(types.length+cols-1)/cols;r++){
             LinearLayout line=horizontal();
@@ -591,16 +593,15 @@ public final class MainActivity extends Activity {
             if(programmatic)return;store.setName(k,s);renderKeys();
         }));
         String hint=null;
-        if(kind==9)hint=BuildConfig.HAS_ACCESSIBILITY ?
-            "편집 단축키 · 스크롤 휠에서 선택" : "기본 설치판은 편집 단축키 미지원";
+        if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
         if(hint!=null){
             space(rightHost,8);add(rightHost,txt(hint,12,WHITE,true),-1,27);
             if(kind==9){
-                int selected=AndroidEditShortcut.pickerIndex(store.value(k));
-                String displayed=selected>=0?AndroidEditShortcut.PICKER_LABELS[selected]:
+                int selected=EditShortcutBridge.pickerIndex(store.value(k));
+                String displayed=selected>=0?EditShortcutBridge.PICKER_LABELS[selected]:
                     (store.value(k).isEmpty()?"선택 안 됨":"미지원: "+store.value(k));
                 add(rightHost,click("스크롤해서 단축키 선택  ·  "+displayed,
                     ()->showShortcutWheel(k)), -1,49);
@@ -618,9 +619,6 @@ public final class MainActivity extends Activity {
             if(kind==9){
                 add(rightHost,txt("선택한 텍스트 입력창에서 복사·붙여넣기·잘라내기·전체 선택을 지원합니다. 기타 Windows 단축키는 지원하지 않습니다. 접근성 서비스 활성화가 필요합니다.",10,MUTED,false),-1,75);
             }
-        }
-        if(kind==9&&!BuildConfig.HAS_ACCESSIBILITY){
-            add(rightHost,txt("기본 설치판은 Play 프로텍트 설치 차단 위험을 줄이기 위해 접근성 편집 단축키를 실행하지 않습니다. 다른 버튼 기능을 선택해 주세요.",11,MUTED,false),-1,85);
         }
         if(kind==11){
             add(rightHost,txt("첫 캡처에서 Android 화면 공유를 한 번 승인하면, 캡처 대기 모드가 유지되는 동안 PN12/PN15 키를 누를 때마다 승인 없이 PNG가 저장됩니다. 알림에서 언제든 세션을 종료할 수 있습니다.",11,MUTED,false),-1,90);
@@ -644,11 +642,12 @@ public final class MainActivity extends Activity {
     // NumberPicker is a genuine vertically scrolling wheel, not a free-text
     // shortcut field. Only operations supported by Android are selectable.
     private void showShortcutWheel(int key){
-        int index=AndroidEditShortcut.pickerIndex(store.value(key));
+        if(!BuildConfig.HAS_ACCESSIBILITY)return;
+        int index=EditShortcutBridge.pickerIndex(store.value(key));
         NumberPicker picker=new NumberPicker(this);
         picker.setMinValue(0);
-        picker.setMaxValue(AndroidEditShortcut.PICKER_VALUES.length-1);
-        picker.setDisplayedValues(AndroidEditShortcut.PICKER_LABELS.clone());
+        picker.setMaxValue(EditShortcutBridge.PICKER_VALUES.length-1);
+        picker.setDisplayedValues(EditShortcutBridge.PICKER_LABELS.clone());
         picker.setWrapSelectorWheel(true);
         picker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
         picker.setValue(index>=0?index:0);
@@ -660,7 +659,7 @@ public final class MainActivity extends Activity {
             .setView(wrapper)
             .setNegativeButton("취소",null)
             .setPositiveButton("적용",(dialog,which)->{
-                store.setValue(key,AndroidEditShortcut.PICKER_VALUES[picker.getValue()]);
+                store.setValue(key,EditShortcutBridge.PICKER_VALUES[picker.getValue()]);
                 renderRight();
             }).show();
     }
@@ -779,7 +778,9 @@ public final class MainActivity extends Activity {
         space(card,16);
         buildPermissionSection(card);
         space(card,14);
-        add(card,txt("PN12에는 기존 펌웨어를, PN15에는 15키 펌웨어를 사용합니다. 단축키는 Android 보안 정책과 접근성 서비스 지원 범위에 따라 제한될 수 있으며 앱 실행은 백그라운드 상태에서 알림을 통해 진행됩니다.",12,MUTED,false),-1,84);
+        add(card,txt(BuildConfig.HAS_ACCESSIBILITY ?
+            "PN12·PN15 펌웨어를 사용합니다. 편집 단축키는 확장판에서 접근성 권한을 승인해야 하며, 백그라운드 앱 실행은 Android 정책에 따라 제한됩니다." :
+            "PN12·PN15 펌웨어를 사용합니다. USB 버튼·미디어 제어·화면 캡처와 알림을 지원하며, 백그라운드 앱 실행은 Android 정책에 따라 제한됩니다.",12,MUTED,false),-1,84);
         scan();
     }
 
@@ -822,19 +823,16 @@ public final class MainActivity extends Activity {
         add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
         space(parent,13);
         if(BuildConfig.HAS_ACCESSIBILITY){
-        add(parent,txt("편집 단축키  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
+        add(parent,txt("편집 단축키  ·  "+(EditShortcutBridge.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
         add(parent,txt("사용자가 지정한 단축키 버튼을 누를 때에만 선택한 일반 입력창에서 CTRL+C/V/X/A 편집 동작을 실행합니다. 복사·잘라내기는 시스템 클립보드를 변경하고 붙여넣기는 클립보드의 기존 내용을 사용합니다. 비밀번호 필드는 차단하고 화면 내용을 수집·전송하지 않습니다.",11,MUTED,false),-1,135);
         add(parent,click("편집 단축키 접근성 권한 설정",()->requestTextMacroAccessibility()),325,43);
         space(parent,10);
         add(parent,txt("편집 단축키  ·  CTRL+C/V/X/A만 지원 · 다른 조합은 미지원",12,MUTED,false),-1,40);
-        }else{
-            add(parent,txt("접근성 서비스를 포함하지 않는 기본 설치판",13,0xff3edba8,true),-1,38);
-            add(parent,txt("Google Play 프로텍트에서 민감 권한을 이유로 차단하는 위험을 줄이기 위해 편집 단축키 Ctrl+C/V/X/A만 사용할 수 없습니다. 다른 USB 버튼 기능과 스크린샷은 유지됩니다.",11,MUTED,false),-1,100);
         }
         add(parent,txt("USB 접근 권한은 'PulseNote USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
         add(parent,txt(BuildConfig.HAS_OVERLAY ?
             "볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 선택적으로 화면 위 표시 권한을 요청할 수 있습니다." :
-            "볼륨과 미디어 제어는 별도 민감 권한 없이 작동합니다. 기본 설치판은 접근성 및 화면 위 표시 권한을 포함하지 않습니다.",11,MUTED,false),-1,65);
+            "볼륨과 미디어 제어는 별도 민감 권한 없이 작동합니다. 기본 설치판은 일반 USB 기능과 화면 캡처를 지원합니다.",11,MUTED,false),-1,65);
     }
     private void startPermissionWizard(){
         permissionWizardStage=0;
@@ -875,7 +873,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if(stage==2){
-            if(!BuildConfig.HAS_ACCESSIBILITY || TextMacroAccessibilityService.enabled()){
+            if(!BuildConfig.HAS_ACCESSIBILITY || EditShortcutBridge.enabled()){
                 nextPermissionWizard();return;
             }
             new AlertDialog.Builder(this).setTitle("3/3 · 편집 단축키 (선택 사항)")
@@ -898,8 +896,8 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("권한 설정 안내 완료")
             .setMessage((BuildConfig.HAS_ACCESSIBILITY ?
                 "알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다." :
-                "기본 설치판은 접근성·화면 위 표시 권한을 요청하지 않습니다.")+
-                "\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요합니다."+usbText)
+                "기본 설치판의 USB·알림 권한 설정을 확인했습니다.")+
+                "\n\n화면 캡처는 최초 승인 후 활성 세션 동안 반복 사용 가능합니다."+usbText)
             .setNegativeButton("완료",(d,w)->{
                 firstPermissionSetupPending=false;
                 maybeAutoConnect();

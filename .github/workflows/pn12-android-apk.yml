@@ -38,6 +38,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Test text macro Unicode expansion
+        run: |
+          mkdir -p "${RUNNER_TEMP}/macro-test"
+          javac -encoding UTF-8 -d "${RUNNER_TEMP}/macro-test" \
+            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/TextMacro.java \
+            android-pn12/tests/TextMacroSelfTest.java
+          java -cp "${RUNNER_TEMP}/macro-test" kr.pulsenote.pn12usb.TextMacroSelfTest
       - name: Build APK
         working-directory: android-pn12
         run: gradle --no-daemon --stacktrace assembleDebug

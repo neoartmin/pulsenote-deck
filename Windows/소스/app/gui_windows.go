@@ -1131,6 +1131,20 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 		g.clickable(d, x-3, 789, 59, 43, "color", i)
 	}
 }
+// Dedicated, accessible native fields. Never ask users to write pipe
+// delimiters, encoded data or a DSL to configure their email macro.
+func (g *ui) drawEmailEditor(d *drawCtx){
+    d.rounded(263,175,1150,660,19,theme("panel"),theme("border"))
+    d.textBold("이메일 작성 설정",300,203,690,49,26,theme("text"),false)
+    d.text("받는 사람·제목·본문을 각각 입력합니다. 버튼 실행 시 초안만 열리고 메일은 전송되지 않습니다.",308,260,1035,29,15,theme("muted"),false)
+    d.textBold("받는 사람 (이메일 주소)",352,303,950,31,17,theme("text"),false)
+    d.textBold("제목",352,405,950,31,17,theme("text"),false)
+    d.textBold("본문 (여러 줄 입력 가능)",352,503,950,31,17,theme("text"),false)
+    d.text("자동 저장이 아닌 별도 설정 창입니다. 아래 '저장'으로 등록하세요.",352,725,850,24,13,theme("muted"),false)
+    g.pill(d,848,763,187,47,"취소",false,"emailcancel",0)
+    g.pill(d,1051,763,201,47,"이메일 설정 저장",true,"emailsave",0)
+}
+
 func (g *ui) drawProfiles(d *drawCtx, count int, m Model) {
 	// Main page title/subtitle are painted once by paint() above the card.
 	d.rounded(263, 187, 1150, 645, 19, theme("panel"), theme("border"))
@@ -1262,6 +1276,7 @@ func (g *ui) moveEdits(d *drawCtx) {
 		}
 	}
 	g.editsPlaced = true
+    g.moveEmailEdits(d)
 	searchShow := g.page == 3
 	if !g.searchPlaced || g.searchVisible != searchShow {
 		if searchShow {
@@ -1297,6 +1312,28 @@ func (g *ui) moveEdits(d *drawCtx) {
 	}
 	g.profileNamePlaced = true
 }
+func (g *ui) moveEmailEdits(d *drawCtx){
+    visible:=g.page==4
+    if visible!=g.emailFieldsVisible{
+        how:=uintptr(SW_HIDE)
+        if visible{how=SW_SHOW}
+        for _,field:=range []uintptr{g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit}{
+            if field!=0{showWindow.Call(field,how)}
+        }
+        g.emailFieldsVisible=visible
+    }
+    if !visible{return}
+    for _,slot:=range []struct{h uintptr;x,y,w,height int}{
+        {g.emailToEdit,352,343,904,44},
+        {g.emailSubjectEdit,352,444,904,44},
+        {g.emailBodyEdit,352,541,904,172},
+    }{
+        r:=d.ab(slot.x,slot.y,slot.w,slot.height)
+        moveWindow.Call(slot.h,uintptr(r.Left),uintptr(r.Top),
+            uintptr(r.Right-r.Left),uintptr(r.Bottom-r.Top),0)
+    }
+}
+
 func (g *ui) redraw() { invalidateRect.Call(g.hwnd, 0, 0) }
 func (g *ui) edits() {
 	c := snap()
@@ -2268,6 +2305,16 @@ func main() {
 	profile, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_CHILD|WS_BORDER|ES_AUTOHSCROLL, 0, 0, 50, 30, hwnd, uintptr(1204), ins, 0)
 	g.profileNameEdit = profile
 	sendMessage.Call(g.profileNameEdit, EM_SETLIMITTEXT, 40, 0)
+    to,_,_:=createWindow.Call(0,ptr("EDIT"),ptr(""),WS_CHILD|WS_BORDER|ES_AUTOHSCROLL,
+        0,0,50,30,hwnd,uintptr(1210),ins,0)
+    subject,_,_:=createWindow.Call(0,ptr("EDIT"),ptr(""),WS_CHILD|WS_BORDER|ES_AUTOHSCROLL,
+        0,0,50,30,hwnd,uintptr(1211),ins,0)
+    body,_,_:=createWindow.Call(0,ptr("EDIT"),ptr(""),WS_CHILD|WS_BORDER|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_WANTRETURN,
+        0,0,50,60,hwnd,uintptr(1212),ins,0)
+    g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit=to,subject,body
+    sendMessage.Call(to,EM_SETLIMITTEXT,320,0)
+    sendMessage.Call(subject,EM_SETLIMITTEXT,700,0)
+    sendMessage.Call(body,EM_SETLIMITTEXT,3000,0)
 	editFont, _, _ := createFont.Call(uintptr(^uint32(17)), 0, 0, 0, uintptr(500), 0, 0, 0, 1, 0, 0, 0, 0, ptr(preferredFace))
 	g.fonts[17*1000+500] = editFont
 	sendMessage.Call(g.labelEdit, WM_SETFONT, editFont, 1)
@@ -2275,6 +2322,7 @@ func main() {
 	sendMessage.Call(g.textValueEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.appSearchEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.profileNameEdit, WM_SETFONT, editFont, 1)
+    for _,field:=range []uintptr{g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit}{sendMessage.Call(field,WM_SETFONT,editFont,1)}
 	g.edits()
 	g.tray(true)
 	if background {

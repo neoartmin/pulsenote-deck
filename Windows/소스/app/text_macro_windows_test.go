@@ -32,6 +32,6 @@ func TestUnicodeMacroSurrogatePairs(t *testing.T) {
     if err!=nil {t.Fatal(err)}
     codes:=utf16.Encode([]rune(content))
     if got:=len(codes);got!=8 {
-        t.Fatalf("UTF-16 count = %d, want 8 (6 Hangul code units + space + emoji pair)",got)
+        t.Fatalf("UTF-16 count = %d, want 8 (5 Hangul code units + space + emoji pair)",got)
     }
 }

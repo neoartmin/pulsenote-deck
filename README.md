@@ -82,3 +82,16 @@ mirror drifts, **CI fails**, rather than silently publishing different
 firmware for Windows and Android. The two PN15 sketches differ only in the
 LEFT/RIGHT identifier and first comment; actual GPIO mapping and scan logic
 remain identical.
+
+## 텍스트 매크로 — Windows v7.5.9 / Android v1.3.2
+
+- PN12 · PN15 LEFT · PN15 RIGHT 모든 키에서 기능 `텍스트 입력` 지원
+- 각 모델/프로필/키마다 서로 다른 텍스트 지정 가능, USB 연결 없이 오프라인 설정 가능
+- Windows: 현재 포커스된 입력창에 `SendInput(KEYEVENTF_UNICODE)`로 유니코드 문자열 전송. 기존 클립보드는 건드리지 않음
+- Android: 별도 사용자 동의로 활성화하는 접근성 서비스를 통해 대상 입력창의 텍스트/커서 위치를 보존하면서 삽입 (지원 앱 한정)
+- 일부 앱·고권한 창·암호 필드는 제한됨. 실물 3장치 동시 연결과 실제 다양한 앱에서의 입력은 아직 검증 전
+- 펌웨어는 종전 PN12 / PN15 RIGHT / PN15 LEFT 3종을 그대로 사용
+
+Windows 릴리스: https://github.com/neoartmin/pulsenote-deck/releases/tag/pnd-windows-v7.5.9
+
+Android 릴리스: https://github.com/neoartmin/pulsenote-deck/releases/tag/pn12-pn15-android-v1.3.2

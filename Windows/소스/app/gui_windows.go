@@ -586,6 +586,12 @@ func glyphForAction(t string) rune {
 		return icoTextEdit
 	case "capture":
 		return icoCamera
+	case "copy_text":
+		return icoTextEdit
+	case "system_settings":
+		return icoApps
+	case "open_timers", "open_alarms":
+		return icoPlay
 	case "program":
 		return icoApps
 	case "website":
@@ -649,10 +655,10 @@ func (g *ui) actionPill(d *drawCtx, x, y, w, h int, glyph rune, label string, se
 	d.rounded(x, y, w, h, 10, fill, border)
 	// Render the same colorful premium artwork here as on the physical-key
 	// preview. The monochrome Fluent glyph remains a safe fallback.
-	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+7, y+3, min(32,h-6)) {
-		d.icon(glyph, x+10, y+5, 27, h-10, 18, fg)
+	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+4, y+5, min(28,h-8)) {
+		d.icon(glyph, x+6, y+5, 26, h-10, 16, fg)
 	}
-	d.textBold(label, x+47, y+1, w-52, h-2, 13, fg, false)
+	d.textBold(label, x+35, y+1, w-37, h-2, 11, fg, false)
 	g.clickable(d, x, y, w, h, "action", id)
 }
 
@@ -898,6 +904,14 @@ func typeName(t string) string {
 		return "텍스트 입력"
 	case "capture":
 		return "화면 캡처"
+	case "copy_text":
+		return "문구 복사"
+	case "system_settings":
+		return "설정 바로가기"
+	case "open_timers":
+		return "타이머 열기"
+	case "open_alarms":
+		return "알람 열기"
 	case "program":
 		return "프로그램"
 	case "website":
@@ -921,12 +935,22 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
+
+func pickerActionName(t string) string {
+    switch t {
+    case "system_settings": return "설정"
+    case "open_timers": return "타이머"
+    case "open_alarms": return "알람"
+    case "media_play": return "재생/정지"
+    default: return typeName(t)
+    }
+}
 
 // Only action types with parameters enable the parameter field.
 func needsValue(t string) bool {
 	switch t {
-	case "program", "website", "folder", "shortcut", "text":
+	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings":
 		return true
 	}
 	return false
@@ -943,6 +967,10 @@ func valueFieldTitle(t string) string {
 		return "키보드 단축키 (예: CTRL+S)"
 	case "text":
 		return "입력할 텍스트 (Enter로 줄바꿈)"
+	case "copy_text":
+		return "복사할 문구 (Enter로 줄바꿈)"
+	case "system_settings":
+		return "설정 종류 (오른쪽 설정 선택)"
 	default:
 		return "추가 입력 없이 바로 실행"
 	}
@@ -959,6 +987,10 @@ func valueCue(t string) string {
 		return "CTRL+SHIFT+S 또는 ALT+TAB"
 	case "text":
 		return "키를 누르면 활성 입력창에 한글·영문 입력"
+	case "copy_text":
+		return "키를 누르면 시스템 클립보드에 복사 (붙여넣기는 수동)"
+	case "system_settings":
+		return "설정 선택 버튼으로 Wi-Fi·블루투스 등 지정"
 	default:
 		return "이 기능은 별도 값이 필요하지 않습니다"
 	}
@@ -981,19 +1013,23 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.text(key.Label, 989, 281, 392, 25, 17, theme("text"), false)
 	d.text(typeName(key.Type), 989, 305, 390, 21, 12, theme("muted"), false)
 	d.textBold("기능", 931, 343, 250, 28, 16, theme("text"), false)
-	// All original types remain available; capture adds one more action.
+	// Four compact columns fit all 17 types in five rows without overlapping
+	// the existing button-name and macro-value editors below.
 	for i, t := range types {
-		col := i % 3
-		row := i / 3
-		x := 928 + col*156
-		// Five rows still finish above the unchanged button-name editor.
+		col := i % 4
+		row := i / 4
+		x := 928 + col*118
 		y := 377 + row*42
-		g.actionPill(d, x, y, 148, 38, glyphForAction(t), typeName(t), key.Type == t, i)
+		g.actionPill(d, x, y, 111, 38, glyphForAction(t), pickerActionName(t), key.Type == t, i)
 	}
 	d.textBold("버튼 이름", 931, 598, 326, 25, 16, theme("text"), false)
 	d.textBold(valueFieldTitle(key.Type), 931, 674, 330, 25, 15, theme("text"), false)
 	if key.Type == "program" {
 		g.pill(d, 1247, 669, 146, 31, "프로그램 선택", false, "apps", 0)
+	} else if key.Type == "system_settings" {
+		g.pill(d, 1247, 669, 146, 31, "설정 선택", false, "settingspick", 0)
+		// Show the actual target, not just its stored ASCII identifier.
+		d.text(settingLabel(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
 	}
 	d.textBold("키캡 색상", 931, 763, 280, 27, 16, theme("text"), false)
 	for i, name := range palette {
@@ -1097,7 +1133,7 @@ func (g *ui) moveEdits(d *drawCtx) {
 		g.editsVisible = show
 	}
 	key, ok := selectedKey(snap(), g.selected)
-	showTextValue := show && ok && key.Type == "text"
+	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text")
 	showSingleValue := show && !showTextValue
 	if !g.editsPlaced || g.singleValueShown != showSingleValue {
 		if showSingleValue {
@@ -1182,7 +1218,7 @@ func (g *ui) edits() {
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
 	if needsValue(key.Type) {
-		if key.Type == "text" {
+		if key.Type == "text" || key.Type == "copy_text" {
 			enableWindow.Call(g.textValueEdit, 1)
 		} else {
 			enableWindow.Call(g.valueEdit, 1)
@@ -1350,6 +1386,20 @@ func (g *ui) perform(hit click) {
 		g.selected = 0
 		g.edits()
 		g.profileEdits()
+	case "settingspick":
+		// This is a Windows native popup menu. No typed settings protocol is
+		// required, and only Microsoft-documented ms-settings pages can launch.
+		k, ok := selectedKey(snap(), g.selected)
+		if !ok || k.Type != "system_settings" {break}
+		choice := g.menu(settingLabels)
+		if choice > 0 && choice <= len(settingIDs) {
+			g.showSaveError(update(func(c *Config) {
+				mutateKey(c, g.selected, func(k *Key) {
+					if k.Type == "system_settings" { k.Value = settingIDs[choice-1] }
+				})
+			}))
+			g.edits()
+		}
 	case "test":
 		// Use the same sequential dispatcher as physical key events so that
 		// keyboard shortcuts cannot overlap with a USB-triggered shortcut.
@@ -1711,7 +1761,7 @@ func (g *ui) writeFromEdit(which int) {
 	_, m, _ := active(c)
 	g.pendingEdits = true
 	g.pendingLabel = getText(g.labelEdit)
-	if key, ok := selectedKey(c, g.selected); ok && key.Type == "text" {
+	if key, ok := selectedKey(c, g.selected); ok && (key.Type == "text" || key.Type == "copy_text") {
 		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
 	} else {
 		g.pendingValue = getText(g.valueEdit)

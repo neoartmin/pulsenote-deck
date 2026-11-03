@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-const version = "7.5.16"
+const version = "7.5.17"
 
 var palette = []string{"파랑", "빨강", "회색", "보라", "주황", "초록", "노랑"}
 

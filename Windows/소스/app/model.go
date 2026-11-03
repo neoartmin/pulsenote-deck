@@ -57,6 +57,7 @@ type Key struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`
 	Color string `json:"color"`
+	Toggle bool `json:"toggle,omitempty"` // Hold shortcut until the next key press
 }
 type Profile struct {
 	Name string `json:"name"`
@@ -172,6 +173,7 @@ func normalize(c Config) Config {
 					q.Type = "none"
 					q.Value = ""
 				}
+			if q.Type != "shortcut" { q.Toggle = false }
 				if !isColor(q.Color) {
 					q.Color = "회색"
 				}
@@ -216,6 +218,7 @@ func normalize(c Config) Config {
 				q.Type = "none"
 				q.Value = ""
 			}
+			if q.Type != "shortcut" { q.Toggle = false }
 			if !isColor(q.Color) {
 				q.Color = "회색"
 			}
@@ -463,6 +466,7 @@ func update(fn func(*Config)) error {
 		return err
 	}
 	store.C = c
+	reconcileHeldShortcuts(c)
 	return nil
 }
 func copyConfig(c Config) Config {

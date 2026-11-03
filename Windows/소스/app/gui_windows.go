@@ -967,7 +967,7 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "compose_email", "qr_code", "clipboard_history", "window_control"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
@@ -1567,7 +1567,7 @@ func (g *ui) perform(hit click) {
 				mutateKey(c,g.selected,func(k *Key){
 					if k.Type!="web_search"{return}
 					query:=k.Value
-					if _,after,ok:=strings.Cut(query,"|");ok{query=after}
+					query=searchQuery(query)
 					k.Value=engines[choice-1]+"|"+query
 				})
 			}))
@@ -1577,11 +1577,15 @@ func (g *ui) perform(hit click) {
         key,ok:=selectedKey(snap(),g.selected)
         if !ok{break}
         h:=guideForAction(key.Type)
-        messageBox.Call(g.hwnd,ptr(typeName(key.Type)+"\\n\\n"+h.summary+"\\n\\n"+h.detail),ptr("PulseNote · 기능 설명"),0x40)
+        messageBox.Call(g.hwnd,ptr(typeName(key.Type)+"\n\n"+h.summary+"\n\n"+h.detail),ptr("PulseNote · 기능 설명"),0x40)
     case "shortcutToggle":
         c:=snap()
         k,ok:=selectedKey(c,g.selected)
         if !ok||k.Type!="shortcut"{break}
+        if k.Value==""{
+            messageBox.Call(g.hwnd,ptr("단축키를 먼저 지정한 다음 토글을 켜세요."),ptr("PulseNote · 단축키 토글"),0x30)
+            break
+        }
         if k.Value!=""{
             if _,err:=parseShortcut(k.Value);err!=nil{
                 messageBox.Call(g.hwnd,ptr("키 조합을 먼저 올바르게 입력하세요.\\n"+err.Error()),ptr("PulseNote · 단축키 토글"),0x30)

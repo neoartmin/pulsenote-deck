@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail the build if Android's packaged action art diverges from Windows.
 
-The 16 PNG files, including Android/Windows parity actions, must match byte-for-byte.
+The 20 PNG files, including Android/Windows parity actions, must match byte-for-byte.
 """
 from pathlib import Path
 
@@ -13,6 +13,7 @@ ICONS = (
     "media_play", "media_next", "media_prev", "website",
     "program", "shortcut", "folder", "capture",
     "copy_text", "system_settings", "open_timers", "open_alarms",
+    "web_search", "compose_email", "qr_code", "sequence",
 )
 
 def main() -> int:

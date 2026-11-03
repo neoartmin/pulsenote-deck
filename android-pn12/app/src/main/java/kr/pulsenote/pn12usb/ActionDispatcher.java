@@ -35,6 +35,21 @@ public final class ActionDispatcher {
         }
         if(kind==9)return EditShortcutBridge.shortcut(s.value(key));
         if(kind==11)return ScreenshotCapture.request(context);
+        if(kind==PermissionFreeActions.COPY_TEXT){
+            String copied=s.value(key); // Do not strip newlines or whitespace.
+            String error=PermissionFreeActions.clipboardError(copied);
+            if(error!=null)return error;
+            ClipboardManager clipboard=(ClipboardManager)context
+                .getSystemService(Context.CLIPBOARD_SERVICE);
+            if(clipboard==null)return "클립보드를 사용할 수 없습니다";
+            try{
+                clipboard.setPrimaryClip(ClipData.newPlainText(s.name(key),copied));
+                // Android 13+ supplies its own copied-content overlay.
+                return "문구를 클립보드에 복사했습니다 · 대상 앱에서 붙여넣으세요";
+            }catch(RuntimeException ex){
+                return "클립보드 복사 실패: "+ex.getClass().getSimpleName();
+            }
+        }
         String value=s.value(key).trim();
         Intent target=null;
         if(kind==7) {
@@ -49,6 +64,16 @@ public final class ActionDispatcher {
             target=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             if(!value.isEmpty())try{target.putExtra(DocumentsContract.EXTRA_INITIAL_URI,Uri.parse(value));}catch(Exception ignored){}
             target.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        }else if(kind==PermissionFreeActions.SYSTEM_SETTINGS){
+            // Opens the system-managed page; never turns Wi-Fi/Bluetooth
+            // on or off directly, which would require restricted privileges.
+            target=new Intent(PermissionFreeActions.settingsIntentAction(value));
+        }else if(kind==PermissionFreeActions.OPEN_TIMERS){
+            // SHOW_TIMERS opens the user's Clock app. SET_TIMER needs
+            // com.android.alarm.permission.SET_ALARM, so never use it here.
+            target=new Intent(android.provider.AlarmClock.ACTION_SHOW_TIMERS);
+        }else if(kind==PermissionFreeActions.OPEN_ALARMS){
+            target=new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
         }
         if(target==null)return "지원되지 않는 동작";
         target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -92,8 +117,10 @@ public final class ActionDispatcher {
         nm.createNotificationChannel(new NotificationChannel(CHANNEL,"PN12 앱 열기",NotificationManager.IMPORTANCE_HIGH));
         try {
             PendingIntent pi=PendingIntent.getActivity(context,1000+key,target,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-            String reason=!android.provider.Settings.canDrawOverlays(context)?
-                    "화면 위 표시 권한이 없어 직접 실행을 대체합니다":
+            String reason=!BuildConfig.HAS_OVERLAY ?
+                    "Android 백그라운드 실행 제한으로 알림 사용" :
+                    !android.provider.Settings.canDrawOverlays(context) ?
+                    "화면 위 표시 권한이 없어 직접 실행을 대체합니다" :
                     !overlayAllowed?"직접 실행 모드가 꺼져 있습니다":
                     "직접 실행을 사용할 수 없어 알림으로 대체합니다";
             nm.notify(1000+key,new Notification.Builder(context,CHANNEL)

@@ -6,6 +6,8 @@ on:
       - 'android-pn12/**'
       - 'Firmware/**'
       - 'tools/firmware_sync.py'
+      - 'tools/check_action_icon_sync.py'
+      - 'Windows/소스/app/assets/**'
       - '.github/workflows/pn12-android-apk.yml'
   workflow_dispatch:
 
@@ -23,6 +25,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify bundled firmware is canonical
         run: python3 tools/firmware_sync.py --check
+      - name: Verify Android and PC icon PNG parity
+        run: python3 tools/check_action_icon_sync.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -51,6 +55,7 @@ jobs:
           javac -encoding UTF-8 -d "${RUNNER_TEMP}/parity-test" \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/AndroidEditShortcut.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/ProfileSnapshot.java \
+            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/UsbAutoConnectPolicy.java \
             android-pn12/tests/AndroidParitySelfTest.java
           java -cp "${RUNNER_TEMP}/parity-test" kr.pulsenote.pn12usb.AndroidParitySelfTest
       - name: Build APK

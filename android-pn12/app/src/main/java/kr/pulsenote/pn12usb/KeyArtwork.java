@@ -20,7 +20,8 @@ public final class KeyArtwork {
     private static final Map<String,Bitmap> pcIconCache=new HashMap<>();
     private static final String[] PC_ACTION_ICONS={
         "none","volume_up","volume_down","volume_mute","media_play",
-        "media_next","media_prev","website","program","shortcut","folder","capture"
+        "media_next","media_prev","website","program","shortcut","folder","capture",
+        "copy_text","system_settings","open_timers","open_alarms"
     };
     private KeyArtwork(){}
     private static int dp(Context c,int value){return Math.round(value*c.getResources().getDisplayMetrics().density);}

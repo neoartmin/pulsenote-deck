@@ -7,7 +7,7 @@ import (
 )
 
 func TestVersionedAppAvoidsLockedLegacyTarget(t *testing.T) {
-	if appFilename() != "PulseNoteDeck_v7.5.10.exe" {
+	if appFilename() != "PulseNoteDeck_v"+productVersion+".exe" {
 		t.Fatalf("wrong version: %s", appFilename())
 	}
 	if appFilename() == "PulseNoteDeck.exe" {

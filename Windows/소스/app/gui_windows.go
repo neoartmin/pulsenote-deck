@@ -40,6 +40,10 @@ const (
 	WS_VISIBLE          = 0x10000000
 	WS_CHILD            = 0x40000000
 	ES_AUTOHSCROLL      = 0x80
+	ES_MULTILINE        = 0x0004
+	ES_AUTOVSCROLL      = 0x0040
+	ES_WANTRETURN       = 0x1000
+	WS_VSCROLL          = 0x00200000
 	WS_BORDER           = 0x800000
 	ES_READONLY         = 0x800
 	BS_PUSHBUTTON       = 0
@@ -213,7 +217,7 @@ type click struct {
 }
 type ui struct {
 	hwnd                                                 uintptr
-	labelEdit, valueEdit, appSearchEdit, profileNameEdit uintptr
+	labelEdit, valueEdit, textValueEdit, appSearchEdit, profileNameEdit uintptr
 	editing                                              bool
 	selected                                             int
 	page                                                 int
@@ -246,7 +250,8 @@ type ui struct {
 	profilePendingSide                                   string
 	mutex                                                uintptr
 	editsVisible                                         bool
-	labelRect, valueRect                                 rect
+	singleValueShown, textValueShown                     bool
+	labelRect, valueRect, textValueRect                  rect
 	editsPlaced                                          bool
 	pendingEdits                                         bool
 	pendingLabel                                         string
@@ -932,7 +937,7 @@ func valueFieldTitle(t string) string {
 	case "shortcut":
 		return "키보드 단축키 (예: CTRL+S)"
 	case "text":
-		return "입력할 텍스트 (줄바꿈은 \\n)"
+		return "입력할 텍스트 (Enter로 줄바꿈)"
 	default:
 		return "추가 입력 없이 바로 실행"
 	}
@@ -1080,16 +1085,34 @@ func (g *ui) moveEdits(d *drawCtx) {
 	if !g.editsPlaced || g.editsVisible != show {
 		if show {
 			showWindow.Call(g.labelEdit, SW_SHOW)
-			showWindow.Call(g.valueEdit, SW_SHOW)
 		} else {
 			showWindow.Call(g.labelEdit, SW_HIDE)
-			showWindow.Call(g.valueEdit, SW_HIDE)
 		}
 		g.editsVisible = show
+	}
+	key, ok := selectedKey(snap(), g.selected)
+	showTextValue := show && ok && key.Type == "text"
+	showSingleValue := show && !showTextValue
+	if !g.editsPlaced || g.singleValueShown != showSingleValue {
+		if showSingleValue {
+			showWindow.Call(g.valueEdit, SW_SHOW)
+		} else {
+			showWindow.Call(g.valueEdit, SW_HIDE)
+		}
+		g.singleValueShown = showSingleValue
+	}
+	if !g.editsPlaced || g.textValueShown != showTextValue {
+		if showTextValue {
+			showWindow.Call(g.textValueEdit, SW_SHOW)
+		} else {
+			showWindow.Call(g.textValueEdit, SW_HIDE)
+		}
+		g.textValueShown = showTextValue
 	}
 	if show {
 		label := d.ab(931, 631, 458, 38)
 		value := d.ab(931, 708, 458, 40)
+		textValue := d.ab(931, 702, 458, 56)
 		if !g.editsPlaced || g.labelRect != label {
 			moveWindow.Call(g.labelEdit, uintptr(label.Left), uintptr(label.Top), uintptr(label.Right-label.Left), uintptr(label.Bottom-label.Top), 0)
 			g.labelRect = label
@@ -1097,6 +1120,10 @@ func (g *ui) moveEdits(d *drawCtx) {
 		if !g.editsPlaced || g.valueRect != value {
 			moveWindow.Call(g.valueEdit, uintptr(value.Left), uintptr(value.Top), uintptr(value.Right-value.Left), uintptr(value.Bottom-value.Top), 0)
 			g.valueRect = value
+		}
+		if !g.editsPlaced || g.textValueRect != textValue {
+			moveWindow.Call(g.textValueEdit, uintptr(textValue.Left), uintptr(textValue.Top), uintptr(textValue.Right-textValue.Left), uintptr(textValue.Bottom-textValue.Top), 0)
+			g.textValueRect = textValue
 		}
 	}
 	g.editsPlaced = true
@@ -1145,9 +1172,15 @@ func (g *ui) edits() {
 	g.editing = true
 	setWindowText.Call(g.labelEdit, ptr(key.Label))
 	setWindowText.Call(g.valueEdit, ptr(key.Value))
+	setWindowText.Call(g.textValueEdit, ptr(key.Value))
 	enableWindow.Call(g.valueEdit, 0)
+	enableWindow.Call(g.textValueEdit, 0)
 	if needsValue(key.Type) {
-		enableWindow.Call(g.valueEdit, 1)
+		if key.Type == "text" {
+			enableWindow.Call(g.textValueEdit, 1)
+		} else {
+			enableWindow.Call(g.valueEdit, 1)
+		}
 	}
 	sendMessage.Call(g.valueEdit, EM_SETCUEBANNER, 1, ptr(valueCue(key.Type)))
 	g.editing = false
@@ -1672,7 +1705,11 @@ func (g *ui) writeFromEdit(which int) {
 	_, m, _ := active(c)
 	g.pendingEdits = true
 	g.pendingLabel = getText(g.labelEdit)
-	g.pendingValue = getText(g.valueEdit)
+	if key, ok := selectedKey(c, g.selected); ok && key.Type == "text" {
+		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
+	} else {
+		g.pendingValue = getText(g.valueEdit)
+	}
 	g.pendingModel = c.Selected
 	g.pendingSide = c.SelectedSide
 	g.pendingProfile = m.Active
@@ -1869,7 +1906,7 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		if code == EN_CHANGE {
 			if id == 1201 {
 				g.writeFromEdit(1)
-			} else if id == 1202 {
+			} else if id == 1202 || id == 1205 {
 				g.writeFromEdit(2)
 			} else if id == 1203 && g.page == 3 {
 				g.appQuery = getText(g.appSearchEdit)
@@ -2030,6 +2067,9 @@ func main() {
 	g.labelEdit = label
 	value, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_VISIBLE|WS_CHILD|WS_BORDER|ES_AUTOHSCROLL, 0, 0, 50, 30, hwnd, uintptr(1202), ins, 0)
 	g.valueEdit = value
+	textValue, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_CHILD|WS_BORDER|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_WANTRETURN, 0, 0, 50, 56, hwnd, uintptr(1205), ins, 0)
+	g.textValueEdit = textValue
+	sendMessage.Call(g.textValueEdit, EM_SETLIMITTEXT, 4096, 0)
 	search, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_CHILD|WS_BORDER|ES_AUTOHSCROLL, 0, 0, 50, 30, hwnd, uintptr(1203), ins, 0)
 	g.appSearchEdit = search
 	sendMessage.Call(g.appSearchEdit, EM_SETLIMITTEXT, 120, 0)
@@ -2040,6 +2080,7 @@ func main() {
 	g.fonts[17*1000+500] = editFont
 	sendMessage.Call(g.labelEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.valueEdit, WM_SETFONT, editFont, 1)
+	sendMessage.Call(g.textValueEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.appSearchEdit, WM_SETFONT, editFont, 1)
 	sendMessage.Call(g.profileNameEdit, WM_SETFONT, editFont, 1)
 	g.edits()

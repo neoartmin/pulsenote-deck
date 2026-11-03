@@ -38,18 +38,7 @@ func press(v byte, up bool) {
 	keybdEvent.Call(uintptr(v), 0, flags, 0)
 }
 func shortcut(value string) error {
-	// Validate first; an unsupported trailing key must not inject any keys.
-	codes, err := parseShortcut(value)
-	if err != nil {
-		return err
-	}
-	for _, code := range codes {
-		press(code, false)
-	}
-	for i := len(codes) - 1; i >= 0; i-- {
-		press(codes[i], true)
-	}
-	return nil
+	return shortcutRespectingHolds(value)
 }
 func runAction(k Key) error {
 	switch k.Type {

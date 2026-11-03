@@ -17,6 +17,11 @@ public final class KeyArtwork {
     private static final Map<String,Bitmap> cache=Collections.synchronizedMap(new LinkedHashMap<String,Bitmap>(40,0.75f,true){
         @Override protected boolean removeEldestEntry(Map.Entry<String,Bitmap> eldest){return size()>40;}
     });
+    private static final Map<String,Bitmap> pcIconCache=new HashMap<>();
+    private static final String[] PC_ACTION_ICONS={
+        "none","volume_up","volume_down","volume_mute","media_play",
+        "media_next","media_prev","website","program","shortcut","folder"
+    };
     private KeyArtwork(){}
     private static int dp(Context c,int value){return Math.round(value*c.getResources().getDisplayMetrics().density);}
     private static GradientDrawable background(int fill,Context ctx){
@@ -36,6 +41,21 @@ public final class KeyArtwork {
         fallback.setText(glyph);fallback.setTextSize(size>=42?25:21);fallback.setTextColor(Color.WHITE);
         fallback.setTypeface(null,1);
         frame.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
+        // Use the byte-identical Windows illustrations as the default art.
+        // Android application logos and website favicons still override their
+        // corresponding generic PC image, as they did in earlier releases.
+        if(kind==11)return textMacroArtwork(ctx,size);
+        if(kind>=0&&kind<PC_ACTION_ICONS.length){
+            Bitmap pcIcon=pcIcon(ctx,PC_ACTION_ICONS[kind]);
+            if(pcIcon!=null){
+                ImageView iv=image(ctx);
+                iv.setPadding(0,0,0,0);
+                iv.setImageBitmap(pcIcon);
+                frame.setBackground(null);
+                frame.addView(iv,new FrameLayout.LayoutParams(-1,-1));
+                fallback.setVisibility(View.INVISIBLE);
+            }
+        }
         if(kind==8){
             try {
                 Drawable icon=ctx.getPackageManager().getApplicationIcon(value);
@@ -78,6 +98,56 @@ public final class KeyArtwork {
         }
         return frame;
     }
+    private static Bitmap pcIcon(Context ctx,String name){
+        synchronized(pcIconCache){
+            Bitmap existing=pcIconCache.get(name);
+            if(existing!=null&&!existing.isRecycled())return existing;
+            // Decode at 256px: sharp on high-DPI button previews without
+            // keeping eleven full 512px bitmaps resident on mobile devices.
+            BitmapFactory.Options opt=new BitmapFactory.Options();
+            opt.inSampleSize=2;
+            try(InputStream in=ctx.getAssets().open("action_icons/"+name+".png")){
+                Bitmap result=BitmapFactory.decodeStream(in,null,opt);
+                if(result!=null)pcIconCache.put(name,result);
+                return result;
+            }catch(IOException ignored){return null;}
+        }
+    }
+
+    // The PC text-macro action uses a native T + three-line artwork rather
+    // than a PNG. Reproduce the same blue mark here at the actual view size.
+    private static View textMacroArtwork(Context ctx,int size){
+        FrameLayout frame=new FrameLayout(ctx);
+        int px=dp(ctx,size);
+        GradientDrawable bg=new GradientDrawable();
+        bg.setColor(0xff2363eb);
+        bg.setCornerRadius(px*.2f);
+        bg.setStroke(Math.max(1,dp(ctx,1)),0xff649dff);
+        frame.setBackground(bg);
+        TextView letter=new TextView(ctx);
+        letter.setGravity(Gravity.CENTER);
+        letter.setText("T");
+        letter.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+        letter.setTextColor(Color.WHITE);
+        letter.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,px*.57f);
+        FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Math.max(1,px*49/100),px);
+        tp.leftMargin=px*7/100;
+        frame.addView(letter,tp);
+        for(int i=0;i<3;i++){
+            View bar=new View(ctx);
+            GradientDrawable line=new GradientDrawable();
+            line.setColor(Color.WHITE);
+            line.setCornerRadius(Math.max(1,px*3/100));
+            bar.setBackground(line);
+            FrameLayout.LayoutParams bp=new FrameLayout.LayoutParams(
+                Math.max(2,px*25/100),Math.max(2,px*7/100));
+            bp.leftMargin=px*61/100;
+            bp.topMargin=px*(31+17*i)/100;
+            frame.addView(bar,bp);
+        }
+        return frame;
+    }
+
     private static ImageView image(Context ctx){
         ImageView image=new ImageView(ctx);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
         int padding=dp(ctx,5);image.setPadding(padding,padding,padding,padding);return image;

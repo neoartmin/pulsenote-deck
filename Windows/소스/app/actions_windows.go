@@ -70,6 +70,37 @@ func runAction(k Key) error {
 		// Microsoft's Clock application offers both Timer and Alarm tabs.
 		// There is no documented stable launch URI for a specific Clock tab.
 		return shellOpen(`shell:AppsFolder\Microsoft.WindowsAlarms_8wekyb3d8bbwe!App`)
+	case "web_search":
+		uri, err := webSearchURL(k.Value)
+		if err != nil { return err }
+		return shellOpen(uri)
+	case "compose_email":
+		uri, err := emailDraftURI(k.Value)
+		if err != nil { return err }
+		return shellOpen(uri)
+	case "qr_code":
+		return showOfflineQRCode(k.Value)
+	case "clipboard_history":
+		return shortcut("WIN+V")
+	case "window_control":
+		switch k.Value {
+		case "maximize": return shortcut("WIN+UP")
+		case "minimize":
+			// Minimize active window directly; Win+Down merely restores maximized windows.
+			hwnd, _, _ := u.NewProc("GetForegroundWindow").Call()
+			if hwnd == 0 { return fmt.Errorf("활성 창이 없습니다") }
+			result, _, _ := u.NewProc("ShowWindow").Call(hwnd, 6) // SW_MINIMIZE
+			_ = result
+			return nil
+		case "left": return shortcut("WIN+LEFT")
+		case "right": return shortcut("WIN+RIGHT")
+		case "desktop": return shortcut("WIN+D")
+		case "desk_prev": return shortcut("WIN+CTRL+LEFT")
+		case "desk_next": return shortcut("WIN+CTRL+RIGHT")
+		default: return fmt.Errorf("창 제어 동작을 선택하세요")
+		}
+	case "sequence":
+		return fmt.Errorf("연속 동작은 장치/프로필 문맥에서 실행해야 합니다")
 	case "program":
 		path := os.ExpandEnv(strings.TrimSpace(k.Value))
 		if path == "" {

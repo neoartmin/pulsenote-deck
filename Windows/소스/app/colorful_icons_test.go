@@ -7,7 +7,7 @@ import (
 )
 
 func TestColorfulIconAlphaAndPalette(t *testing.T) {
-	for _, name := range []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture", "copy_text", "system_settings", "open_timers", "open_alarms"} {
+	for _, name := range []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control"} {
 		f, err := os.Open("assets/" + name + ".png")
 		if err != nil {
 			t.Fatal(err)

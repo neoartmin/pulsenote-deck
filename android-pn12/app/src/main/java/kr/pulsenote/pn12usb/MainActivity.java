@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
     private boolean autoReconnectPaused=false;
     private int permissionWizardStage=-1;
     private boolean capturePromptActive=false;
+    private boolean firstPermissionSetupPending=false;
     private long permissionPromptStarted=-1;
     private final Set<String> rejectedUsb=new HashSet<>();
     private final Map<String,Long> recentUsbStart=new HashMap<>();
@@ -81,6 +82,8 @@ public final class MainActivity extends Activity {
             page=Math.max(0,Math.min(2,savedInstanceState.getInt("pn12.page",0)));
             selectedKey=Math.max(1,Math.min(15,savedInstanceState.getInt("pn12.selectedKey",7)));
         }
+        firstPermissionSetupPending=!getSharedPreferences("pn12_permissions",MODE_PRIVATE)
+            .getBoolean("permission_guide_v135",false);
         store=new ActionStore(this);
         activeKeyCount=store.keyCount();
         activeSide=store.deviceSide();
@@ -164,7 +167,7 @@ public final class MainActivity extends Activity {
                 if(isFinishing()||isDestroyed())return;
                 new AlertDialog.Builder(this).setTitle("PulseNote 첫 실행 · 권한 설정")
                     .setMessage("PN12/PN15 USB, 알림, 화면 위 표시, 선택형 편집 단축키의 접근성 권한을 한 곳에서 설정할 수 있습니다. 항목별 Android 시스템 승인 화면에서 직접 결정합니다.\n\n스크린샷은 Android 정책상 캡처할 때마다 별도로 화면 공유 승인을 받아야 합니다.")
-                    .setNegativeButton("나중에",null)
+                    .setNegativeButton("나중에",(d,w)->{firstPermissionSetupPending=false;maybeAutoConnect();})
                     .setPositiveButton("필요한 권한 설정",(d,w)->startPermissionWizard())
                     .show();
             },900);
@@ -845,10 +848,14 @@ public final class MainActivity extends Activity {
             "\n\nUSB 장치가 연결되지 않았다면 케이블을 연결한 뒤 나오는 시스템 권한 창을 승인하세요.";
         new AlertDialog.Builder(this).setTitle("권한 설정 안내 완료")
             .setMessage("알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다.\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요하며 이 과정에서 미리 허용해 둘 수 없습니다."+usbText)
-            .setNegativeButton("완료",null)
+            .setNegativeButton("완료",(d,w)->{
+                firstPermissionSetupPending=false;
+                maybeAutoConnect();
+            })
             .setPositiveButton(device!=null?"USB 권한 요청":"장치 및 설정 열기",(d,w)->{
+                firstPermissionSetupPending=false;
                 if(device!=null)requestOrStart(device);
-                else{page=2;refreshNavigation();renderPage();}
+                else{page=2;refreshNavigation();renderPage();maybeAutoConnect();}
             }).show();
         if(page==2)renderPage();
     }
@@ -1002,7 +1009,7 @@ public final class MainActivity extends Activity {
         return intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
     }
     private void maybeAutoConnect(){
-        if(!autoEnabled()||autoReconnectPaused||usb==null||permissionPromptActive)return;
+        if(!autoEnabled()||firstPermissionSetupPending||autoReconnectPaused||usb==null||permissionPromptActive)return;
         Map<String,UsbDevice> attached=usb.getDeviceList();
         rejectedUsb.retainAll(attached.keySet());
         recentUsbStart.keySet().retainAll(attached.keySet());

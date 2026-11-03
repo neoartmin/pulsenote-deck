@@ -45,6 +45,10 @@ public final class ScreenshotCaptureService extends Service {
     private static volatile ScreenshotCaptureService current;
     public static boolean isSessionReady(){return ready;}
     public static boolean isSessionStarting(){return initializing;}
+    public static boolean isStopping(){
+        ScreenshotCaptureService service=current;
+        return service!=null&&service.stopping.get();
+    }
     /** Dispatch directly to the existing service worker while the app is in
      * the background. This avoids Android background service-start limits. */
     public static boolean captureExisting(){

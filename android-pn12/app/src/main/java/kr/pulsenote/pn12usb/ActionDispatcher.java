@@ -8,9 +8,15 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.provider.DocumentsContract;
 import android.view.KeyEvent;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ActionDispatcher {
     private static final String CHANNEL="pn12_shortcuts";
+    private static final ExecutorService sequenceWorker=Executors.newSingleThreadExecutor();
+    private static final AtomicBoolean sequenceBusy=new AtomicBoolean(false);
     private ActionDispatcher(){}
 
     public static String run(Context context,int key) { return run(context,key,0,null); }
@@ -18,6 +24,39 @@ public final class ActionDispatcher {
         ActionStore s=model==12||model==15 ? new ActionStore(context,model,side) : new ActionStore(context);
         int kind=s.kind(key);
         if(kind==0)return "기능 없음";
+        if(kind==QuickActions.SEQUENCE){
+            final List<QuickActions.Step> steps;
+            try{steps=QuickActions.sequence(s.value(key),s.keyCount(),key);}
+            catch(IllegalArgumentException ex){return "연속 동작 설정 오류: "+ex.getMessage();}
+            for(QuickActions.Step step:steps){
+                if(!step.isWait()&&s.kind(step.key)==QuickActions.SEQUENCE)
+                    return "연속 동작 안에 다른 연속 동작 키를 넣을 수 없습니다";
+            }
+            if(!sequenceBusy.compareAndSet(false,true))return "다른 연속 동작이 실행 중입니다";
+            try{
+                sequenceWorker.execute(()->{
+                    try{
+                        for(QuickActions.Step step:steps){
+                            if(step.isWait()){
+                                Thread.sleep(step.delayMs);
+                            }else{
+                                String result=ActionDispatcher.run(context,step.key,model,side);
+                                android.util.Log.i("PulseNoteSequence",
+                                    "Step key "+step.key+": "+result);
+                            }
+                        }
+                    }catch(InterruptedException interrupted){
+                        Thread.currentThread().interrupt();
+                    }catch(RuntimeException error){
+                        android.util.Log.w("PulseNoteSequence","Sequence failed",error);
+                    }finally{sequenceBusy.set(false);}
+                });
+            }catch(RuntimeException error){
+                sequenceBusy.set(false);
+                return "연속 동작 예약 실패";
+            }
+            return "연속 동작 "+steps.size()+"단계 실행 요청";
+        }
         AudioManager audio=(AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
         if(kind>=1&&kind<=3) {
             if(audio==null)return "오디오 서비스 없음";
@@ -59,7 +98,34 @@ public final class ActionDispatcher {
         }
         String value=s.value(key).trim();
         Intent target=null;
-        if(kind==7) {
+        if(kind==QuickActions.WEB_SEARCH){
+            try{target=new Intent(Intent.ACTION_VIEW,
+                Uri.parse(QuickActions.webSearch(s.value(key))));}
+            catch(IllegalArgumentException error){return error.getMessage();}
+        }else if(kind==QuickActions.COMPOSE_EMAIL){
+            try{
+                QuickActions.EmailDraft mail=QuickActions.email(s.value(key));
+                target=new Intent(Intent.ACTION_SENDTO,Uri.parse("mailto:"+mail.to));
+                target.putExtra(Intent.EXTRA_SUBJECT,mail.subject);
+                target.putExtra(Intent.EXTRA_TEXT,mail.body);
+            }catch(IllegalArgumentException error){return error.getMessage();}
+        }else if(kind==QuickActions.QR_CODE){
+            String content=s.value(key);
+            if(content.trim().isEmpty()||
+               content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>900)
+                return "QR 데이터는 UTF-8 1~900바이트로 입력하세요";
+            target=new Intent(context,QrDisplayActivity.class);
+            target.putExtra("qr_text",content);
+        }else if(kind==QuickActions.SHARE_TEXT){
+            String content=s.value(key);
+            if(content.isEmpty()||content.length()>QuickActions.MAX_VALUE_LENGTH)
+                return "공유할 문구를 1~1600자 입력하세요";
+            Intent send=new Intent(Intent.ACTION_SEND);
+            send.setType("text/plain");
+            send.putExtra(Intent.EXTRA_TEXT,content);
+            target=Intent.createChooser(send,"PulseNote 문구 공유");
+        }
+        else if(kind==7) {
             Uri uri=Uri.parse(value);
             if(uri.getHost()==null||uri.getScheme()==null||!(uri.getScheme().equalsIgnoreCase("https")||uri.getScheme().equalsIgnoreCase("http")))return "올바른 URL을 설정하세요";
             target=new Intent(Intent.ACTION_VIEW,uri);

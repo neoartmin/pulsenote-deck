@@ -44,7 +44,7 @@ public final class KeyArtwork {
         // Use the byte-identical Windows illustrations as the default art.
         // Android application logos and website favicons still override their
         // corresponding generic PC image, as they did in earlier releases.
-        if(kind==11)return textMacroArtwork(ctx,size);
+        if(kind==11)return screenshotArtwork(ctx,size);
         if(kind>=0&&kind<PC_ACTION_ICONS.length){
             Bitmap pcIcon=pcIcon(ctx,PC_ACTION_ICONS[kind]);
             if(pcIcon!=null){
@@ -114,38 +114,49 @@ public final class KeyArtwork {
         }
     }
 
-    // The PC text-macro action uses a native T + three-line artwork rather
-    // than a PNG. Reproduce the same blue mark here at the actual view size.
-    private static View textMacroArtwork(Context ctx,int size){
-        FrameLayout frame=new FrameLayout(ctx);
-        int px=dp(ctx,size);
-        GradientDrawable bg=new GradientDrawable();
-        bg.setColor(0xff2363eb);
-        bg.setCornerRadius(px*.2f);
-        bg.setStroke(Math.max(1,dp(ctx,1)),0xff649dff);
-        frame.setBackground(bg);
-        TextView letter=new TextView(ctx);
-        letter.setGravity(Gravity.CENTER);
-        letter.setText("T");
-        letter.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
-        letter.setTextColor(Color.WHITE);
-        letter.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,px*.57f);
-        FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Math.max(1,px*49/100),px);
-        tp.leftMargin=px*7/100;
-        frame.addView(letter,tp);
-        for(int i=0;i<3;i++){
-            View bar=new View(ctx);
-            GradientDrawable line=new GradientDrawable();
-            line.setColor(Color.WHITE);
-            line.setCornerRadius(Math.max(1,px*3/100));
-            bar.setBackground(line);
-            FrameLayout.LayoutParams bp=new FrameLayout.LayoutParams(
-                Math.max(2,px*25/100),Math.max(2,px*7/100));
-            bp.leftMargin=px*61/100;
-            bp.topMargin=px*(31+17*i)/100;
-            frame.addView(bar,bp);
-        }
-        return frame;
+    // Screenshot camera & framing corners correspond to the shared capture.svg.
+    private static View screenshotArtwork(Context ctx,int size){
+        return new View(ctx){
+            private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+            @Override protected void onDraw(Canvas canvas){
+                super.onDraw(canvas);
+                canvas.save();
+                canvas.scale(getWidth()/100f,getHeight()/100f);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setShader(new LinearGradient(0,0,100,100,
+                    0xff7151be,0xff261b54,Shader.TileMode.CLAMP));
+                canvas.drawRoundRect(1,1,99,99,19,19,paint);
+                paint.setShader(null);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2);
+                paint.setColor(0xffa786f1);
+                canvas.drawRoundRect(1,1,99,99,19,19,paint);
+                paint.setColor(0xfff8f6ff);
+                paint.setStrokeWidth(6);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                for(int h:new int[]{0,1}){
+                    for(int v:new int[]{0,1}){
+                        float x=h==0?15:85,y=v==0?19:81;
+                        float sx=h==0?1:-1,sy=v==0?1:-1;
+                        canvas.drawLine(x,y,x+sx*10,y,paint);
+                        canvas.drawLine(x,y,x,y+sy*10,paint);
+                    }
+                }
+                Path body=new Path();
+                body.moveTo(29,41);body.lineTo(36,41);body.lineTo(41,35);
+                body.lineTo(59,35);body.lineTo(64,41);body.lineTo(71,41);
+                body.quadTo(77,41,77,47);body.lineTo(77,66);
+                body.quadTo(77,71,71,71);body.lineTo(29,71);
+                body.quadTo(23,71,23,66);body.lineTo(23,47);
+                body.quadTo(23,41,29,41);body.close();
+                paint.setStrokeJoin(Paint.Join.ROUND);
+                paint.setStrokeWidth(5);
+                canvas.drawPath(body,paint);
+                canvas.drawCircle(50,55,10.5f,paint);
+                paint.setStyle(Paint.Style.FILL);
+                canvas.restore();
+            }
+        };
     }
 
     private static ImageView image(Context ctx){

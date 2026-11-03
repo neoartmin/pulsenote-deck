@@ -4,10 +4,4 @@
     <!-- Standard build intentionally never requests screen overlay access. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"
         tools:node="remove" />
-    <application>
-        <!-- Accessibility was solely for text editing shortcuts. Android
-             screenshot capture works without this component. -->
-        <service android:name=".TextMacroAccessibilityService"
-            tools:node="remove" />
-    </application>
 </manifest>

@@ -82,7 +82,7 @@ public final class ActionStore {
         int count=keyCount();
         ProfileSnapshot.Key[] keys=new ProfileSnapshot.Key[count];
         for(int i=1;i<=count;i++){
-            keys[i-1]=new ProfileSnapshot.Key(kind(i),name(i),value(i),color(i));
+            keys[i-1]=new ProfileSnapshot.Key(storedKind(i),name(i),value(i),color(i));
         }
         ProfileSnapshot snapshot=new ProfileSnapshot(keys);
         int next=prefs.getInt(profileKey("next_profile"),1);
@@ -116,12 +116,25 @@ public final class ActionStore {
     }
     private String idKey(String field,int key) { return modelPrefix()+(activeProfile()==0?"":("p"+activeProfile()+"_"))+field+"_"+key; }
     private int ix(int key){return Math.max(0,Math.min(11,key-1));}
+    // Preserve the original numeric action in the profile store for users who
+    // later switch to Extended. Standard only exposes supported actions and
+    // never exposes accessibility-dependent action 9 as a selectable button.
+    private int storedKind(int key) {
+        int k=prefs.getInt(idKey("type",key),
+            activeProfile()==0&&keyCount()==12?DEFAULT_TYPES[ix(key)]:0);
+        return k>=0&&k<NAMES.length?k:0;
+    }
     public int kind(int key) {
-       int k=prefs.getInt(idKey("type",key),activeProfile()==0&&keyCount()==12?DEFAULT_TYPES[ix(key)]:0);
-       return k>=0&&k<NAMES.length?k:0;
+        int saved=storedKind(key);
+        return !BuildConfig.HAS_ACCESSIBILITY && saved==9 ? 0 : saved;
     }
     public String name(int key) {
-       return prefs.getString(idKey("name",key),activeProfile()==0&&keyCount()==12?DEFAULT_NAMES[ix(key)]:String.format(java.util.Locale.US,"버튼 %02d",key));
+       String fallback=activeProfile()==0&&keyCount()==12 ?
+           DEFAULT_NAMES[ix(key)] : String.format(java.util.Locale.US,"버튼 %02d",key);
+       if(!BuildConfig.HAS_ACCESSIBILITY && activeProfile()==0 &&
+          keyCount()==12 && (key==7||key==8))
+           fallback=String.format(java.util.Locale.US,"버튼 %02d",key);
+       return prefs.getString(idKey("name",key),fallback);
     }
     public String value(int key) {
        return prefs.getString(idKey("value",key),activeProfile()==0&&keyCount()==12?DEFAULT_VALUES[ix(key)]:"");
@@ -131,7 +144,9 @@ public final class ActionStore {
        return c>=0&&c<COLORS.length?c:2;
     }
     public void setKind(int key,int kind) {
-       if(key>=1&&key<=keyCount()&&kind>=0&&kind<NAMES.length)prefs.edit().putInt(idKey("type",key),kind).apply();
+       if(key>=1&&key<=keyCount()&&kind>=0&&kind<NAMES.length
+           &&(BuildConfig.HAS_ACCESSIBILITY||kind!=9))
+           prefs.edit().putInt(idKey("type",key),kind).apply();
     }
     public void setName(int key,String name) {
        if(key>=1&&key<=keyCount())prefs.edit().putString(idKey("name",key),name).apply();

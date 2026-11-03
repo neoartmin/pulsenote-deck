@@ -41,8 +41,8 @@ jobs:
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/java-test"
           javac -encoding UTF-8 -d "${RUNNER_TEMP}/java-test" \
-            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/TextMacro.java \
-            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/AndroidEditShortcut.java \
+            android-pn12/app/src/extended/java/kr/pulsenote/pn12usb/TextMacro.java \
+            android-pn12/app/src/extended/java/kr/pulsenote/pn12usb/AndroidEditShortcut.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/ProfileSnapshot.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/UsbAutoConnectPolicy.java \
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/CaptureSessionPolicy.java \
@@ -57,3 +57,5 @@ jobs:
         run: gradle --no-daemon --stacktrace assembleStandardDebug assembleExtendedDebug
       - name: Validate merged APK manifests (standard excludes sensitive permissions)
         run: python3 tools/check_android_permissions.py
+      - name: Verify standard APK contains no accessibility classes
+        run: python3 tools/check_android_standard_clean.py

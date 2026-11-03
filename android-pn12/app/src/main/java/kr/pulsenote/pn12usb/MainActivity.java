@@ -529,7 +529,7 @@ public final class MainActivity extends Activity {
         }));
         String hint=null;
         if(kind==11)hint="입력할 문장 (한글·영문·이모지, 줄바꿈 가능)";
-        else if(kind==9)hint="단축키 (안전 설치판에서는 실행 제한)";
+        else if(kind==9)hint="편집 단축키 (CTRL+C / CTRL+V / CTRL+X / CTRL+A)";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
@@ -554,7 +554,7 @@ public final class MainActivity extends Activity {
                 space(rightHost,5);add(rightHost,click("▣  Android 폴더 선택",()->pickFolder()),208,35);
             }
             if(kind==9){
-                add(rightHost,txt("일반 키보드 단축키는 Android에서 지원하지 않습니다. 텍스트 입력은 별도 접근성 서비스를 사용합니다.",10,MUTED,false),-1,54);
+                add(rightHost,txt("선택한 텍스트 입력창에서 복사·붙여넣기·잘라내기·전체 선택을 지원합니다. 기타 Windows 단축키는 지원하지 않습니다. 접근성 서비스 활성화가 필요합니다.",10,MUTED,false),-1,75);
             }
             if(kind==11){
                 add(rightHost,txt("외부 앱의 일반 텍스트 입력창을 선택하고 PN12/PN15 키를 누르면 문구가 삽입됩니다. 암호 입력창은 제외됩니다.",10,MUTED,false),-1,62);
@@ -597,7 +597,7 @@ public final class MainActivity extends Activity {
     private void buildProfilePage(){
         LinearLayout panel=card();add(pageHost,panel,-1,-2);
         add(panel,txt("프로필 관리",22,WHITE,true),-1,43);
-        add(panel,txt("프로필마다 "+activeKeyCount+"개 버튼의 기능, 이름, 색상을 별도로 저장합니다.",13,MUTED,false),-1,40);
+        add(panel,txt("프로필마다 "+activeKeyCount+"개 버튼 설정을 저장합니다. 새 프로필은 현재 키 구성 전체를 복제합니다 (최대 8개).",13,MUTED,false),-1,55);
         for(int id:store.profiles()){
             LinearLayout line=horizontal();pad(line,12,9);
             line.setBackground(shape(id==store.activeProfile()?ACTIVE:INNER,12,id==store.activeProfile()?BLUE:BORDER));
@@ -621,7 +621,11 @@ public final class MainActivity extends Activity {
           .setPositiveButton("저장",(d,w)->{
              String name=input.getText().toString().trim();
              if(name.isEmpty())return;
-             if(rename)store.renameProfile(store.activeProfile(),name);else store.newProfile(name);
+             if(rename)store.renameProfile(store.activeProfile(),name);
+             else if(store.newProfile(name)<0){
+                 Toast.makeText(this,"프로필은 장치별 최대 8개까지 만들 수 있습니다",Toast.LENGTH_LONG).show();
+                 return;
+             }
              renderPage();
           }).show();
     }
@@ -699,18 +703,18 @@ public final class MainActivity extends Activity {
         add(parent,txt("알림  ·  "+(notificationGranted?"허용됨":"허용 필요"),13,notificationGranted?0xff3edba8:WHITE,true),-1,32);
         add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
         space(parent,13);
-        add(parent,txt("텍스트 매크로  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
-        add(parent,txt("텍스트 매크로를 선택한 키를 누를 때에만 현재 입력창의 문구를 읽고 기존 내용을 보존해 글자를 삽입합니다. 비밀번호 필드는 사용하지 않으며, 수집·전송·자동 실행은 하지 않습니다. 권한은 Android 설정에서 언제든 해제할 수 있습니다.",11,MUTED,false),-1,104);
-        add(parent,click("텍스트 자동 입력 권한 설정",()->requestTextMacroAccessibility()),300,43);
+        add(parent,txt("텍스트 입력·편집 단축키  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
+        add(parent,txt("사용자가 지정한 물리 버튼을 누를 때에만 선택한 일반 입력창에 텍스트 삽입 또는 CTRL+C/V/X/A 편집 동작을 실행합니다. 복사·잘라내기는 시스템 클립보드를 변경하고 붙여넣기는 클립보드의 기존 내용을 사용합니다. 비밀번호 필드는 차단하고 화면 내용을 수집·전송하지 않습니다.",11,MUTED,false),-1,135);
+        add(parent,click("텍스트 입력·단축키 접근성 권한 설정",()->requestTextMacroAccessibility()),325,43);
         space(parent,10);
-        add(parent,txt("시스템 단축키  ·  지원 제한 (텍스트 매크로와 별도)",12,MUTED,false),-1,40);
+        add(parent,txt("편집 단축키  ·  CTRL+C/V/X/A만 지원 · 다른 조합은 미지원",12,MUTED,false),-1,40);
         add(parent,txt("USB 접근 권한은 'PulseNote USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
         add(parent,txt("볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 백그라운드 앱 실행을 위해 화면 위 표시 권한을 요청하며, Android 보안 정책에 따라 일부 실행이 제한될 수 있습니다.",11,MUTED,false),-1,65);
     }
     private void requestTextMacroAccessibility() {
         new AlertDialog.Builder(this)
-            .setTitle("텍스트 매크로 접근성 사용")
-            .setMessage("PN12·PN15 버튼에 지정한 문구를 다른 앱의 현재 입력창에 넣으려면 Android 접근성 서비스 활성화가 필요합니다. 이 서비스는 사용자 키 입력 시에만 입력창의 기존 텍스트와 커서 위치를 확인하여 문구를 삽입합니다. 비밀번호 입력창은 제외하며 화면 내용을 저장하거나 외부로 전송하지 않습니다. Android 설정에서 언제든 비활성화할 수 있습니다.\n\n동의하는 경우에만 접근성 설정을 열어 직접 활성화하세요.")
+            .setTitle("텍스트 입력·편집 단축키 접근성 사용")
+            .setMessage("PN12·PN15 버튼에 지정한 문구를 다른 앱의 입력창에 삽입하거나 편집 단축키(CTRL+C, CTRL+V, CTRL+X, CTRL+A)를 사용하려면 Android 접근성 서비스 활성화가 필요합니다. 사용자가 지정한 버튼을 누를 때에만 현재 입력창의 텍스트와 커서 위치를 확인합니다. 복사·잘라내기는 클립보드 내용을 변경하고 붙여넣기는 현재 클립보드 내용을 사용합니다. 비밀번호 입력창은 제외하며 화면 내용을 저장하거나 외부로 전송하지 않습니다. Windows의 임의 단축키를 주입하지는 않습니다. Android 설정에서 언제든 비활성화할 수 있습니다.\n\n동의하는 경우에만 접근성 설정을 열어 직접 활성화하세요.")
             .setNegativeButton("취소",null)
             .setPositiveButton("동의하고 설정 열기",(dialog,which)->{
                 try{startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}

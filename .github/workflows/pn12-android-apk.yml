@@ -45,6 +45,14 @@ jobs:
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/TextMacro.java \
             android-pn12/tests/TextMacroSelfTest.java
           java -cp "${RUNNER_TEMP}/macro-test" kr.pulsenote.pn12usb.TextMacroSelfTest
+      - name: Test Android profile snapshots and supported edit shortcuts
+        run: |
+          mkdir -p "${RUNNER_TEMP}/parity-test"
+          javac -encoding UTF-8 -d "${RUNNER_TEMP}/parity-test" \
+            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/AndroidEditShortcut.java \
+            android-pn12/app/src/main/java/kr/pulsenote/pn12usb/ProfileSnapshot.java \
+            android-pn12/tests/AndroidParitySelfTest.java
+          java -cp "${RUNNER_TEMP}/parity-test" kr.pulsenote.pn12usb.AndroidParitySelfTest
       - name: Build APK
         working-directory: android-pn12
         run: gradle --no-daemon --stacktrace assembleDebug

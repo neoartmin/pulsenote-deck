@@ -363,7 +363,7 @@ func keyInput(i int) {
 	}
 	var err error
 	if key.Type != "none" {
-		err = runAction(key)
+		err = runActionForDevice(key, c, c.Selected, c.SelectedSide, i)
 	}
 	s := fmt.Sprintf("KEY:%d · %s", i, key.Label)
 	if key.Type == "none" {
@@ -392,7 +392,7 @@ func keyInputForDevice(e deviceKeyEvent) {
 	}
 	var err error
 	if key.Type != "none" {
-		err = runAction(key)
+		err = runActionForDevice(key, c, e.Model, e.Side, e.Key)
 	}
 	result := fmt.Sprintf("%s KEY:%d · %s", deviceIdentityLabel(e.Model, e.Side), e.Key, key.Label)
 	if key.Type == "none" {

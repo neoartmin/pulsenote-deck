@@ -7,6 +7,7 @@ on:
       - 'Firmware/**'
       - 'tools/firmware_sync.py'
       - 'tools/check_action_icon_sync.py'
+      - 'tools/check_android_permissions.py'
       - 'Windows/소스/app/assets/**'
       - '.github/workflows/pn12-android-apk.yml'
   workflow_dispatch:
@@ -58,14 +59,18 @@ jobs:
             android-pn12/app/src/main/java/kr/pulsenote/pn12usb/UsbAutoConnectPolicy.java \
             android-pn12/tests/AndroidParitySelfTest.java
           java -cp "${RUNNER_TEMP}/parity-test" kr.pulsenote.pn12usb.AndroidParitySelfTest
-      - name: Build APK
+      - name: Build standard and extended APKs
         working-directory: android-pn12
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: gradle --no-daemon --stacktrace assembleStandardDebug assembleExtendedDebug
+      - name: Verify merged manifests exclude Accessibility and Overlay in standard APK
+        run: python3 tools/check_android_permissions.py
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PulseNote-PN12-Android-USB-APK
-          path: android-pn12/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android-pn12/app/build/outputs/apk/standard/debug/app-standard-debug.apk
+            android-pn12/app/build/outputs/apk/extended/debug/app-extended-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Assemble complete Android package (APK, sources, PN12 and PN15 L/R firmware)
@@ -75,11 +80,21 @@ jobs:
           PKG="PND_Android_v${VERSION}_PN12_PN15_Complete"
           ROOT="${RUNNER_TEMP}/${PKG}"
           mkdir -p "${ROOT}/APK" "${ROOT}/Sources"
-          cp android-pn12/app/build/outputs/apk/debug/app-debug.apk "${ROOT}/APK/PulseNote_PN12_PN15_Android_v${VERSION}.apk"
+          cp android-pn12/app/build/outputs/apk/standard/debug/app-standard-debug.apk "${ROOT}/APK/PulseNote_PN12_PN15_Android_v${VERSION}.apk"
+          cp android-pn12/app/build/outputs/apk/extended/debug/app-extended-debug.apk "${ROOT}/APK/PulseNote_PN12_PN15_Android_v${VERSION}_Extended.apk"
           git archive HEAD android-pn12 Firmware | tar -x -C "${ROOT}/Sources"
           cat > "${ROOT}/README_KO.txt" <<'EOF'
           PulseNote Deck Android PN12 + PN15 - 전체 파일집
-          APK/     : Android 설치 파일 (디버그 서명)
+          APK/     : Android 설치 파일 2종 (CI 디버그 서명)
+          기본 설치판(추천): PulseNote_PN12_PN15_Android_v1.3.7.apk
+            접근성 서비스 및 다른 앱 위에 표시 권한 없음.
+            USB, 볼륨/미디어, 스크린샷, 앱/웹사이트 열기는 유지.
+            편집 단축키(Ctrl+C/V/X/A), 화면 위 표시 기반 직접 실행은 제한.
+          확장 설치판: PulseNote_PN12_PN15_Android_v1.3.7_Extended.apk
+            접근성 서비스와 다른 앱 위 표시 권한 포함.
+            사용자에게 Android 보안 경고 또는 설치 차단이 발생할 수 있음.
+          Play 프로텍트 차단 시 보안 기능을 끄거나 우회하지 마세요.
+          이 APK들은 임시 디버그 서명 버전이며 Play 프로텍트 통과를 보장하지 않습니다.
           Sources/android-pn12 : Android 앱 전체 소스 (Gradle/Java/리소스)
           Sources/Firmware/PN12: PN12 ESP32-C3 펌웨어
           Sources/Firmware/PN15: PN15 RIGHT ESP32-C3 펌웨어
@@ -113,13 +128,15 @@ jobs:
           test -n "$VERSION"
           RELEASE_TAG="pn12-pn15-android-v${VERSION}"
           APK_NAME="PulseNote_PN12_PN15_Android_v${VERSION}.apk"
-          cp android-pn12/app/build/outputs/apk/debug/app-debug.apk "${RUNNER_TEMP}/${APK_NAME}"
+          cp android-pn12/app/build/outputs/apk/standard/debug/app-standard-debug.apk "${RUNNER_TEMP}/${APK_NAME}"
+          EXTENDED_NAME="PulseNote_PN12_PN15_Android_v${VERSION}_Extended.apk"
+          cp android-pn12/app/build/outputs/apk/extended/debug/app-extended-debug.apk "${RUNNER_TEMP}/${EXTENDED_NAME}"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "$COMPLETE_ARCHIVE" --clobber
+            gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "${RUNNER_TEMP}/${EXTENDED_NAME}" "$COMPLETE_ARCHIVE" --clobber
           else
-            gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "$COMPLETE_ARCHIVE" \
+            gh release create "$RELEASE_TAG" "${RUNNER_TEMP}/${APK_NAME}" "${RUNNER_TEMP}/${EXTENDED_NAME}" "$COMPLETE_ARCHIVE" \
               --target "$GITHUB_SHA" \
               --title "PulseNote Deck PN12 + PN15 Android v${VERSION}" \
-              --notes "Direct APK download for PulseNote PN12/PN15 Android. Debug-signed testing build; real device verification required." \
+              --notes "Standard APK has no AccessibilityService or overlay permission; preserves USB and screenshot actions. Extended APK retains opt-in shortcuts and overlay and may be blocked by Play Protect. Both are debug-signed testing builds; no guarantee of Play Protect approval; device validation required." \
               --prerelease
           fi

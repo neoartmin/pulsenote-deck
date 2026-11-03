@@ -4,6 +4,7 @@ package main
 
 import (
     "fmt"
+    "runtime"
     "syscall"
     "unicode/utf16"
     "unsafe"
@@ -30,12 +31,17 @@ type macroInput struct {
     Type uint32
     _ uint32 // Win64 INPUT union alignment (application builds for windows/amd64).
     Keyboard macroKeyboardInput
+    // INPUT's union is sized by MOUSEINPUT (32 bytes on x64), whereas
+    // KEYBDINPUT occupies only 24 bytes. Without these trailing 8 bytes
+    // sizeof(INPUT) becomes 32 instead of the required 40, and SendInput
+    // fails with ERROR_INVALID_PARAMETER (87).
+    _ [8]byte
 }
 
 func sendTextMacro(raw string) error {
     text, err := expandTextMacro(raw)
     if err != nil { return err }
-    if unsafe.Sizeof(uintptr(0)) != 8 || unsafe.Sizeof(macroInput{}) != 32 {
+    if unsafe.Sizeof(uintptr(0)) != 8 || unsafe.Sizeof(macroInput{}) != 40 {
         return fmt.Errorf("이 버전의 텍스트 매크로는 Windows x64 전용입니다")
     }
     codes := utf16.Encode([]rune(text))
@@ -55,6 +61,7 @@ func sendTextMacro(raw string) error {
         }
         count,_,callErr:=sendUnicodeInput.Call(uintptr(len(batch)),
             uintptr(unsafe.Pointer(&batch[0])),uintptr(unsafe.Sizeof(batch[0])))
+        runtime.KeepAlive(batch)
         if count != uintptr(len(batch)) {
             return fmt.Errorf("Windows 텍스트 입력 실패 (%d/%d): %v", count,len(batch),callErr)
         }

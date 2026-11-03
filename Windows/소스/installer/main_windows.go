@@ -152,7 +152,7 @@ func registerUninstall(dir string) error {
 	return nil
 }
 func install() error {
-	if alert("PulseNote Deck v7.5.8로 업데이트할까요?\n\n실행 중인 기존 버전은 자동으로 종료한 후 새 버전으로 교체합니다.\n설치가 끝나면 새 버전이 자동으로 실행됩니다.\n기존 버튼 설정과 프로필은 보존합니다.\nWindows 로그인 자동 시작은 새로 등록하지 않습니다.\n관리자 권한은 필요하지 않습니다.", 0x24) != 6 {
+	if alert("PulseNote Deck v7.5.9로 업데이트할까요?\n\n실행 중인 기존 버전은 자동으로 종료한 후 새 버전으로 교체합니다.\n설치가 끝나면 새 버전이 자동으로 실행됩니다.\n기존 버튼 설정과 프로필은 보존합니다.\nWindows 로그인 자동 시작은 새로 등록하지 않습니다.\n관리자 권한은 필요하지 않습니다.", 0x24) != 6 {
 		return nil
 	}
 	dir, e := installDir()

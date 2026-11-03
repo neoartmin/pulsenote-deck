@@ -59,6 +59,9 @@ func runAction(k Key) error {
 		return shortcut(k.Value)
 	case "text":
 		return sendTextMacro(k.Value)
+	case "capture":
+		// Windows snipping UI: user selects the region, then it is copied to clipboard.
+		return shortcut("WIN+SHIFT+S")
 	case "program":
 		path := os.ExpandEnv(strings.TrimSpace(k.Value))
 		if path == "" {

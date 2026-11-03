@@ -3,6 +3,7 @@
     <uses-feature android:name="android.hardware.usb.host" android:required="true" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -19,6 +20,7 @@
             <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/pn12_usb_device_filter" />
         </activity>
         <service android:name=".Pn12UsbService" android:exported="false" android:foregroundServiceType="connectedDevice" />
+        <service android:name=".ScreenshotCaptureService" android:exported="false" android:foregroundServiceType="mediaProjection" />
         <service android:name=".TextMacroAccessibilityService"
             android:label="@string/text_macro_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"

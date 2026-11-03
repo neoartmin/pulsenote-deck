@@ -8,6 +8,8 @@ import android.content.pm.ResolveInfo;
 import android.graphics.*;
 import android.graphics.drawable.*;
 import android.hardware.usb.*;
+import android.media.projection.MediaProjectionManager;
+import android.media.projection.MediaProjectionConfig;
 import android.os.*;
 import android.provider.Settings;
 import android.net.Uri;
@@ -21,7 +23,9 @@ public final class MainActivity extends Activity {
     public static volatile boolean visible=false;
     private static final String PERMISSION="kr.pulsenote.pn12usb.GRANT";
     private static final int FOLDER_PICK=41;
+    private static final int CAPTURE_REQUEST_CODE=42;
     private static final int NOTIFICATION_REQUEST=8;
+    private static final int ONBOARD_OVERLAY=61, ONBOARD_ACCESSIBILITY=62;
     private static final int BG=0xff080f1f, SIDE=0xff0f1c31, PANEL=0xff15243d,
       BORDER=0xff263e60, MUTED=0xffa3b8d8, WHITE=0xfff4f7ff,
       BLUE=0xff5769fa, ACTIVE=0xff283a78, INNER=0xff091526;
@@ -46,6 +50,9 @@ public final class MainActivity extends Activity {
     private boolean permissionPromptActive=false;
     private boolean showingConnectionHome=false;
     private boolean autoReconnectPaused=false;
+    private int permissionWizardStage=-1;
+    private boolean capturePromptActive=false;
+    private boolean firstPermissionSetupPending=false;
     private long permissionPromptStarted=-1;
     private final Set<String> rejectedUsb=new HashSet<>();
     private final Map<String,Long> recentUsbStart=new HashMap<>();
@@ -75,6 +82,8 @@ public final class MainActivity extends Activity {
             page=Math.max(0,Math.min(2,savedInstanceState.getInt("pn12.page",0)));
             selectedKey=Math.max(1,Math.min(15,savedInstanceState.getInt("pn12.selectedKey",7)));
         }
+        firstPermissionSetupPending=!getSharedPreferences("pn12_permissions",MODE_PRIVATE)
+            .getBoolean("permission_guide_v135",false);
         store=new ActionStore(this);
         activeKeyCount=store.keyCount();
         activeSide=store.deviceSide();
@@ -110,7 +119,9 @@ public final class MainActivity extends Activity {
                      showControllerHome();
                  }
               }
-              else if(Pn12UsbService.KEY.equals(a)){
+              else if(ScreenshotCapture.REQUEST.equals(a)){
+                  requestScreenCapture();
+              }else if(Pn12UsbService.KEY.equals(a)){
                  int number=intent.getIntExtra(Pn12UsbService.NUMBER,0);
                  String result=intent.getStringExtra(Pn12UsbService.TEXT);
                  if(statusFooter!=null)statusFooter.setText("KEY: "+number+" · "+result);
@@ -136,26 +147,30 @@ public final class MainActivity extends Activity {
            }
         };
         IntentFilter filter=new IntentFilter();
-        for(String a:new String[]{PERMISSION,Pn12UsbService.STATUS,Pn12UsbService.KEY,UsbManager.ACTION_USB_DEVICE_ATTACHED,UsbManager.ACTION_USB_DEVICE_DETACHED})filter.addAction(a);
+        for(String a:new String[]{PERMISSION,Pn12UsbService.STATUS,Pn12UsbService.KEY,ScreenshotCapture.REQUEST,UsbManager.ACTION_USB_DEVICE_ATTACHED,UsbManager.ACTION_USB_DEVICE_DETACHED})filter.addAction(a);
         if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,filter,Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(receiver,filter);
         scan();
+        if(getIntent()!=null&&ScreenshotCapture.REQUEST.equals(getIntent().getAction()))
+            autoConnectionHandler.postDelayed(()->requestScreenCapture(),320);
         UsbDevice attached=usbFromIntent(getIntent());
         if(attached!=null)maybeAutoConnect(attached);
         else maybeAutoConnect();
-        if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST);
-        boolean shown=getSharedPreferences("pn12_permissions",MODE_PRIVATE).getBoolean("permission_guide_111",false);
+        // The system owns every approval. We show a guided first-run entry,
+        // never attempt to silently grant permissions or cache screen consent.
+        boolean shown=getSharedPreferences("pn12_permissions",MODE_PRIVATE)
+                .getBoolean("permission_guide_v135",false);
         if(!shown){
-            getSharedPreferences("pn12_permissions",MODE_PRIVATE).edit().putBoolean("permission_guide_111",true).apply();
+            getSharedPreferences("pn12_permissions",MODE_PRIVATE)
+                .edit().putBoolean("permission_guide_v135",true).apply();
             new Handler(Looper.getMainLooper()).postDelayed(()->{
                 if(isFinishing()||isDestroyed())return;
-                new AlertDialog.Builder(this).setTitle("PulseNote USB 사용 권한 안내")
-                    .setMessage("USB 연결 권한은 PN12/PN15 연결 시 요청합니다. 앱을 벗어나서 다른 앱을 직접 실행하려면 '다른 앱 위에 표시' 허용과 직접 실행 모드를 켜세요. 접근성 서비스는 설치 차단을 줄이기 위해 제외했습니다. 일부 Android 버전에서는 백그라운드 직접 실행이 제한됩니다.")
-                    .setNegativeButton("나중에",null)
-                    .setPositiveButton("권한 설정", (d,w)->{page=2;refreshNavigation();renderPage();})
-                    .show();
-            },1100);
+                new AlertDialog.Builder(this).setTitle("PulseNote 첫 실행 · 권한 설정")
+                    .setMessage("PN12/PN15 USB, 알림, 화면 위 표시, 선택형 편집 단축키의 접근성 권한을 한 곳에서 설정할 수 있습니다. 항목별 Android 시스템 승인 화면에서 직접 결정합니다.\n\n스크린샷은 Android 정책상 캡처할 때마다 별도로 화면 공유 승인을 받아야 합니다.")
+                    .setNegativeButton("나중에",(d,w)->{firstPermissionSetupPending=false;maybeAutoConnect();})
+                    .setPositiveButton("필요한 권한 설정",(d,w)->startPermissionWizard())
+                    .setCancelable(false).show();
+            },900);
         }
     }
 
@@ -341,7 +356,7 @@ public final class MainActivity extends Activity {
         statusSide.setBackground(shape(0xff0d203a,12,BORDER));
         add(sideHost,statusSide,-1,85);
         space(sideHost,12);
-        add(sideHost,txt("v1.2.2 · ANDROID",10,0xff829bc5,false),-1,23);
+        add(sideHost,txt("v1.3.5 · ANDROID",10,0xff829bc5,false),-1,23);
         refreshNavigation();
     }
     private TextView navItem(String name,int index){
@@ -567,8 +582,7 @@ public final class MainActivity extends Activity {
             if(programmatic)return;store.setName(k,s);renderKeys();
         }));
         String hint=null;
-        if(kind==11)hint="입력할 문장 (한글·영문·이모지, 줄바꿈 가능)";
-        else if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
+        if(kind==9)hint="편집 단축키 · 스크롤 휠에서 선택";
         else if(kind==7)hint="웹사이트 주소 (https://...)";
         else if(kind==8)hint="Android 앱 패키지";
         else if(kind==10)hint="저장된 폴더 주소 (URI)";
@@ -582,16 +596,7 @@ public final class MainActivity extends Activity {
                     ()->showShortcutWheel(k)), -1,49);
             }else{
                 EditText value=edit(store.value(k),hint);
-                if(kind==11){
-                    value.setSingleLine(false);
-                    value.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
-                        android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|
-                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-                    value.setMinLines(3);
-                    value.setMaxLines(6);
-                    value.setGravity(Gravity.TOP|Gravity.START);
-                }
-                add(rightHost,value,-1,kind==11?108:39);
+                add(rightHost,value,-1,39);
                 value.addTextChangedListener(watcher(v->store.setValue(k,v)));
             }
             if(kind==8){
@@ -603,12 +608,10 @@ public final class MainActivity extends Activity {
             if(kind==9){
                 add(rightHost,txt("선택한 텍스트 입력창에서 복사·붙여넣기·잘라내기·전체 선택을 지원합니다. 기타 Windows 단축키는 지원하지 않습니다. 접근성 서비스 활성화가 필요합니다.",10,MUTED,false),-1,75);
             }
-            if(kind==11){
-                add(rightHost,txt("외부 앱의 일반 텍스트 입력창을 선택하고 PN12/PN15 키를 누르면 문구가 삽입됩니다. 암호 입력창은 제외됩니다.",10,MUTED,false),-1,62);
-                add(rightHost,click(TextMacroAccessibilityService.enabled()?
-                    "✓ 텍스트 입력 권한 설정":"텍스트 자동 입력 권한 활성화",
-                    ()->requestTextMacroAccessibility()),-1,41);
-            }
+        }
+        if(kind==11){
+            add(rightHost,txt("PN12/PN15 캡처 버튼을 누르면 Android 화면 공유 승인 창이 열립니다. 승인 후 PNG를 사진/PulseNote Deck에 저장합니다. Android 14 이상에서는 매번 사용자 동의가 필요합니다.",11,MUTED,false),-1,85);
+            add(rightHost,click("화면 캡처 테스트",()->requestScreenCapture()),-1,43);
         }
         space(rightHost,9);
         add(rightHost,txt("키캡 색상",12,WHITE,true),-1,27);
@@ -748,6 +751,8 @@ public final class MainActivity extends Activity {
     }
 
     private void buildPermissionSection(LinearLayout parent){
+        add(parent,click("필요한 권한 한 번에 설정 · 단계별 승인",()->startPermissionWizard()),-1,49);
+        space(parent,10);
         add(parent,txt("권한 및 직접 실행",19,WHITE,true),-1,39);
         add(parent,txt("PulseNote 장치는 화면 밖에서 USB 연결과 버튼 입력을 유지합니다. 백그라운드 앱 실행을 위해 '다른 앱 위에 표시' 권한을 이용하며, 선택적으로 작은 PN 상태 표시를 띄웁니다. 일부 Android 버전은 직접 실행을 제한할 수 있습니다.",12,MUTED,false),-1,88);
 
@@ -778,18 +783,104 @@ public final class MainActivity extends Activity {
         add(parent,txt("알림  ·  "+(notificationGranted?"허용됨":"허용 필요"),13,notificationGranted?0xff3edba8:WHITE,true),-1,32);
         add(parent,click(notificationGranted?"알림 설정 확인":"알림 권한 요청",()->requestNotificationPermission()),245,43);
         space(parent,13);
-        add(parent,txt("텍스트 입력·편집 단축키  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
-        add(parent,txt("사용자가 지정한 물리 버튼을 누를 때에만 선택한 일반 입력창에 텍스트 삽입 또는 CTRL+C/V/X/A 편집 동작을 실행합니다. 복사·잘라내기는 시스템 클립보드를 변경하고 붙여넣기는 클립보드의 기존 내용을 사용합니다. 비밀번호 필드는 차단하고 화면 내용을 수집·전송하지 않습니다.",11,MUTED,false),-1,135);
-        add(parent,click("텍스트 입력·단축키 접근성 권한 설정",()->requestTextMacroAccessibility()),325,43);
+        add(parent,txt("편집 단축키  ·  "+(TextMacroAccessibilityService.enabled()?"접근성 허용됨":"사용자 권한 필요"),12,WHITE,true),-1,38);
+        add(parent,txt("사용자가 지정한 단축키 버튼을 누를 때에만 선택한 일반 입력창에서 CTRL+C/V/X/A 편집 동작을 실행합니다. 복사·잘라내기는 시스템 클립보드를 변경하고 붙여넣기는 클립보드의 기존 내용을 사용합니다. 비밀번호 필드는 차단하고 화면 내용을 수집·전송하지 않습니다.",11,MUTED,false),-1,135);
+        add(parent,click("편집 단축키 접근성 권한 설정",()->requestTextMacroAccessibility()),325,43);
         space(parent,10);
         add(parent,txt("편집 단축키  ·  CTRL+C/V/X/A만 지원 · 다른 조합은 미지원",12,MUTED,false),-1,40);
         add(parent,txt("USB 접근 권한은 'PulseNote USB 연결' 버튼을 누를 때 Android 시스템 창에서 요청합니다.",11,MUTED,false),-1,47);
         add(parent,txt("볼륨과 미디어 제어는 별도 특수 권한 없이 작동합니다. 백그라운드 앱 실행을 위해 화면 위 표시 권한을 요청하며, Android 보안 정책에 따라 일부 실행이 제한될 수 있습니다.",11,MUTED,false),-1,65);
     }
+    private void startPermissionWizard(){
+        permissionWizardStage=0;
+        nextPermissionWizard();
+    }
+
+    // A single entry button sequences individual Android consent surfaces.
+    // Denying an optional permission never traps the user in a prompt loop.
+    private void nextPermissionWizard(){
+        if(permissionWizardStage<0||isFinishing()||isDestroyed())return;
+        int stage=permissionWizardStage++;
+        if(stage==0){
+            if(Build.VERSION.SDK_INT<33||
+                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED){
+                nextPermissionWizard();return;
+            }
+            new AlertDialog.Builder(this).setTitle("1/3 · 알림 권한")
+                .setMessage("USB 연결 상태와 앱 실행 요청을 알림으로 표시합니다. 허용하지 않아도 일부 기본 기능은 사용할 수 있지만 백그라운드 알림 동작이 제한됩니다.")
+                .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
+                .setPositiveButton("Android 승인 창 열기",(d,w)->
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIFICATION_REQUEST))
+                .setCancelable(false).show();
+            return;
+        }
+        if(stage==1){
+            if(Settings.canDrawOverlays(this)){nextPermissionWizard();return;}
+            new AlertDialog.Builder(this).setTitle("2/3 · 다른 앱 위에 표시")
+                .setMessage("화면 위 표시를 허용하면 USB 연결 중 상태 표시와 일부 백그라운드 앱 실행에 사용할 수 있습니다. 선택 사항이며 언제든 설정에서 해제할 수 있습니다.")
+                .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
+                .setPositiveButton("설정 열기",(d,w)->{
+                    try{
+                        startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:"+getPackageName())),ONBOARD_OVERLAY);
+                    }catch(Exception e){nextPermissionWizard();}
+                }).setCancelable(false).show();
+            return;
+        }
+        if(stage==2){
+            if(TextMacroAccessibilityService.enabled()){nextPermissionWizard();return;}
+            new AlertDialog.Builder(this).setTitle("3/3 · 편집 단축키 (선택 사항)")
+                .setMessage("복사·붙여넣기·잘라내기·전체 선택 버튼에만 접근성 서비스가 필요합니다. 서비스는 선택된 입력창의 텍스트를 읽고 변경할 수 있으므로 신뢰하는 앱에만 허용하세요. 스크린샷 기능에는 접근성 권한이 필요하지 않습니다.\n\n외부 APK는 Android의 '제한된 설정'으로 활성화가 막힐 수 있으며, 이 제한을 앱이 자동으로 해제할 수 없습니다.")
+                .setNegativeButton("건너뛰기",(d,w)->nextPermissionWizard())
+                .setPositiveButton("접근성 설정 열기",(d,w)->{
+                    try{startActivityForResult(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),ONBOARD_ACCESSIBILITY);}
+                    catch(Exception e){nextPermissionWizard();}
+                }).setCancelable(false).show();
+            return;
+        }
+        permissionWizardStage=-1;
+        scan();
+        UsbDevice first=null;
+        for(UsbDevice d:candidates){if(!usb.hasPermission(d)){first=d;break;}}
+        final UsbDevice device=first;
+        String usbText=device!=null ?
+            "\n\nUSB 장치가 감지됐습니다. 장치 접근 권한은 Android 시스템 창에서 추가 승인해야 합니다.":
+            "\n\nUSB 장치가 연결되지 않았다면 케이블을 연결한 뒤 나오는 시스템 권한 창을 승인하세요.";
+        new AlertDialog.Builder(this).setTitle("권한 설정 안내 완료")
+            .setMessage("알림·화면 위 표시·편집 단축키 권한은 각각 Android에서 결정됩니다.\n\n화면 캡처는 매번 Android 화면 공유 승인이 필요하며 이 과정에서 미리 허용해 둘 수 없습니다."+usbText)
+            .setNegativeButton("완료",(d,w)->{
+                firstPermissionSetupPending=false;
+                maybeAutoConnect();
+            })
+            .setPositiveButton(device!=null?"USB 권한 요청":"장치 및 설정 열기",(d,w)->{
+                firstPermissionSetupPending=false;
+                if(device!=null)requestOrStart(device);
+                else{page=2;refreshNavigation();renderPage();maybeAutoConnect();}
+            }).show();
+        if(page==2)renderPage();
+    }
+
+    private void requestScreenCapture(){
+        if(capturePromptActive||isFinishing()||isDestroyed())return;
+        MediaProjectionManager mgr=(MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);
+        if(mgr==null){updateStatus("Android 화면 캡처 서비스를 사용할 수 없습니다");return;}
+        try{
+            capturePromptActive=true;
+            Intent approve;
+            if(Build.VERSION.SDK_INT>=34)
+                approve=mgr.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay());
+            else approve=mgr.createScreenCaptureIntent();
+            startActivityForResult(approve,CAPTURE_REQUEST_CODE);
+        }catch(RuntimeException error){
+            capturePromptActive=false;
+            updateStatus("화면 캡처 승인 요청 실패: "+error.getClass().getSimpleName());
+        }
+    }
+
     private void requestTextMacroAccessibility() {
         new AlertDialog.Builder(this)
-            .setTitle("텍스트 입력·편집 단축키 접근성 사용")
-            .setMessage("PN12·PN15 버튼에 지정한 문구를 다른 앱의 입력창에 삽입하거나 편집 단축키(CTRL+C, CTRL+V, CTRL+X, CTRL+A)를 사용하려면 Android 접근성 서비스 활성화가 필요합니다. 사용자가 지정한 버튼을 누를 때에만 현재 입력창의 텍스트와 커서 위치를 확인합니다. 복사·잘라내기는 클립보드 내용을 변경하고 붙여넣기는 현재 클립보드 내용을 사용합니다. 비밀번호 입력창은 제외하며 화면 내용을 저장하거나 외부로 전송하지 않습니다. Windows의 임의 단축키를 주입하지는 않습니다. Android 설정에서 언제든 비활성화할 수 있습니다.\n\n동의하는 경우에만 접근성 설정을 열어 직접 활성화하세요.")
+            .setTitle("편집 단축키 접근성 사용")
+            .setMessage("PN12·PN15의 편집 단축키(CTRL+C, CTRL+V, CTRL+X, CTRL+A)를 사용하려면 Android 접근성 서비스 활성화가 필요합니다. 사용자가 지정한 버튼을 누를 때에만 현재 입력창의 텍스트와 커서 위치를 확인합니다. 복사·잘라내기는 클립보드 내용을 변경하고 붙여넣기는 현재 클립보드 내용을 사용합니다. 비밀번호 입력창은 제외하며 화면 내용을 저장하거나 외부로 전송하지 않습니다. Windows의 임의 단축키를 주입하지는 않습니다. Android 설정에서 언제든 비활성화할 수 있습니다.\n\n동의하는 경우에만 접근성 설정을 열어 직접 활성화하세요.")
             .setNegativeButton("취소",null)
             .setPositiveButton("동의하고 설정 열기",(dialog,which)->{
                 try{startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}
@@ -849,6 +940,7 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(request,permissions,results);
         if(page==2)renderPage();
+        if(request==NOTIFICATION_REQUEST&&permissionWizardStage==1)nextPermissionWizard();
     }
     private void pickApp(int key){
         Intent query=new Intent(Intent.ACTION_MAIN);query.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -870,6 +962,26 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
+        if(request==CAPTURE_REQUEST_CODE){
+            capturePromptActive=false;
+            if(result!=RESULT_OK||data==null){updateStatus("화면 캡처가 취소됐습니다");return;}
+            Intent start=new Intent(this,ScreenshotCaptureService.class)
+                .setAction(ScreenshotCaptureService.START);
+            start.putExtra(ScreenshotCaptureService.RESULT_CODE,result);
+            start.putExtra(ScreenshotCaptureService.RESULT_DATA,data);
+            try{
+                if(Build.VERSION.SDK_INT>=26)startForegroundService(start);
+                else startService(start);
+                moveTaskToBack(true);
+            }catch(RuntimeException error){
+                updateStatus("화면 캡처 실행 실패: "+error.getClass().getSimpleName());
+            }
+            return;
+        }
+        if((request==ONBOARD_OVERLAY||request==ONBOARD_ACCESSIBILITY)&&permissionWizardStage>0){
+            nextPermissionWizard();
+            return;
+        }
         if(request==FOLDER_PICK&&result==RESULT_OK&&data!=null&&data.getData()!=null){
             try{getContentResolver().takePersistableUriPermission(data.getData(),Intent.FLAG_GRANT_READ_URI_PERMISSION);}
             catch(Exception ignored){}
@@ -897,7 +1009,7 @@ public final class MainActivity extends Activity {
         return intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
     }
     private void maybeAutoConnect(){
-        if(!autoEnabled()||autoReconnectPaused||usb==null||permissionPromptActive)return;
+        if(!autoEnabled()||firstPermissionSetupPending||autoReconnectPaused||usb==null||permissionPromptActive)return;
         Map<String,UsbDevice> attached=usb.getDeviceList();
         rejectedUsb.retainAll(attached.keySet());
         recentUsbStart.keySet().retainAll(attached.keySet());
@@ -980,6 +1092,10 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent){
         super.onNewIntent(intent);
         setIntent(intent);
+        if(ScreenshotCapture.REQUEST.equals(intent.getAction())){
+            autoConnectionHandler.post(()->requestScreenCapture());
+            return;
+        }
         if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())){
             autoReconnectPaused=false;
             showControllerHome();

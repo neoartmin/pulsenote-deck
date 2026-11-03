@@ -556,6 +556,7 @@ func (d *drawCtx) icon(glyph rune, x, y, w, h, size int, color uint32) {
 // such as squares, music-note characters, and mathematical operators.
 const (
 	icoKeyboard rune = '\ue765'
+	icoCamera   rune = '\ue722'
 	icoTextEdit rune = '\ue70f'
 	icoApps     rune = '\ue71d'
 	icoGlobe    rune = '\ue774'
@@ -583,6 +584,8 @@ func glyphForAction(t string) rune {
 		return icoKeyboard
 	case "text":
 		return icoTextEdit
+	case "capture":
+		return icoCamera
 	case "program":
 		return icoApps
 	case "website":
@@ -646,8 +649,8 @@ func (g *ui) actionPill(d *drawCtx, x, y, w, h int, glyph rune, label string, se
 	d.rounded(x, y, w, h, 10, fill, border)
 	// Render the same colorful premium artwork here as on the physical-key
 	// preview. The monochrome Fluent glyph remains a safe fallback.
-	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+6, y+3, 39) {
-		d.icon(glyph, x+10, y+7, 27, h-14, 18, fg)
+	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+7, y+3, min(32,h-6)) {
+		d.icon(glyph, x+10, y+5, 27, h-10, 18, fg)
 	}
 	d.textBold(label, x+47, y+1, w-52, h-2, 13, fg, false)
 	g.clickable(d, x, y, w, h, "action", id)
@@ -893,6 +896,8 @@ func typeName(t string) string {
 		return "단축키"
 	case "text":
 		return "텍스트 입력"
+	case "capture":
+		return "화면 캡처"
 	case "program":
 		return "프로그램"
 	case "website":
@@ -916,7 +921,7 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
+var types = []string{"shortcut", "text", "capture", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none"}
 
 // Only action types with parameters enable the parameter field.
 func needsValue(t string) bool {
@@ -976,13 +981,14 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.text(key.Label, 989, 281, 392, 25, 17, theme("text"), false)
 	d.text(typeName(key.Type), 989, 305, 390, 21, 12, theme("muted"), false)
 	d.textBold("기능", 931, 343, 250, 28, 16, theme("text"), false)
-	// All original action types remain available; text macros fill the 12th slot.
+	// All original types remain available; capture adds one more action.
 	for i, t := range types {
 		col := i % 3
 		row := i / 3
 		x := 928 + col*156
-		y := 377 + row*53
-		g.actionPill(d, x, y, 148, 45, glyphForAction(t), typeName(t), key.Type == t, i)
+		// Five rows still finish above the unchanged button-name editor.
+		y := 377 + row*42
+		g.actionPill(d, x, y, 148, 38, glyphForAction(t), typeName(t), key.Type == t, i)
 	}
 	d.textBold("버튼 이름", 931, 598, 326, 25, 16, theme("text"), false)
 	d.textBold(valueFieldTitle(key.Type), 931, 674, 330, 25, 15, theme("text"), false)

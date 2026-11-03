@@ -29,11 +29,19 @@ def main() -> int:
             failed.append(f"{name}: not a PNG")
         elif expected != actual:
             failed.append(f"{name}: different bytes")
+    # Capture icon has a shared vector master and is rendered natively at
+    # the actual UI size to keep sharp screenshot corners on both platforms.
+    pc_vector=SOURCE / "capture.svg"
+    android_vector=ANDROID / "capture.svg"
+    if not pc_vector.is_file() or not android_vector.is_file():
+        failed.append("capture: matching vector source missing")
+    elif pc_vector.read_bytes()!=android_vector.read_bytes():
+        failed.append("capture: cross-platform vector artwork differs")
     for fail in failed:
         print(f"ERROR: {fail}")
     if failed:
         return 1
-    print(f"OK: {len(ICONS)} Android action icons are byte-identical to Windows")
+    print(f"OK: {len(ICONS)} PNG icons and capture.svg match across PC and Android")
     return 0
 
 if __name__ == "__main__":

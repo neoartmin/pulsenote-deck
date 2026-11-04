@@ -31,6 +31,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate PulseNote flat icon assets
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==11.3.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/generate_pnd_icon.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Rebuild Windows installer
         shell: pwsh
         run: |
@@ -41,7 +51,7 @@ jobs:
           Pop-Location
           Copy-Item 'out/PulseNoteDeck.exe' 'Windows/소스/installer/app.bin' -Force
           Push-Location 'Windows/소스/installer'
-          go build -trimpath -ldflags '-s -w -H windowsgui' -o '../../../out/PulseNoteDeck_v7.5.17_Setup.exe' .
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o '../../../out/PulseNoteDeck_v7.5.18_Setup.exe' .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
       - name: Check all Go tests
@@ -62,7 +72,7 @@ jobs:
       - name: Stage rebuilt installer and current Windows SHA256 manifest
         shell: pwsh
         run: |
-          Copy-Item 'out/PulseNoteDeck_v7.5.17_Setup.exe' 'Windows/설치/PulseNoteDeck_v7.5.17_Setup.exe' -Force
+          Copy-Item 'out/PulseNoteDeck_v7.5.18_Setup.exe' 'Windows/설치/PulseNoteDeck_v7.5.18_Setup.exe' -Force
           $original = 'Windows/SHA256SUMS_ORIGINAL_v7.5.8.txt'
           if (!(Test-Path -LiteralPath $original)) {
             Copy-Item -LiteralPath 'Windows/SHA256SUMS.txt' -Destination $original -Force
@@ -85,20 +95,20 @@ jobs:
       - name: Bundle Windows original files and rebuilt installer
         shell: pwsh
         run: |
-          $stage = 'out/PND_Windows_v7.5.17_PN12_PN15_Complete'
+          $stage = 'out/PND_Windows_v7.5.18_PN12_PN15_Complete'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Get-ChildItem -LiteralPath Windows -Force | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $stage -Recurse -Force
           }
-          Copy-Item 'out/PulseNoteDeck_v7.5.17_Setup.exe' (Join-Path $stage '설치/PulseNoteDeck_v7.5.17_Setup.exe') -Force
+          Copy-Item 'out/PulseNoteDeck_v7.5.18_Setup.exe' (Join-Path $stage '설치/PulseNoteDeck_v7.5.18_Setup.exe') -Force
           # app.bin is an untracked intermediate, not part of the source archive.
           Remove-Item -LiteralPath (Join-Path $stage '소스/installer/app.bin') -Force -ErrorAction SilentlyContinue
-          Compress-Archive -Path $stage -DestinationPath 'out/PND_Windows_v7.5.17_PN12_PN15_Complete.zip' -Force
+          Compress-Archive -Path $stage -DestinationPath 'out/PND_Windows_v7.5.18_PN12_PN15_Complete.zip' -Force
       - name: Upload Windows full package
         uses: actions/upload-artifact@v4
         with:
-          name: PND-Windows-v7.5.17-Complete
-          path: out/PND_Windows_v7.5.17_PN12_PN15_Complete.zip
+          name: PND-Windows-v7.5.18-Complete
+          path: out/PND_Windows_v7.5.18_PN12_PN15_Complete.zip
           if-no-files-found: error
           retention-days: 30
       - name: Publish GitHub release with EXE installer and complete ZIP
@@ -106,14 +116,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'pnd-windows-v7.5.17'
-          $zip = 'out/PND_Windows_v7.5.17_PN12_PN15_Complete.zip'
-          $exe = 'out/PulseNoteDeck_v7.5.17_Setup.exe'
+          $tag = 'pnd-windows-v7.5.18'
+          $zip = 'out/PND_Windows_v7.5.18_PN12_PN15_Complete.zip'
+          $exe = 'out/PulseNoteDeck_v7.5.18_Setup.exe'
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $exe $zip --clobber
           } else {
-            gh release create $tag $exe $zip --target $env:GITHUB_SHA --title 'PulseNote Deck Windows v7.5.17' --notes 'Windows v7.5.17: every action has user help, simplified function picker hides legacy complex macros, keyboard shortcut hold-toggle keydown/keyup with one ON/OFF notification, safe release on disconnect/profile changes/exit. Windows-only release; Android unchanged.' --prerelease
+            gh release create $tag $exe $zip --target $env:GITHUB_SHA --title 'PulseNote Deck Windows v7.5.18' --notes 'Windows v7.5.18: every action has user help, simplified function picker hides legacy complex macros, keyboard shortcut hold-toggle keydown/keyup with one ON/OFF notification, safe release on disconnect/profile changes/exit. Windows-only release; Android unchanged.' --prerelease
           }
 
           # Keep one stable URL for the newest installer built from main.
@@ -133,7 +143,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- 'Windows/설치/PulseNoteDeck_v7.5.17_Setup.exe' 'Windows/SHA256SUMS.txt' 'Windows/SHA256SUMS_ORIGINAL_v7.5.8.txt'
+          git add -- 'Windows/설치/PulseNoteDeck_v7.5.18_Setup.exe' 'Windows/SHA256SUMS.txt' 'Windows/SHA256SUMS_ORIGINAL_v7.5.8.txt'
           git diff --cached --quiet
           if ($LASTEXITCODE -ne 0) {
             git commit -m "Sync tracked Windows setup binary with canonical PN12/PN15 firmware"

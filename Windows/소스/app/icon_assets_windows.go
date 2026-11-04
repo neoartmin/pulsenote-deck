@@ -12,7 +12,7 @@ import (
 
 // 512px, colorful illustrated rounded icons are embedded in the EXE.
 //
-//go:embed assets/*.png
+//go:embed assets/*
 var artwork embed.FS
 
 const pixelFormat32bppARGB = 0x26200a
@@ -56,7 +56,7 @@ func initRoundedArtwork() {
 		return
 	}
 	roundedIcons = map[string]roundedAsset{}
-	for _, name := range []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control", "auto_click", "audio_output"} {
+	for _, name := range []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control", "auto_click", "audio_output", "app_logo"} {
 		b, err := artwork.ReadFile("assets/" + name + ".png")
 		if err != nil {
 			continue

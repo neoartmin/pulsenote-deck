@@ -20,6 +20,7 @@ var (
     winSetWindowPos = u.NewProc("SetWindowPos")
     shcoreDPI = syscall.NewLazyDLL("shcore.dll")
     shcoreSetProcessDPI = shcoreDPI.NewProc("SetProcessDpiAwareness")
+    rtlCopyDPIBounds = syscall.NewLazyDLL("ntdll.dll").NewProc("RtlMoveMemory")
 )
 
 // The embedded EXE manifest sets PerMonitorV2 before any HWND exists.
@@ -59,7 +60,11 @@ func (g *ui) handleDPIChanged(hwnd,wp,lp uintptr) {
     // lParam points to the Windows-recommended *physical pixel* rectangle.
     // Following it preserves the visual size when crossing monitors.
     if lp!=0 {
-        suggested:=*(*rect)(unsafe.Pointer(lp))
+        // Copy the OS-owned RECT while WM_DPICHANGED is dispatched.
+        // lParam is a Win32 address (uintptr); avoid unsafe.Pointer casts
+        // from integers that violate Go's checkptr/vet safety rules.
+        var suggested rect
+        rtlCopyDPIBounds.Call(uintptr(unsafe.Pointer(&suggested)),lp,unsafe.Sizeof(suggested))
         width,height:=int64(suggested.Right)-int64(suggested.Left),int64(suggested.Bottom)-int64(suggested.Top)
         if width>0 && height>0 {
             winSetWindowPos.Call(hwnd,0,uintptr(int64(suggested.Left)),uintptr(int64(suggested.Top)),

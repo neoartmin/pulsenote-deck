@@ -29,9 +29,12 @@ func guideForAction(kind string) actionGuide {
     case "system_settings":
         return actionGuide{"선택한 Windows 시스템 설정 화면을 엽니다.",
             "설정 선택에서 Wi-Fi·블루투스·화면·소리·절전·전체 설정을 지정합니다. 설정을 켜거나 끄지는 않습니다."}
-    case "open_timers":
-        return actionGuide{"Windows 시계 앱을 실행합니다.",
-            "시계 앱에서 타이머 탭을 직접 선택하고 시간과 시작을 지정합니다. 타이머는 자동으로 시작되지 않습니다."}
+    case "auto_click":
+        return actionGuide{"한 번 누르면 반복 클릭 시작, 다시 누르면 즉시 중지합니다.",
+            "클릭 버튼, 20~10000ms 간격, 반복 횟수를 선택합니다. 무제한은 직접 중지할 때까지 반복합니다. USB 분리·앱 종료·트레이 중지에서도 정지합니다. 일부 게임에서는 자동 입력이 제한됩니다."}
+    case "audio_output":
+        return actionGuide{"다음 활성 스피커·헤드셋 출력 장치로 전환합니다.",
+            "Windows 기본 재생 장치를 순차 전환합니다. 통화용 출력은 변경하지 않습니다. 두 개 이상의 재생 장치가 필요합니다. Windows 비공개 인터페이스가 차단되면 실패 알림을 표시합니다."}
     case "open_alarms":
         return actionGuide{"Windows 시계 앱을 실행합니다.",
             "시계 앱에서 알람 탭을 직접 선택하고 알람을 설정합니다. 알람은 자동 생성되지 않습니다."}

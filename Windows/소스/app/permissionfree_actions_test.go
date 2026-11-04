@@ -54,12 +54,24 @@ func TestWindowsClipboardMacroUTF16AndNewlines(t *testing.T){
     }
 }
 
+func TestRemovedTimerMigratesToNoAction(t *testing.T){
+    if validTypes["open_timers"]{t.Fatal("removed timer still registered")}
+    for _,kind:=range types{if kind=="open_timers"{t.Fatal("removed timer in GUI picker")}}
+    c:=defaults()
+    mutateKey(&c,0,func(k *Key){k.Type="open_timers";k.Label="타이머 열기";k.Value="old"})
+    k,ok:=selectedKey(normalize(c),0)
+    if !ok||k.Type!="none"||k.Value!=""||k.Label!="기능 없음"{
+        t.Fatalf("legacy timer not deactivated safely: %+v",k)
+    }
+}
+
 func TestWindowsPermissionFreeActionsRemainEditable(t *testing.T){
     actions:=[]struct{kind,caption string;param bool}{
         {"copy_text","문구 복사",true},
         {"system_settings","설정 바로가기",true},
-        {"open_timers","타이머 열기",false},
         {"open_alarms","알람 열기",false},
+        {"auto_click","오토클릭",false},
+        {"audio_output","스피커 전환",false},
     }
     for _,tc:=range actions{
         if !validTypes[tc.kind]{t.Fatalf("missing action %s",tc.kind)}

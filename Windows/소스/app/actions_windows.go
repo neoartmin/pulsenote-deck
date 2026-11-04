@@ -55,7 +55,11 @@ func runAction(k Key) error {
 		return copyMacroToClipboard(k.Value)
 	case "system_settings":
 		return shellOpen(settingTarget(k.Value))
-	case "open_timers", "open_alarms":
+	case "auto_click":
+		return toggleAutoClick(k.Value)
+	case "audio_output":
+		return switchAudioOutput()
+	case "open_alarms":
 		// Microsoft's Clock application offers both Timer and Alarm tabs.
 		// There is no documented stable launch URI for a specific Clock tab.
 		return shellOpen(`shell:AppsFolder\Microsoft.WindowsAlarms_8wekyb3d8bbwe!App`)

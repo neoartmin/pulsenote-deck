@@ -14,6 +14,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Render application and installer icons
+        shell: pwsh
+        run: python tools/generate_pnd_icon.py
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
@@ -25,5 +28,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go vet ./...
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -o "$env:RUNNER_TEMP/PulseNoteDeck.exe" .
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o "$env:RUNNER_TEMP/PulseNoteDeck.exe" .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test and build Windows preview installer
+        shell: pwsh
+        run: |
+          Copy-Item "$env:RUNNER_TEMP/PulseNoteDeck.exe" 'Windows/소스/installer/app.bin' -Force
+          Push-Location 'Windows/소스/installer'
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o "$env:RUNNER_TEMP/PulseNoteDeck_v7.6.0_Preview_Setup.exe" .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+      - name: Upload Windows preview installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PulseNoteDeck-v7.6.0-Preview-Setup
+          path: ${{ runner.temp }}/PulseNoteDeck_v7.6.0_Preview_Setup.exe
+          if-no-files-found: error
+          retention-days: 14

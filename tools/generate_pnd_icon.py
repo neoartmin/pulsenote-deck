@@ -29,4 +29,4 @@ sizes = [(x, x) for x in (16, 24, 32, 48, 64, 128, 256)]
 for path in (APP_ICON, SETUP_ICON):
     path.parent.mkdir(parents=True, exist_ok=True)
     im.save(path, format="ICO", sizes=sizes)
-    print(f"Generated {path}: {path.stat().st_size} bytes")
+    print(f"Generated app/installer icon: {path.stat().st_size} bytes")

@@ -2479,7 +2479,10 @@ func main() {
 	appIcon, _, _ = loadIcon.Call(0, IDI_APPLICATION)
 	iconSmall := appIcon
 	if exe, e := os.Executable(); e == nil {
-		iconPath := filepath.Join(filepath.Dir(exe), "PulseNoteDeck.ico")
+		iconPath := filepath.Join(filepath.Dir(exe), "PulseNoteDeck_v"+version+".ico")
+		if _, err := os.Stat(iconPath); err != nil {
+			iconPath = filepath.Join(filepath.Dir(exe), "PulseNoteDeck.ico")
+		}
 		if _, e := os.Stat(iconPath); e == nil {
 			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 48, 48, 0x10); ico != 0 {
 				appIcon = ico

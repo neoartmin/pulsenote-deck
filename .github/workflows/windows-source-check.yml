@@ -7,6 +7,8 @@ on:
       - 'Windows/소스/installer/**'
       - 'tools/generate_pnd_icon.py'
       - 'tools/prepare_pretendard.py'
+      - 'tools/create_backup_archive.py'
+      - 'tools/backup_user_settings.cmd'
       - '.github/workflows/windows-source-check.yml'
 
 permissions:
@@ -69,5 +71,17 @@ jobs:
         with:
           name: PND-v7.5.22-Windows-Preview-Setup
           path: ${{ runner.temp }}/PulseNoteDeck_v7.5.22_Setup_preview.exe
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Build complete source, firmware, Android, website and binary backup
+        shell: pwsh
+        run: |
+          python tools/create_backup_archive.py --app "$env:RUNNER_TEMP/PulseNoteDeck.exe" --installer "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.22_Setup_preview.exe" --output "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PND-v7.5.22-Full-Project-Backup
+          path: ${{ runner.temp }}/PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip
           retention-days: 14
           if-no-files-found: error

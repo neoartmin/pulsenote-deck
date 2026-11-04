@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"sync"
-	"syscall"
 	"time"
 	"unsafe"
 )

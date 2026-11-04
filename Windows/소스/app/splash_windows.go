@@ -119,7 +119,7 @@ func (s *startupSplash) paint() {
 				fill = theme("accent")
 			}
 			if row == 1 && col == 1 {
-				fill = RGB(3, 180, 112)
+				fill = RGB(216, 216, 219)
 			}
 			d.rounded(48+col*59, 46+row*51, 49, 41, 8, fill, theme("border"))
 		}

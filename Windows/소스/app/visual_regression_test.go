@@ -75,3 +75,32 @@ func TestSoftKeycapsReadableText(t *testing.T) {
 		}
 	}
 }
+
+ 
+// The unified black/gray/red theme must not silently recolor stored profile
+// data or use a per-key high-saturation fill in the controller preview.
+func TestUnifiedGrayKeycapThemeAndSelectionOutline(t *testing.T) {
+    source, err := os.ReadFile("gui_windows.go")
+    if err != nil { t.Fatal(err) }
+    body := string(source)
+    for _, required := range []string{
+        `"controlFill": RGB(217, 217, 222)`,
+        `"accent": RGB(214, 40, 57)`,
+        `"selectedEdge": RGB(152, 87, 246)`,
+        `selected := g.selected == i`,
+        `edge = theme("selectedEdge")`,
+        `theme("controlFill"), theme("controlFill")`,
+    } {
+        if !strings.Contains(body, required) {t.Errorf("missing unified keycap visual: %s", required)}
+    }
+    if strings.Contains(body, `d.rounded(x, y, w, h, 13, colorValue(key.Color)`) {
+        t.Fatal("keycap per-color fill unexpectedly restored")
+    }
+    for _, name := range palette {
+        c := defaults()
+        mutateKey(&c, 0, func(k *Key) { k.Color = name })
+        c = normalize(c)
+        k, ok := selectedKey(c, 0)
+        if !ok || k.Color != name {t.Fatalf("stored legacy color lost: %s", name)}
+    }
+}

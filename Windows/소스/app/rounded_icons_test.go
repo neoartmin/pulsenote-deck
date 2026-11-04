@@ -62,8 +62,9 @@ func TestAppIconHasNoDarkBackplateOrJaggedClip(t *testing.T) {
 			t.Errorf("GDI+ high-quality icon rendering missing: %s", need)
 		}
 	}
-	if !strings.Contains(s, "// One clean focus ring") {
-		t.Error("double focus ring may have returned")
+	if !strings.Contains(s, "selected := g.selected == i") ||
+		strings.Contains(s, "d.rounded(x-3, y-3, w+6, h+6") {
+		t.Error("keycap selection must use a single violet edge, not a double focus ring")
 	}
 }
 

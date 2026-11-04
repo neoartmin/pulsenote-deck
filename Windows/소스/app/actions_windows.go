@@ -55,10 +55,16 @@ func runAction(k Key) error {
 		return copyMacroToClipboard(k.Value)
 	case "system_settings":
 		return shellOpen(settingTarget(k.Value))
-	case "open_timers", "open_alarms":
+	case "open_alarms":
 		// Microsoft's Clock application offers both Timer and Alarm tabs.
 		// There is no documented stable launch URI for a specific Clock tab.
 		return shellOpen(`shell:AppsFolder\Microsoft.WindowsAlarms_8wekyb3d8bbwe!App`)
+	case "auto_click":
+		return toggleAutoClick(k.Value, k.Label)
+	case "audio_output":
+		return switchAudioOutput(k.Value)
+	case "open_timers":
+		return fmt.Errorf("타이머 기능은 제거되었습니다. 다른 기능을 선택하세요")
 	case "web_search":
 		uri, err := webSearchURL(k.Value)
 		if err != nil { return err }

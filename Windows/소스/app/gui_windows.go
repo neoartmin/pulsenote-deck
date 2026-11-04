@@ -224,6 +224,9 @@ type ui struct {
 	actionPage                                           int
 	page                                                 int
 	status                                               string
+	windowDPI                                            uint32
+	nativeEditFont                                       uintptr
+	nativeEditPx                                         int
 	scale                                                float64
 	ox, oy                                               int
 	touches                                              []click
@@ -481,9 +484,9 @@ func newDraw(hdc uintptr, w, h int32) *drawCtx {
 	if scale < 0.4 {
 		scale = 0.4
 	}
-	if scale > 1.65 {
-		scale = 1.65
-	}
+	// Do not cap the fit scale at 165%. A 200% or 250% display must
+	// receive its full number of native device pixels, not a blurry bitmap
+	// scaled by Windows. DPI is NOT multiplied here a second time.
 	return &drawCtx{hdc: hdc, scale: scale, ox: int((float64(w) - 1440*scale) / 2), oy: int((float64(h) - 900*scale) / 2), fonts: mainUI.fonts, iconFonts: mainUI.iconFonts}
 }
 func (d *drawCtx) xy(x, y int) (int32, int32) {
@@ -494,6 +497,9 @@ func (d *drawCtx) ab(x, y, w, h int) rect {
 	return rectI(xx, yy, int32(float64(w)*d.scale), int32(float64(h)*d.scale))
 }
 func (d *drawCtx) rounded(x, y, w, h, r int, fill, border uint32) {
+	if d.antiAliasedRounded(x,y,w,h,r,fill,border) {
+		return
+	}
 	q := d.ab(x, y, w, h)
 	pen, _, _ := createPen.Call(PS_SOLID, uintptr(maxInt(1, int(d.scale))), uintptr(border))
 	brush, _, _ := createSolidBrush.Call(uintptr(fill))
@@ -741,6 +747,7 @@ func (g *ui) paint() {
 	deleteObject.Call(bg)
 	d := newDraw(target, w, h)
 	g.scale = d.scale
+	g.applyNativeEditorFont(d.scale)
 	g.ox = d.ox
 	g.oy = d.oy
 	g.touches = g.touches[:0]
@@ -2230,6 +2237,7 @@ func (g *ui) quit() {
 		deleteObject.Call(editBgBrush)
 	}
 	g.tray(false)
+	if g.nativeEditFont!=0 {deleteObject.Call(g.nativeEditFont);g.nativeEditFont=0}
 	for _, v := range g.fonts {
 		deleteObject.Call(v)
 	}
@@ -2288,6 +2296,9 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		return 0
 	case WM_SIZE:
 		g.redraw()
+		return 0
+	case WM_DPICHANGED:
+		g.handleDPIChanged(hwnd,wp,lp)
 		return 0
 	case WM_CLOSE:
 		// Close the SETTINGS WINDOW, not the USB listener / action worker.
@@ -2420,6 +2431,8 @@ func maxInt(a, b int) int {
 	return b
 }
 func main() {
+	// Establish DPI context before creating the splash window or any HWND.
+	configureProcessDPI()
 	// Shell's jumbo icon list is COM-backed. Pin the main UI message loop to
 	// one STA thread for SHGetImageList and keep it initialized until exit.
 	runtime.LockOSThread()
@@ -2513,6 +2526,7 @@ func main() {
 		return
 	}
 	g.hwnd = hwnd
+	g.windowDPI=currentWindowDPI(hwnd)
 	// Set both titlebar/taskbar icons explicitly to avoid scaling a 48px image
 	// to 16px and to match the desktop .lnk's registered ICO.
 	sendMessage.Call(hwnd, 0x0080, 0, iconSmall) // WM_SETICON / ICON_SMALL
@@ -2541,14 +2555,9 @@ func main() {
     sendMessage.Call(to,EM_SETLIMITTEXT,320,0)
     sendMessage.Call(subject,EM_SETLIMITTEXT,700,0)
     sendMessage.Call(body,EM_SETLIMITTEXT,3000,0)
-	editFont, _, _ := createFont.Call(uintptr(^uint32(17)), 0, 0, 0, uintptr(500), 0, 0, 0, 1, 0, 0, 0, 0, ptr(preferredFace))
-	g.fonts[17*1000+500] = editFont
-	sendMessage.Call(g.labelEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.valueEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.textValueEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.appSearchEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.profileNameEdit, WM_SETFONT, editFont, 1)
-    for _,field:=range []uintptr{g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit}{sendMessage.Call(field,WM_SETFONT,editFont,1)}
+	// Native text-edit HWNDs need the same physical-pixel font scale as
+	// the GDI backbuffer. Reapply on WM_DPICHANGED and on window resize.
+	g.applyNativeEditorFont(1)
 	g.edits()
 	g.tray(true)
 	if background {

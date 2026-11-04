@@ -8,9 +8,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATED = [
-    "Windows/소스/app/assets/Pretendard-Regular.otf",
-    "Windows/소스/app/assets/Pretendard-Medium.otf",
-    "Windows/소스/app/assets/Pretendard-Bold.otf",
     "Windows/소스/app/assets/auto_click.png",
     "Windows/소스/app/assets/audio_output.png",
     "Windows/소스/app/assets/app_logo.png",
@@ -23,7 +20,9 @@ GENERATED = [
 README = """PulseNote Deck Control Center v7.5.22 - 전체 백업
 
 이 압축파일에는 v7.5.22 프리뷰 개발 브랜치의 모든 Git 추적 파일,
-빌드에 필요한 생성된 폰트/아이콘/리소스, 앱 EXE 및 설치 EXE가 있습니다.
+빌드에 필요한 생성 아이콘/리소스, 앱 EXE 및 설치 EXE가 있습니다.
+폰트 원본 파일은 포함하지 않습니다. tools/prepare_pretendard.py를 실행하면
+공식 Pretendard 배포본을 해시 검증 후 다시 가져올 수 있습니다.
 Android/펌웨어/웹사이트/과거 설치기/Windows 소스를 모두 보존합니다.
 
 PROJECT/  전체 프로젝트 소스 및 부속 파일

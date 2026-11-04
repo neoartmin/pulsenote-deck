@@ -50,12 +50,23 @@ func createCOM(clsid,iid *syscall.GUID)(uintptr,error) {
 	return instance,nil
 }
 func releaseCOM(obj uintptr){if obj!=0{comMethod(obj,2)}}
+// Windows audio COM returns null-terminated LPWSTR buffers.
+func audioUTF16String(p uintptr) string {
+	if p==0{return ""}
+	chars:=make([]uint16,0,128)
+	for i:=0;i<4096;i++{
+		v:=*(*uint16)(unsafe.Pointer(p+uintptr(i*2)))
+		if v==0{break}
+		chars=append(chars,v)
+	}
+	return syscall.UTF16ToString(chars)
+}
 func audioEndpointID(device uintptr)(string,error){
 	var p uintptr
 	hr:=comMethod(device,5,uintptr(unsafe.Pointer(&p)))
 	if failedHRESULT(hr)||p==0{return "",audioHRESULT("오디오 장치 ID",hr)}
 	defer ole32.NewProc("CoTaskMemFree").Call(p)
-	return syscall.UTF16PtrToString((*uint16)(unsafe.Pointer(p))),nil
+	return audioUTF16String(p),nil
 }
 func friendlyAudioName(device uintptr) string {
 	var store uintptr
@@ -67,7 +78,7 @@ func friendlyAudioName(device uintptr) string {
 	if failedHRESULT(hr){return ""}
 	defer propVariantClear.Call(uintptr(unsafe.Pointer(&v)))
 	if v.Vt!=31||v.Value==0{return ""} // VT_LPWSTR
-	return syscall.UTF16PtrToString((*uint16)(unsafe.Pointer(v.Value)))
+	return audioUTF16String(v.Value)
 }
 func enumerateOutputDevices()(endpoints []playbackEndpoint,current string,err error){
 	en,err:=createCOM(&clsidMMDeviceEnumerator,&iidIMMDeviceEnumerator)

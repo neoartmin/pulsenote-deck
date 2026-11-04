@@ -88,6 +88,7 @@ func (m *multiSerialManager) disconnect(port string, expected *deviceLink, reaso
 		_ = current.file.Close()
 	}
 	if connected {
+		stopAutoClick()
 		enqueueDeviceNotice(deviceNotice{Port: port, Keys: model, Connected: false})
 		logUSBEvent(port, reason)
 	}

@@ -377,6 +377,7 @@ func keyInput(i int) {
 	}
 	if err != nil {
 		s = fmt.Sprintf("KEY:%d · 실행 실패: %v", i, err)
+        enqueueActionNotice("동작 실패",err.Error())
 	}
 	state.Lock()
 	state.LastKey = i
@@ -406,6 +407,7 @@ func keyInputForDevice(e deviceKeyEvent) {
 	}
 	if err != nil {
 		result = fmt.Sprintf("%s KEY:%d · 실행 실패: %v", deviceIdentityLabel(e.Model, e.Side), e.Key, err)
+        enqueueActionNotice("동작 실패",err.Error())
 	}
 	// Device input remains independent of the offline editor selection.
 	state.Lock()
@@ -431,13 +433,13 @@ func uint16copy(target []uint16, s string) { r, _ := syscall.UTF16FromString(s);
 func rectI(x, y, w, h int32) rect          { return rect{x, y, x + w, y + h} }
 func RGB(r, g, b byte) uint32              { return uint32(r) | uint32(g)<<8 | uint32(b)<<16 }
 
-// Crisp graphite/navy shell with vivid focused accents, matching the approved design.
+// High-contrast black, light grey and red, without changing profile colors.
 var paletteTheme = map[string]uint32{
-	"bg": RGB(8, 15, 29), "sidebar": RGB(12, 22, 40), "panel": RGB(19, 33, 55),
-	"panel2": RGB(13, 26, 47), "border": RGB(40, 60, 90),
-	"text": RGB(246, 249, 255), "muted": RGB(163, 180, 210),
-	"accent": RGB(85, 102, 255), "sel": RGB(37, 53, 115),
-	"green": RGB(3, 220, 121), "blacktext": RGB(10, 15, 24),
+	"bg": RGB(15, 15, 17), "sidebar": RGB(9, 9, 11), "panel": RGB(36, 36, 40),
+	"panel2": RGB(57, 57, 62), "border": RGB(203, 204, 210),
+	"text": RGB(247, 247, 249), "muted": RGB(208, 209, 214),
+	"accent": RGB(214, 40, 57), "sel": RGB(86, 34, 40),
+	"green": RGB(96, 215, 140), "blacktext": RGB(17, 17, 19),
 }
 
 func theme(s string) uint32 { return paletteTheme[s] }
@@ -596,8 +598,12 @@ func glyphForAction(t string) rune {
 		return icoTextEdit
 	case "system_settings":
 		return icoApps
-	case "open_timers", "open_alarms":
+	case "open_alarms":
 		return icoPlay
+	case "auto_click":
+		return icoKeyboard
+	case "audio_output":
+		return icoVolume
 	case "web_search":
 		return icoGlobe
 	case "compose_email":
@@ -928,10 +934,12 @@ func typeName(t string) string {
 		return "문구 복사"
 	case "system_settings":
 		return "설정 바로가기"
-	case "open_timers":
-		return "타이머 열기"
 	case "open_alarms":
 		return "알람 열기"
+	case "auto_click":
+		return "오토클릭"
+	case "audio_output":
+		return "스피커 전환"
 	case "web_search":
 		return "웹 검색"
 	case "compose_email":
@@ -967,13 +975,14 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_alarms", "auto_click", "audio_output", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
     case "system_settings": return "설정"
-    case "open_timers": return "타이머"
     case "open_alarms": return "알람"
+    case "audio_output": return "스피커 전환"
+    case "auto_click": return "오토클릭"
     case "media_play": return "재생/정지"
     case "clipboard_history": return "복사 기록"
     case "compose_email": return "이메일"
@@ -1017,6 +1026,8 @@ func valueFieldTitle(t string) string {
 		return "키 번호·대기 단계 (예: 2,wait:250,4)"
 	case "window_control":
 		return "창 동작 선택 (오른쪽 메뉴)"
+	case "auto_click":
+		return "오토클릭 설정 · 클릭/간격/횟수"
 	default:
 		return "추가 입력 없이 바로 실행"
 	}
@@ -1111,6 +1122,17 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
         title:=mail.subject
         if title==""{title="(미입력)"}
         d.text("제목: "+title,932,732,459,20,12,theme("muted"),false)
+    } else if key.Type == "auto_click" {
+        opts,err:=parseAutoClickSettings(key.Value)
+        if err!=nil{opts=defaultAutoClickSettings()}
+        label:="왼쪽"
+        if opts.Button=="right"{label="오른쪽"}
+        count:="무제한"
+        if opts.Limit>0{count=fmt.Sprintf("%d회",opts.Limit)}
+        g.pill(d,931,705,145,38,label+" 클릭",false,"autoclickbutton",0)
+        g.pill(d,1083,705,145,38,fmt.Sprintf("%d ms",opts.IntervalMS),false,"autoclickinterval",0)
+        g.pill(d,1236,705,157,38,count,false,"autoclickrepeat",0)
+        d.text("다시 누르기 · 트레이 메뉴 · USB 분리로 즉시 중지",932,747,462,16,10,theme("muted"),false)
     } else if key.Type == "shortcut" {
         caption:="누름 유지: 끔"
         if key.Toggle{caption="누름 유지: 켬"}
@@ -1241,7 +1263,7 @@ func (g *ui) moveEdits(d *drawCtx) {
 	}
 	key, ok := selectedKey(snap(), g.selected)
 	showTextValue := show && ok && (key.Type == "text" || key.Type == "copy_text" || key.Type == "sequence")
-	showSingleValue := show && !showTextValue && (!ok || key.Type!="compose_email")
+	showSingleValue := show && !showTextValue && (!ok || (key.Type!="compose_email" && key.Type!="auto_click"))
 	if !g.editsPlaced || g.singleValueShown != showSingleValue {
 		if showSingleValue {
 			showWindow.Call(g.valueEdit, SW_SHOW)
@@ -1455,6 +1477,7 @@ func (g *ui) perform(hit click) {
 		if hit.id>=0 && hit.id < (len(types)+15)/16 {g.actionPage=hit.id}
 	case "action":
         if hit.id<0||hit.id>=len(types){break}
+        stopAutoClick()
 		t := types[hit.id]
 		err := update(func(c *Config) {
 			mutateKey(c, g.selected, func(k *Key) {
@@ -1488,6 +1511,7 @@ func (g *ui) perform(hit click) {
 			g.profileEdits()
 		}
 	case "profile":
+        stopAutoClick()
 		g.showSaveError(update(func(c *Config) { _, m, _ := active(*c); m.Active = hit.id; c.Models[modelKey(*c)] = m }))
 		g.selected = 0
 		g.edits()
@@ -1530,6 +1554,43 @@ func (g *ui) perform(hit click) {
 		g.selected = 0
 		g.edits()
 		g.profileEdits()
+	case "autoclickbutton":
+        key,ok:=selectedKey(snap(),g.selected)
+        if !ok||key.Type!="auto_click"{break}
+        opts,err:=parseAutoClickSettings(key.Value)
+        if err!=nil{opts=defaultAutoClickSettings()}
+        choice:=g.menu([]string{"왼쪽 클릭","오른쪽 클릭"})
+        if choice>=1&&choice<=2{
+            if choice==1{opts.Button="left"}else{opts.Button="right"}
+            g.showSaveError(update(func(c *Config){mutateKey(c,g.selected,func(k *Key){if k.Type=="auto_click"{k.Value=opts.encode()}})}))
+            g.edits()
+        }
+    case "autoclickinterval":
+        key,ok:=selectedKey(snap(),g.selected)
+        if !ok||key.Type!="auto_click"{break}
+        opts,err:=parseAutoClickSettings(key.Value)
+        if err!=nil{opts=defaultAutoClickSettings()}
+        values:=[]int{20,50,100,200,500,1000,2000,5000,10000}
+        names:=[]string{"20 ms","50 ms","100 ms","200 ms","500 ms","1초","2초","5초","10초"}
+        choice:=g.menu(names)
+        if choice>=1&&choice<=len(values){
+            opts.IntervalMS=values[choice-1]
+            g.showSaveError(update(func(c *Config){mutateKey(c,g.selected,func(k *Key){if k.Type=="auto_click"{k.Value=opts.encode()}})}))
+            g.edits()
+        }
+    case "autoclickrepeat":
+        key,ok:=selectedKey(snap(),g.selected)
+        if !ok||key.Type!="auto_click"{break}
+        opts,err:=parseAutoClickSettings(key.Value)
+        if err!=nil{opts=defaultAutoClickSettings()}
+        values:=[]int{0,1,10,50,100,500,1000}
+        names:=[]string{"무제한 (다시 누르면 중지)","1회","10회","50회","100회","500회","1000회"}
+        choice:=g.menu(names)
+        if choice>=1&&choice<=len(values){
+            opts.Limit=values[choice-1]
+            g.showSaveError(update(func(c *Config){mutateKey(c,g.selected,func(k *Key){if k.Type=="auto_click"{k.Value=opts.encode()}})}))
+            g.edits()
+        }
 	case "settingspick":
 		// This is a Windows native popup menu. No typed settings protocol is
 		// required, and only Microsoft-documented ms-settings pages can launch.
@@ -2089,18 +2150,20 @@ func (g *ui) tray(add bool) {
 	notifyIcon.Call(op, uintptr(unsafe.Pointer(&n)))
 }
 func (g *ui) trayMenu() {
-	toggle := "장치 연결 알림 켜기"
+	toggle := "동작·연결 알림 켜기"
 	if notificationsEnabled() {
-		toggle = "장치 연결 알림 끄기"
+		toggle = "동작·연결 알림 끄기"
 	}
-	id := g.menu([]string{"설정창 열기", toggle, "완전 종료"})
+	id := g.menu([]string{"설정창 열기", "오토클릭 강제 중지", toggle, "완전 종료"})
 	if id == 1 {
 		g.show()
 	} else if id == 2 {
-		if err := saveNotificationPreference(notificationPreferencePath(), !notificationsEnabled()); err != nil {
-			messageBox.Call(g.hwnd, ptr("장치 알림 설정을 저장하지 못했습니다: "+err.Error()), ptr("PulseNote Deck"), 0x10)
-		}
+        stopAutoClick()
 	} else if id == 3 {
+		if err := saveNotificationPreference(notificationPreferencePath(), !notificationsEnabled()); err != nil {
+			messageBox.Call(g.hwnd, ptr("알림 설정을 저장하지 못했습니다: "+err.Error()), ptr("PulseNote Deck"), 0x10)
+		}
+	} else if id == 4 {
 		if g.flushProfileName() != nil || g.flushEdits() != nil {
 			g.show() // Let the user resolve the save error rather than losing edits.
 			return
@@ -2117,6 +2180,7 @@ func (g *ui) quit() {
 		deleteObject.Call(editBgBrush)
 	}
 	g.tray(false)
+	stopAutoClick()
 	for _, v := range g.fonts {
 		deleteObject.Call(v)
 	}
@@ -2235,6 +2299,16 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		}
 		g.redraw()
 		return 0
+	case WM_ACTION_NOTICE:
+        for {
+            select {
+            case notice:=<-actionNotices:
+                g.showActionNotice(notice)
+            default:
+                g.redraw()
+                return 0
+            }
+        }
 	case WM_SHORTCUT_TOGGLE:
         for {
             select{

@@ -1474,6 +1474,7 @@ func (g *ui) perform(hit click) {
 		g.selected = hit.id
 		g.edits()
 	case "editmodel":
+		stopAutoClick("모델 변경")
 		// Changing a settings tab must never alter live USB sessions.
 		targets := []struct {
 			model int
@@ -1526,11 +1527,13 @@ func (g *ui) perform(hit click) {
 			g.profileEdits()
 		}
 	case "profile":
+		stopAutoClick("프로필 변경")
 		g.showSaveError(update(func(c *Config) { _, m, _ := active(*c); m.Active = hit.id; c.Models[modelKey(*c)] = m }))
 		g.selected = 0
 		g.edits()
 		g.profileEdits()
 	case "profileadd":
+		stopAutoClick("프로필 변경")
 		g.showSaveError(update(func(c *Config) {
 			_, m, p := active(*c)
 			if len(m.Profiles) >= maxProfiles {
@@ -1556,6 +1559,7 @@ func (g *ui) perform(hit click) {
 		if answer, _, _ := messageBox.Call(g.hwnd, ptr("프로필 '"+name+"'을(를) 삭제할까요?\n삭제하면 해당 프로필의 버튼 설정을 되돌릴 수 없습니다."), ptr("프로필 삭제 확인"), 0x24); answer != 6 {
 			return
 		}
+		stopAutoClick("프로필 변경")
 		g.showSaveError(update(func(c *Config) {
 			_, m, _ := active(*c)
 			if len(m.Profiles) <= 1 {
@@ -1582,6 +1586,62 @@ func (g *ui) perform(hit click) {
 			}))
 			g.edits()
 		}
+	case "autoclickpick":
+		k, ok := selectedKey(snap(), g.selected)
+		if !ok || k.Type != "auto_click" { break }
+		cfg, e := parseAutoClick(k.Value)
+		if e != nil {
+			messageBox.Call(g.hwnd, ptr(e.Error()), ptr("오토클릭 설정"), 0x30)
+			break
+		}
+		options := []string{"왼쪽 클릭", "오른쪽 클릭", "무제한 반복", "10회 반복", "100회 반복", "1000회 반복"}
+		choice := g.menu(options)
+		if choice < 1 || choice > len(options) { break }
+		switch choice {
+		case 1: cfg.Button = "left"
+		case 2: cfg.Button = "right"
+		case 3: cfg.Count = 0
+		case 4: cfg.Count = 10
+		case 5: cfg.Count = 100
+		case 6: cfg.Count = 1000
+		}
+		g.showSaveError(update(func(c *Config) {
+			mutateKey(c, g.selected, func(k *Key) {
+				if k.Type == "auto_click" { k.Value = formatAutoClick(cfg) }
+			})
+		}))
+		g.edits()
+	case "audiopick":
+		k, ok := selectedKey(snap(), g.selected)
+		if !ok || k.Type != "audio_output" { break }
+		devices, current, err := listAudioOutputs()
+		if err != nil {
+			messageBox.Call(g.hwnd, ptr("오디오 장치 조회 실패: "+err.Error()), ptr("출력 장치 선택"), 0x30)
+			break
+		}
+		options := []string{"다음 출력 장치로 순환"}
+		for _, item := range devices {
+			label := item.Name
+			if item.ID == current { label = "현재: " + label }
+			options = append(options, label)
+		}
+		choice := g.menu(options)
+		if choice < 1 || choice > len(options) { break }
+		selected := "cycle"
+		selectedLabel := "출력 장치 전환"
+		if choice > 1 {
+			selected = devices[choice-2].ID
+			selectedLabel = "출력: " + devices[choice-2].Name
+		}
+		g.showSaveError(update(func(c *Config) {
+			mutateKey(c, g.selected, func(k *Key) {
+				if k.Type == "audio_output" {
+					if k.Label == "출력 장치 전환" || strings.HasPrefix(k.Label, "출력: ") { k.Label = selectedLabel }
+					k.Value = selected
+				}
+			})
+		}))
+		g.edits()
 	case "windowpick":
 		k,ok:=selectedKey(snap(),g.selected)
 		if !ok || k.Type!="window_control"{break}
@@ -2134,9 +2194,9 @@ func (g *ui) tray(add bool) {
 	notifyIcon.Call(op, uintptr(unsafe.Pointer(&n)))
 }
 func (g *ui) trayMenu() {
-	toggle := "장치 연결 알림 켜기"
+	toggle := "상태 알림 켜기"
 	if notificationsEnabled() {
-		toggle = "장치 연결 알림 끄기"
+		toggle = "상태 알림 끄기"
 	}
 	id := g.menu([]string{"설정창 열기", toggle, "완전 종료"})
 	if id == 1 {
@@ -2157,6 +2217,7 @@ func (g *ui) trayMenu() {
 func (g *ui) quit() {
 	g.flushProfileName()
 	g.flushEdits()
+	stopAutoClick("프로그램 종료")
 	releaseAllHeldShortcuts()
 	if editBgBrush != 0 {
 		deleteObject.Call(editBgBrush)
@@ -2280,6 +2341,16 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		}
 		g.redraw()
 		return 0
+	case WM_ACTION_NOTICE:
+		for {
+			select {
+			case notice := <-actionStateEvents:
+				g.showActionStateNotice(notice)
+			default:
+				g.redraw()
+				return 0
+			}
+		}
 	case WM_SHORTCUT_TOGGLE:
         for {
             select{

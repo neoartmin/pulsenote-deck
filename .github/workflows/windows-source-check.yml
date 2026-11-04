@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'Windows/소스/app/**'
+      - 'Windows/소스/installer/**'
+      - 'tools/generate_pnd_icon.py'
       - '.github/workflows/windows-source-check.yml'
 
 permissions:
@@ -17,6 +19,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate flat application and installer icons
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==11.3.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/generate_pnd_icon.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test, vet, and compile Windows application
         shell: pwsh
         working-directory: Windows/소스/app
@@ -27,3 +39,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go build -trimpath -o "$env:RUNNER_TEMP/PulseNoteDeck.exe" .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify installer and create preview setup
+        shell: pwsh
+        run: |
+          Copy-Item "$env:RUNNER_TEMP/PulseNoteDeck.exe" "Windows/소스/installer/app.bin" -Force
+          Push-Location "Windows/소스/installer"
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.18_Setup_preview.exe" .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PND-v7.5.18-Windows-Preview-Setup
+          path: ${{ runner.temp }}/PulseNoteDeck_v7.5.18_Setup_preview.exe
+          retention-days: 14
+          if-no-files-found: error

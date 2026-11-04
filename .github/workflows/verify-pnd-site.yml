@@ -1,0 +1,39 @@
+name: Verify live PulseNote Deck v7.5.22 website
+on:
+  push:
+    branches: [feature/pnd-auto-click-audio-notifications-dark-theme]
+    paths:
+      - '.github/workflows/verify-pnd-site.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect deployed site HTML and actual app capture API
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import urllib.request
+          base = 'https://pulsenote-deck-site.vercel.app'
+          def get(path):
+              request = urllib.request.Request(base+path,headers={'User-Agent':'PulseNoteDeck-SiteVerification/1.0','Cache-Control':'no-cache'})
+              with urllib.request.urlopen(request,timeout=25) as res:
+                  return res.read()
+          home=get('/')
+          assert b'script.js' in home, 'Home page missing script'
+          script=get('/script.js')
+          assert b'script-original.js' in script and b'real-app.css' in script, 'Website real-app loader missing'
+          assert b'control-center.js' not in script, 'Fake control-center is still loaded'
+          metadata=json.loads(get('/api/real-screen?meta=1'))
+          print('Real screenshot available:',metadata)
+          assert metadata['available'] is True, 'Latest true Windows screenshot not detected'
+          png=get('/api/real-screen')
+          assert png[:8] == b'\x89PNG\r\n\x1a\n' and len(png)>10000, 'Latest screenshot missing or invalid'
+          releases=json.loads(get('/api/latest'))
+          assert releases['windows']['version']=='v7.5.22', 'Windows latest version does not match v7.5.22'
+          assert releases['windows']['installer']['url'].endswith('PulseNoteDeck_v7.5.22_Setup_preview.exe'), 'Windows installer URL incorrect'
+          print('PASS: real v7.5.22 screenshot',len(png),'bytes; Windows release',releases['windows']['version'])
+          PY

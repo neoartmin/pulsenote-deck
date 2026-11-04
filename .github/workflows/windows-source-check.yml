@@ -37,7 +37,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go vet ./...
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -o "$env:RUNNER_TEMP/PulseNoteDeck.exe" .
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o "$env:RUNNER_TEMP/PulseNoteDeck.exe" .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify installer and create preview setup
         shell: pwsh

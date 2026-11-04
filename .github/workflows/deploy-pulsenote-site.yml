@@ -1,0 +1,82 @@
+name: Publish PulseNote Deck website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/site.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pulsenote-deck-pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Unpack and validate original website
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from zipfile import ZipFile
+          import shutil
+
+          package = Path('website/site.zip')
+          if not package.is_file():
+              raise SystemExit('Missing website/site.zip. Upload the v0.2 website ZIP there first.')
+
+          output = Path('_site')
+          output.mkdir(exist_ok=True)
+          with TemporaryDirectory() as directory:
+              temporary = Path(directory)
+              with ZipFile(package) as archive:
+                  for member in archive.infolist():
+                      target = (temporary / member.filename).resolve()
+                      if not target.is_relative_to(temporary.resolve()):
+                          raise SystemExit(f'Unsafe archive path: {member.filename}')
+                  archive.extractall(temporary)
+
+              candidates = list(temporary.rglob('index.html'))
+              if len(candidates) != 1:
+                  raise SystemExit(f'Expected one index.html, found {len(candidates)}')
+              root = candidates[0].parent
+              for filename in ('index.html', 'styles.css', 'script.js'):
+                  source = root / filename
+                  if not source.is_file():
+                      raise SystemExit(f'Missing website file: {filename}')
+                  shutil.copy2(source, output / filename)
+              assets = root / 'assets'
+              if not assets.is_dir():
+                  raise SystemExit('Missing original image assets folder')
+              shutil.copytree(assets, output / 'assets', dirs_exist_ok=True)
+              image_files = [p for p in (output / 'assets').rglob('*') if p.suffix.lower() in ('.jpg', '.jpeg', '.png', '.webp')]
+              if len(image_files) != 15:
+                  raise SystemExit(f'Expected 15 original image files; got {len(image_files)}')
+              (output / '.nojekyll').touch()
+              print('Site validated. Original images:', len(image_files))
+          PY
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

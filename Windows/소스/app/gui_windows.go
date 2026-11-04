@@ -2453,6 +2453,8 @@ func main() {
 		preferredFace = chooseUIFont()
 	}
 	defer unloadBundledPretendard()
+	// Make the shared brand artwork available to both startup splash and UI.
+	initRoundedArtwork()
 	// Present a short, themed splash only for a real interactive startup.
 	// Login autostart remains silent; second launches reuse the running UI.
 	var splash *startupSplash
@@ -2493,7 +2495,6 @@ func main() {
 		}
 	}
 	editBgBrush, _, _ = createSolidBrush.Call(uintptr(theme("panel2")))
-	initRoundedArtwork()
 	g := &ui{selected: 0, page: 0, modelMode: snap().Selected, modelSide: snap().SelectedSide, fonts: map[int]uintptr{}, iconFonts: map[int]uintptr{}, icons: map[string]uintptr{}, appBitmaps: map[string]uintptr{}, appResults: make(chan scanResult, 8)}
 	mainUI = g
 	callback := syscall.NewCallback(wndproc)

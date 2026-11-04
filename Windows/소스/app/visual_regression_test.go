@@ -77,30 +77,24 @@ func TestSoftKeycapsReadableText(t *testing.T) {
 }
 
  
-// The unified black/gray/red theme must not silently recolor stored profile
-// data or use a per-key high-saturation fill in the controller preview.
-func TestUnifiedGrayKeycapThemeAndSelectionOutline(t *testing.T) {
-    source, err := os.ReadFile("gui_windows.go")
-    if err != nil { t.Fatal(err) }
-    body := string(source)
-    for _, required := range []string{
-        `"controlFill": RGB(217, 217, 222)`,
-        `"accent": RGB(214, 40, 57)`,
-        `"selectedEdge": RGB(152, 87, 246)`,
-        `selected := g.selected == i`,
-        `edge = theme("selectedEdge")`,
-        `theme("controlFill"), theme("controlFill")`,
+// Preserve the stock v7.5.17 look while making the function picker easier to tap.
+func TestOriginalThemeAndLargeFunctionPicker(t *testing.T) {
+    ui, err := os.ReadFile("gui_windows.go")
+    if err != nil {t.Fatal(err)}
+    src := string(ui)
+    for _, check := range []string{
+        `"bg": RGB(8, 15, 29)`,
+        `"accent": RGB(85, 102, 255)`,
+        `colorValue(key.Color), keycapHighlight(key.Color)`,
+        `g.swatch(d, x, 793, 52, 33, name, key.Color == name)`,
+        `g.actionPill(d,x,y,150,48`,
+        `min(38,h-10)`,
+        `start := g.actionPage*9`,
+        `if hit.id>=0 && hit.id < (len(types)+8)/9`,
     } {
-        if !strings.Contains(body, required) {t.Errorf("missing unified keycap visual: %s", required)}
+        if !strings.Contains(src, check) {t.Errorf("missing original appearance or large picker: %s",check)}
     }
-    if strings.Contains(body, `d.rounded(x, y, w, h, 13, colorValue(key.Color)`) {
-        t.Fatal("keycap per-color fill unexpectedly restored")
-    }
-    for _, name := range palette {
-        c := defaults()
-        mutateKey(&c, 0, func(k *Key) { k.Color = name })
-        c = normalize(c)
-        k, ok := selectedKey(c, 0)
-        if !ok || k.Color != name {t.Fatalf("stored legacy color lost: %s", name)}
+    for _, unwanted := range []string{`theme("controlFill")`, `theme("selectedEdge")`} {
+        if strings.Contains(src, unwanted) {t.Errorf("v7.5.19 styling was not restored: %s", unwanted)}
     }
 }

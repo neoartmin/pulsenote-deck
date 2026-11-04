@@ -93,7 +93,7 @@ def main():
                    ROOT / 'Windows/소스/installer/icon.ico'):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(ico)
-        print(target.relative_to(ROOT), len(ico), 'bytes')
+        print('Icon created:', len(ico), 'bytes')
     preview = ROOT / 'Windows/소스/app/PulseNoteDeck_icon_preview.png'
     preview.write_bytes(pictures[-1][1])
 

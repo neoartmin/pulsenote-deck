@@ -36,42 +36,44 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Add-Type -AssemblyName System.Drawing.Common
-          Add-Type -ReferencedAssemblies System.Drawing.Common -TypeDefinition @'
+          Add-Type -TypeDefinition @'
           using System;
-          using System.Drawing;
-          using System.Drawing.Imaging;
           using System.Runtime.InteropServices;
-          public static class PndWindowShot {
+          public static class PndNativeWindow {
             [StructLayout(LayoutKind.Sequential)] public struct Rect {
               public int Left, Top, Right, Bottom;
             }
-            [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
-            [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
-            public static bool Save(IntPtr hwnd, string path) {
-              Rect r;
-              if (!GetWindowRect(hwnd, out r)) return false;
-              int width = r.Right-r.Left, height = r.Bottom-r.Top;
-              if (width<350 || height<250 || width>8000 || height>5000) return false;
-              using (var bmp = new Bitmap(width,height,PixelFormat.Format32bppArgb)) {
-                using (var g = Graphics.FromImage(bmp)) {
-                  IntPtr hdc = g.GetHdc();
-                  bool ok = false;
-                  try { ok = PrintWindow(hwnd,hdc,2); } finally { g.ReleaseHdc(hdc); }
-                  if (!ok) return false;
-                }
-                var seen = new System.Collections.Generic.HashSet<int>();
-                for (int y=10; y<height-10; y+=Math.Max(1,height/31))
-                  for (int x=10; x<width-10; x+=Math.Max(1,width/39)) {
-                    Color c=bmp.GetPixel(x,y);
-                    seen.Add(((int)c.R/12<<16)|((int)c.G/12<<8)|((int)c.B/12));
-                  }
-                if (seen.Count<32) return false;
-                bmp.Save(path,ImageFormat.Png);
-                return true;
-              }
-            }
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd,out Rect rect);
+            [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd,IntPtr hdc,uint flags);
           }
           '@
+          function Capture-ActualWindow($hwnd, [string]$dest) {
+            $rect = [PndNativeWindow+Rect]::new()
+            if (![PndNativeWindow]::GetWindowRect($hwnd,[ref]$rect)) { return $false }
+            $w=$rect.Right-$rect.Left
+            $h=$rect.Bottom-$rect.Top
+            if($w -lt 350 -or $h -lt 250 -or $w -gt 8000 -or $h -gt 5000){return $false}
+            $bitmap=[System.Drawing.Bitmap]::new($w,$h,[System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+            try {
+              $graphics=[System.Drawing.Graphics]::FromImage($bitmap)
+              try {
+                $hdc=$graphics.GetHdc()
+                try { $ok=[PndNativeWindow]::PrintWindow($hwnd,$hdc,2) }
+                finally { $graphics.ReleaseHdc($hdc) }
+              } finally { $graphics.Dispose() }
+              if (!$ok) { return $false }
+              $colors=[System.Collections.Generic.HashSet[int]]::new()
+              for($y=10;$y -lt ($h-10);$y+=[Math]::Max(1,[int]($h/30))){
+                for($x=10;$x -lt ($w-10);$x+=[Math]::Max(1,[int]($w/39))){
+                  $c=$bitmap.GetPixel($x,$y)
+                  [void]$colors.Add((([int]($c.R/12)) -shl 16) -bor (([int]($c.G/12)) -shl 8) -bor ([int]($c.B/12)))
+                }
+              }
+              if($colors.Count -lt 32){ return $false }
+              $bitmap.Save($dest,[System.Drawing.Imaging.ImageFormat]::Png)
+              return $true
+            } finally { $bitmap.Dispose() }
+          }
           $proc = Start-Process -FilePath $env:PND_EXE -WorkingDirectory (Split-Path $env:PND_EXE) -PassThru
           try {
             $dest = Join-Path $env:RUNNER_TEMP 'PulseNoteDeck_v7.5.22_ActualScreen.png'
@@ -81,7 +83,7 @@ jobs:
               $proc.Refresh()
               if ($proc.HasExited) { throw "App exited before screenshot: $($proc.ExitCode)" }
               if ($proc.MainWindowHandle -eq [IntPtr]::Zero) { continue }
-              $done = [PndWindowShot]::Save($proc.MainWindowHandle,$dest)
+              $done = Capture-ActualWindow $proc.MainWindowHandle $dest
             }
             if (!$done) { throw 'No valid screenshot could be captured from the actual application window' }
             $size=(Get-Item $dest).Length

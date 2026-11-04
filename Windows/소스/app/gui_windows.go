@@ -1028,7 +1028,7 @@ func valueCue(t string) string {
 	case "website":
 		return "https://example.com"
 	case "folder":
-		return `C:\Users\...\Documents`
+		return "폴더 경로를 입력하세요"
 	case "shortcut":
 		return "CTRL+SHIFT+S 또는 ALT+TAB"
 	case "text":

@@ -431,16 +431,13 @@ func uint16copy(target []uint16, s string) { r, _ := syscall.UTF16FromString(s);
 func rectI(x, y, w, h int32) rect          { return rect{x, y, x + w, y + h} }
 func RGB(r, g, b byte) uint32              { return uint32(r) | uint32(g)<<8 | uint32(b)<<16 }
 
-// v7.5.19: near-black workspace; neutral light-gray controls with thin red
-// edges, and violet selection outline. Saved legacy key colors remain untouched.
+// Crisp graphite/navy shell with vivid focused accents, matching the approved design.
 var paletteTheme = map[string]uint32{
-	"bg": RGB(6, 6, 8), "sidebar": RGB(10, 10, 12), "panel": RGB(16, 16, 19),
-	"panel2": RGB(28, 28, 32), "border": RGB(76, 77, 83),
-	"text": RGB(248, 248, 250), "muted": RGB(181, 184, 190),
-	"accent": RGB(214, 40, 57), "sel": RGB(31, 31, 37),
-	"green": RGB(46, 186, 125), "blacktext": RGB(23, 23, 26),
-	"controlFill": RGB(217, 217, 222), "controlText": RGB(23, 23, 26),
-	"hoverFill": RGB(232, 232, 235), "selectedEdge": RGB(152, 87, 246),
+	"bg": RGB(8, 15, 29), "sidebar": RGB(12, 22, 40), "panel": RGB(19, 33, 55),
+	"panel2": RGB(13, 26, 47), "border": RGB(40, 60, 90),
+	"text": RGB(246, 249, 255), "muted": RGB(163, 180, 210),
+	"accent": RGB(85, 102, 255), "sel": RGB(37, 53, 115),
+	"green": RGB(3, 220, 121), "blacktext": RGB(10, 15, 24),
 }
 
 func theme(s string) uint32 { return paletteTheme[s] }
@@ -638,32 +635,48 @@ func (g *ui) clickable(d *drawCtx, x, y, w, h int, name string, id int) {
 	g.touches = append(g.touches, click{r: d.ab(x, y, w, h), name: name, id: id})
 }
 func (g *ui) pill(d *drawCtx, x, y, w, h int, label string, selected bool, handler string, id int) {
-	border := theme("accent")
-	if selected { border = theme("selectedEdge") }
-	d.rounded(x, y, w, h, 11, border, border)
-	d.rounded(x+2, y+2, w-4, h-4, 9, theme("controlFill"), theme("controlFill"))
-	d.textBold(label, x+5, y+2, w-10, h-4, 14, theme("controlText"), true)
+	fill := theme("panel2")
+	border := theme("border")
+	fg := theme("muted")
+	if selected {
+		fill = theme("sel")
+		border = theme("accent")
+		fg = theme("text")
+	}
+	d.rounded(x, y, w, h, 11, fill, border)
+	d.textBold(label, x+5, y+2, w-10, h-4, 14, fg, true)
 	g.clickable(d, x, y, w, h, handler, id)
 }
 func (g *ui) navPill(d *drawCtx, x, y, w, h int, glyph rune, label string, selected bool, handler string, id int) {
-	border := theme("accent")
-	if selected { border = theme("selectedEdge") }
-	d.rounded(x, y, w, h, 12, border, border)
-	d.rounded(x+2, y+2, w-4, h-4, 10, theme("controlFill"), theme("controlFill"))
-	d.icon(glyph, x+15, y+7, 34, h-14, 23, theme("controlText"))
-	d.textBold(label, x+62, y+3, w-68, h-6, 15, theme("controlText"), false)
+	fill := theme("sidebar")
+	border := theme("border")
+	fg := theme("muted")
+	if selected {
+		fill = theme("sel")
+		border = theme("accent")
+		fg = theme("text")
+	}
+	d.rounded(x, y, w, h, 12, fill, border)
+	d.icon(glyph, x+15, y+7, 34, h-14, 23, fg)
+	d.textBold(label, x+62, y+3, w-68, h-6, 15, fg, false)
 	g.clickable(d, x, y, w, h, handler, id)
 }
 func (g *ui) actionPill(d *drawCtx, x, y, w, h int, glyph rune, label string, selected bool, id int) {
-	border := theme("accent")
-	if selected { border = theme("selectedEdge") }
-	d.rounded(x, y, w, h, 10, border, border)
-	d.rounded(x+2, y+2, w-4, h-4, 8, theme("controlFill"), theme("controlFill"))
-	// Genuine app icons retain their original color.
-	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+4, y+5, min(28,h-8)) {
-		d.icon(glyph, x+6, y+5, 26, h-10, 16, theme("controlText"))
+	fill := theme("panel2")
+	border := theme("border")
+	fg := theme("muted")
+	if selected {
+		fill = theme("sel")
+		border = theme("accent")
+		fg = theme("text")
 	}
-	d.textBold(label, x+35, y+1, w-37, h-2, 11, theme("controlText"), false)
+	d.rounded(x, y, w, h, 10, fill, border)
+	// Render the same colorful premium artwork here as on the physical-key
+	// preview. The monochrome Fluent glyph remains a safe fallback.
+	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+7, y+5, min(38,h-10)) {
+		d.icon(glyph, x+7, y+6, 38, h-12, 26, fg)
+	}
+	d.textBold(label, x+49, y+1, w-53, h-2, 12, fg, false)
 	g.clickable(d, x, y, w, h, "action", id)
 }
 
@@ -808,7 +821,7 @@ func (g *ui) paint() {
 		g.drawAppPicker(d)
 	}
 	d.rounded(264, 852, 1154, 38, 11, theme("panel2"), theme("border"))
-	hint := "설정 자동 저장 · 키캡은 밝은 회색으로 통일 · 기존 색상 데이터 보존"
+	hint := "설정 자동 저장 · 키캡 색상은 화면 표시용입니다"
 	if connected && info != 0 && info <= 15 && info != count {
 		hint = fmt.Sprintf("현재 %d키 화면 · 연결된 하드웨어 %d키 (장치 설정 확인)", count, info)
 	}
@@ -852,20 +865,15 @@ func (g *ui) drawKeys(d *drawCtx, count int, p Profile, m Model) {
 		x, y := grid.posForSide(i, snap().SelectedSide)
 		w, h := grid.CellW, grid.CellH
 		key := p.Keys[i]
-		// All keycap fills are the SAME neutral gray irrespective of saved
-		// historical color. Never rewrite the user's persisted profile colors.
-		// Only the selection state changes the border to violet.
-		selected := g.selected == i
-		edge := theme("accent")
-		thickness := 2
-		if selected {
-			edge = theme("selectedEdge")
-			thickness = 3
+		// All keys retain their saved keycap color, border and highlight.
+		// Windows application icons preserve their original alpha and artwork.
+		fg := d.keyTextColor(key.Color)
+		// One clean focus ring around the selected keycap.
+		if g.selected == i {
+			d.rounded(x-3, y-3, w+6, h+6, 15, theme("panel2"), theme("accent"))
 		}
-		fg := theme("controlText")
-		d.rounded(x, y, w, h, 13, edge, edge)
-		d.rounded(x+thickness, y+thickness, w-2*thickness, h-2*thickness,
-			11, theme("controlFill"), theme("controlFill"))
+		d.rounded(x, y, w, h, 13, colorValue(key.Color), keycapHighlight(key.Color))
+		d.rounded(x+8, y+5, w-16, 2, 1, keycapHighlight(key.Color), keycapHighlight(key.Color))
 		d.textBold(fmt.Sprintf("%02d", i+1), x+10, y+7, 26, 18, 12, fg, false)
 		// Artwork is sampled at high quality. Windows application icons
 		// retain the original Shell-provided alpha and brand artwork.
@@ -1077,22 +1085,23 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.textBold("기능", 931, 343, 250, 28, 16, theme("text"), false)
 	// 16 actions per page. Avoid overlapping the name/value editor when
 	// adding new functions; keep earlier button choices visible on page 1.
-	pageCount := (len(types)+15)/16
+	// Three larger function buttons per row, not the original 4x4 miniature grid.
+	pageCount := (len(types)+8)/9
 	if g.actionPage >= pageCount {g.actionPage=pageCount-1}
 	if g.actionPage < 0 {g.actionPage=0}
-	start := g.actionPage*16
-	for index:=start; index<len(types) && index<start+16; index++ {
-		col := (index-start)%4
-		row := (index-start)/4
-		x := 928 + col*118
-		y := 377 + row*42
+	start := g.actionPage*9
+	for index:=start; index<len(types) && index<start+9; index++ {
+		col := (index-start)%3
+		row := (index-start)/3
+		x := 928 + col*156
+		y := 377 + row*53
 		t := types[index]
-		g.actionPill(d,x,y,111,38,glyphForAction(t),pickerActionName(t),key.Type==t,index)
+		g.actionPill(d,x,y,150,48,glyphForAction(t),pickerActionName(t),key.Type==t,index)
 	}
 	if pageCount>1{
-		g.pill(d,929,550,113,32,"◀ 이전",false,"actionpage",0)
+		g.pill(d,929,550,113,32,"◀ 이전",false,"actionpage",g.actionPage-1)
 		d.textBold(fmt.Sprintf("기능 %d / %d",g.actionPage+1,pageCount),1050,551,226,29,12,theme("muted"),true)
-		g.pill(d,1277,550,117,32,"다음 ▶",false,"actionpage",1)
+		g.pill(d,1277,550,117,32,"다음 ▶",false,"actionpage",g.actionPage+1)
 	}
 	d.textBold("버튼 이름", 931, 598, 326, 25, 16, theme("text"), false)
 	d.textBold(valueFieldTitle(key.Type), 931, 674, 330, 25, 15, theme("text"), false)
@@ -1146,13 +1155,12 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
         }
         d.text(state,932,746,460,18,11,theme("muted"),false)
 	}
-	d.textBold("키캡 표시 방식", 931, 763, 280, 27, 16, theme("text"), false)
-	d.rounded(932, 791, 458, 38, 10, theme("accent"), theme("accent"))
-	d.rounded(934, 793, 454, 34, 8, theme("controlFill"), theme("controlFill"))
-	d.textBold("밝은 회색 채움 · 빨강 테두리 · 선택 시 보라 테두리",
-		942, 796, 436, 26, 12, theme("controlText"), true)
-	// Legacy key.Color is still persisted for backward-compatible profiles.
-	// This unified theme intentionally does not recolor individual keycaps.
+	d.textBold("키캡 색상", 931, 763, 280, 27, 16, theme("text"), false)
+	for i, name := range palette {
+		x := 932 + i*66
+		g.swatch(d, x, 793, 52, 33, name, key.Color == name)
+		g.clickable(d, x-3, 789, 59, 43, "color", i)
+	}
 }
 // Dedicated, accessible native fields. Never ask users to write pipe
 // delimiters, encoded data or a DSL to configure their email macro.
@@ -1484,7 +1492,7 @@ func (g *ui) perform(hit click) {
 	case "color":
 		g.showSaveError(update(func(c *Config) { mutateKey(c, g.selected, func(k *Key) { k.Color = palette[hit.id] }) }))
 	case "actionpage":
-		if hit.id>=0 && hit.id < (len(types)+15)/16 {g.actionPage=hit.id}
+		if hit.id>=0 && hit.id < (len(types)+8)/9 {g.actionPage=hit.id}
 	case "action":
         if hit.id<0||hit.id>=len(types){break}
 		t := types[hit.id]
@@ -2320,8 +2328,8 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		}
 		return 0
 	case WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT:
-		setTextColor.Call(wp, uintptr(theme("controlText")))
-		setBkColor.Call(wp, uintptr(theme("controlFill")))
+		setTextColor.Call(wp, uintptr(theme("text")))
+		setBkColor.Call(wp, uintptr(theme("panel2")))
 		return editBgBrush
 	case WM_USER_STATUS:
 		current := snap().Selected
@@ -2463,7 +2471,7 @@ func main() {
 			}
 		}
 	}
-	editBgBrush, _, _ = createSolidBrush.Call(uintptr(theme("controlFill")))
+	editBgBrush, _, _ = createSolidBrush.Call(uintptr(theme("panel2")))
 	preferredFace = chooseUIFont()
 	initRoundedArtwork()
 	g := &ui{selected: 0, page: 0, modelMode: snap().Selected, modelSide: snap().SelectedSide, fonts: map[int]uintptr{}, iconFonts: map[int]uintptr{}, icons: map[string]uintptr{}, appBitmaps: map[string]uintptr{}, appResults: make(chan scanResult, 8)}

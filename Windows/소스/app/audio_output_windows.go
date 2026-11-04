@@ -41,25 +41,25 @@ func audioHResult(hr uintptr)error{
     if int32(hr)<0{return fmt.Errorf("Windows Audio COM HRESULT 0x%08X",uint32(hr))}
     return nil
 }
-func audioCOMMethod(obj uintptr,slot uintptr)uintptr{
-    vtable:=*(*uintptr)(unsafe.Pointer(obj))
-    return *(*uintptr)(unsafe.Pointer(vtable+slot*unsafe.Sizeof(uintptr(0))))
+func audioCOMMethod(obj unsafe.Pointer,slot uintptr)uintptr{
+    vtable:=*(*unsafe.Pointer)(obj)
+    return *(*uintptr)(unsafe.Add(vtable,slot*unsafe.Sizeof(uintptr(0))))
 }
-func audioCall(obj uintptr,slot uintptr,args ...uintptr)(uintptr,error){
-    if obj==0{return 0,fmt.Errorf("COM 객체가 비어 있습니다")}
+func audioCall(obj unsafe.Pointer,slot uintptr,args ...uintptr)(uintptr,error){
+    if obj==nil{return 0,fmt.Errorf("COM 객체가 비어 있습니다")}
     all:=make([]uintptr,0,len(args)+1)
-    all=append(all,obj)
+    all=append(all,uintptr(obj))
     all=append(all,args...)
     hr,_,_:=syscall.SyscallN(audioCOMMethod(obj,slot),all...)
     return hr,audioHResult(hr)
 }
-func audioRelease(obj uintptr){
-    if obj!=0 {_,_,_=syscall.SyscallN(audioCOMMethod(obj,2),obj)}
+func audioRelease(obj unsafe.Pointer){
+    if obj!=nil {_,_,_=syscall.SyscallN(audioCOMMethod(obj,2),uintptr(obj))}
 }
-func newAudioCOM(clsid,iid *audioGUID)(uintptr,error){
-    var obj uintptr
+func newAudioCOM(clsid,iid *audioGUID)(unsafe.Pointer,error){
+    var obj unsafe.Pointer
     hr,_,_:=coCreateAudio.Call(uintptr(unsafe.Pointer(clsid)),0,1,uintptr(unsafe.Pointer(iid)),uintptr(unsafe.Pointer(&obj)))
-    if err:=audioHResult(hr);err!=nil{return 0,err}
+    if err:=audioHResult(hr);err!=nil{return nil,err}
     return obj,nil
 }
 func withAudioCOM(fn func()error)error{
@@ -72,25 +72,25 @@ func withAudioCOM(fn func()error)error{
     }
     return fn()
 }
-func wideAudioString(ptr uintptr)string{
-    if ptr==0{return ""}
+func wideAudioString(ptr *uint16)string{
+    if ptr==nil{return ""}
     buf:=make([]uint16,0,128)
     for i:=0;i<4096;i++{
-        ch:=*(*uint16)(unsafe.Pointer(ptr+uintptr(2*i)))
+        ch:=*(*uint16)(unsafe.Add(unsafe.Pointer(ptr),uintptr(2*i)))
         if ch==0{break}
         buf=append(buf,ch)
     }
     return syscall.UTF16ToString(buf)
 }
-func audioDeviceID(device uintptr)(string,error){
-    var idPtr uintptr
+func audioDeviceID(device unsafe.Pointer)(string,error){
+    var idPtr *uint16
     _,err:=audioCall(device,5,uintptr(unsafe.Pointer(&idPtr)))
     if err!=nil{return "",err}
-    defer coTaskFreeAudio.Call(idPtr)
+    defer coTaskFreeAudio.Call(uintptr(unsafe.Pointer(idPtr)))
     return wideAudioString(idPtr),nil
 }
-func audioDeviceName(device uintptr)string{
-    var props uintptr
+func audioDeviceName(device unsafe.Pointer)string{
+    var props unsafe.Pointer
     _,err:=audioCall(device,4,0,uintptr(unsafe.Pointer(&props)))
     if err!=nil{return "출력 장치"}
     defer audioRelease(props)
@@ -99,12 +99,12 @@ func audioDeviceName(device uintptr)string{
     if err!=nil{return "출력 장치"}
     defer clearAudioVariant.Call(uintptr(unsafe.Pointer(&data)))
     if data.VT!=31{return "출력 장치"} // VT_LPWSTR
-    str:=wideAudioString(*(*uintptr)(unsafe.Pointer(&data.Data[0])))
+    str:=wideAudioString(*(**uint16)(unsafe.Pointer(&data.Data[0])))
     if str==""{return "출력 장치"}
     return str
 }
-func enumerateAudioDevices(enumerator uintptr)([]audioEndpoint,error){
-    var collection uintptr
+func enumerateAudioDevices(enumerator unsafe.Pointer)([]audioEndpoint,error){
+    var collection unsafe.Pointer
     _,err:=audioCall(enumerator,3,0,1,uintptr(unsafe.Pointer(&collection))) // eRender / DEVICE_STATE_ACTIVE
     if err!=nil{return nil,err}
     defer audioRelease(collection)
@@ -114,7 +114,7 @@ func enumerateAudioDevices(enumerator uintptr)([]audioEndpoint,error){
     if count>128{return nil,fmt.Errorf("출력 장치 수가 비정상적입니다")}
     result:=make([]audioEndpoint,0,count)
     for i:=uint32(0);i<count;i++{
-        var device uintptr
+        var device unsafe.Pointer
         _,err=audioCall(collection,4,uintptr(i),uintptr(unsafe.Pointer(&device)))
         if err!=nil{return nil,err}
         id,err:=audioDeviceID(device)
@@ -125,8 +125,8 @@ func enumerateAudioDevices(enumerator uintptr)([]audioEndpoint,error){
     }
     return result,nil
 }
-func currentAudioDevice(enumerator uintptr)(string,error){
-    var device uintptr
+func currentAudioDevice(enumerator unsafe.Pointer)(string,error){
+    var device unsafe.Pointer
     _,err:=audioCall(enumerator,4,0,0,uintptr(unsafe.Pointer(&device))) // eRender / eConsole
     if err!=nil{return "",err}
     defer audioRelease(device)

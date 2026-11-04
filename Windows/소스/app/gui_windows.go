@@ -431,13 +431,13 @@ func uint16copy(target []uint16, s string) { r, _ := syscall.UTF16FromString(s);
 func rectI(x, y, w, h int32) rect          { return rect{x, y, x + w, y + h} }
 func RGB(r, g, b byte) uint32              { return uint32(r) | uint32(g)<<8 | uint32(b)<<16 }
 
-// Crisp graphite/navy shell with vivid focused accents, matching the approved design.
+// PulseNote dark shell: black, neutral light-gray, and vivid red.
 var paletteTheme = map[string]uint32{
-	"bg": RGB(8, 15, 29), "sidebar": RGB(12, 22, 40), "panel": RGB(19, 33, 55),
-	"panel2": RGB(13, 26, 47), "border": RGB(40, 60, 90),
-	"text": RGB(246, 249, 255), "muted": RGB(163, 180, 210),
-	"accent": RGB(85, 102, 255), "sel": RGB(37, 53, 115),
-	"green": RGB(3, 220, 121), "blacktext": RGB(10, 15, 24),
+	"bg": RGB(16, 16, 18), "sidebar": RGB(12, 12, 14), "panel": RGB(30, 30, 33),
+	"panel2": RGB(43, 43, 47), "border": RGB(178, 178, 183),
+	"text": RGB(248, 248, 249), "muted": RGB(215, 215, 219),
+	"accent": RGB(214, 40, 57), "sel": RGB(92, 26, 37),
+	"green": RGB(46, 186, 125), "blacktext": RGB(18, 18, 20),
 }
 
 func theme(s string) uint32 { return paletteTheme[s] }
@@ -596,7 +596,7 @@ func glyphForAction(t string) rune {
 		return icoTextEdit
 	case "system_settings":
 		return icoApps
-	case "open_timers", "open_alarms":
+	case "auto_click", "audio_output", "open_alarms":
 		return icoPlay
 	case "web_search":
 		return icoGlobe
@@ -929,7 +929,11 @@ func typeName(t string) string {
 	case "system_settings":
 		return "설정 바로가기"
 	case "open_timers":
-		return "타이머 열기"
+		return "타이머 (제거됨)"
+	case "auto_click":
+		return "오토클릭"
+	case "audio_output":
+		return "출력 장치 전환"
 	case "open_alarms":
 		return "알람 열기"
 	case "web_search":
@@ -967,12 +971,13 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "auto_click", "audio_output", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
     case "system_settings": return "설정"
-    case "open_timers": return "타이머"
+    case "auto_click": return "오토클릭"
+    case "audio_output": return "스피커 전환"
     case "open_alarms": return "알람"
     case "media_play": return "재생/정지"
     case "clipboard_history": return "복사 기록"
@@ -986,7 +991,7 @@ func pickerActionName(t string) string {
 // Only action types with parameters enable the parameter field.
 func needsValue(t string) bool {
 	switch t {
-	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings", "web_search", "compose_email", "qr_code", "sequence", "window_control":
+	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings", "web_search", "compose_email", "qr_code", "sequence", "window_control", "auto_click":
 		return true
 	}
 	return false
@@ -1015,6 +1020,10 @@ func valueFieldTitle(t string) string {
 		return "QR로 만들 내용 (900바이트 이내)"
 	case "sequence":
 		return "키 번호·대기 단계 (예: 2,wait:250,4)"
+	case "auto_click":
+		return "클릭 간격 (20~10000ms)"
+	case "audio_output":
+		return "출력 장치 선택"
 	case "window_control":
 		return "창 동작 선택 (오른쪽 메뉴)"
 	default:
@@ -1045,6 +1054,10 @@ func valueCue(t string) string {
 		return "UTF-8 900바이트 이내 · 오프라인 PNG 생성"
 	case "sequence":
 		return "이전 버전에서 저장된 고급 기능입니다"
+	case "auto_click":
+		return "100 (밀리초 단위, 20~10000)"
+	case "audio_output":
+		return "출력 장치 선택에서 지정"
 	case "window_control":
 		return "오른쪽 창 동작 선택 메뉴에서 지정"
 	default:
@@ -1096,6 +1109,23 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	} else if key.Type == "system_settings" {
 		g.pill(d, 1247, 669, 146, 31, "설정 선택", false, "settingspick", 0)
 		d.text(settingLabel(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
+	} else if key.Type == "auto_click" {
+		g.pill(d, 1247, 669, 146, 31, "클릭 설정", false, "autoclickpick", 0)
+		cfg, err := parseAutoClick(key.Value)
+		if err == nil {
+			count := "무제한"
+			if cfg.Count > 0 { count = fmt.Sprintf("%d회", cfg.Count) }
+			button := "왼쪽"
+			if cfg.Button == "right" { button = "오른쪽" }
+			d.text(button+" 클릭 · "+count+" · F8 긴급 중지", 930, 746, 460, 18, 11, theme("muted"), false)
+		} else {
+			d.text("클릭 간격을 확인하세요 (20~10000ms)", 930, 746, 460, 18, 11, theme("accent"), false)
+		}
+	} else if key.Type == "audio_output" {
+		g.pill(d, 1247, 669, 146, 31, "출력 장치 선택", false, "audiopick", 0)
+		setting := "다음 연결된 출력 장치로 전환"
+		if key.Value != "" && key.Value != "cycle" { setting = "지정된 출력 장치로 전환" }
+		d.text(setting, 930, 746, 460, 18, 11, theme("muted"), false)
 	} else if key.Type == "window_control" {
 		g.pill(d, 1247, 669, 146, 31, "창 동작 선택", false, "windowpick", 0)
 		d.text(windowActionName(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
@@ -1343,7 +1373,15 @@ func (g *ui) edits() {
 	}
 	g.editing = true
 	setWindowText.Call(g.labelEdit, ptr(key.Label))
-	setWindowText.Call(g.valueEdit, ptr(func()string{if key.Type=="web_search"{return searchQuery(key.Value)};return key.Value}()))
+	setWindowText.Call(g.valueEdit, ptr(func()string{
+		if key.Type=="web_search"{return searchQuery(key.Value)}
+		if key.Type=="auto_click"{
+			cfg,e:=parseAutoClick(key.Value)
+			if e==nil{return fmt.Sprintf("%d",cfg.IntervalMS)}
+			return strings.Split(key.Value,"|")[0]
+		}
+		return key.Value
+	}()))
 	setWindowText.Call(g.textValueEdit, ptr(windowsEditorNewlines(key.Value)))
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
@@ -2010,7 +2048,14 @@ func (g *ui) writeFromEdit(which int) {
 		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
 	} else {
 		g.pendingValue = getText(g.valueEdit)
-		if key,ok:=selectedKey(c,g.selected);ok&&key.Type=="web_search"{g.pendingValue=makeSearchValue(searchEngine(key.Value),g.pendingValue)}
+		if key,ok:=selectedKey(c,g.selected);ok{
+			if key.Type=="web_search"{g.pendingValue=makeSearchValue(searchEngine(key.Value),g.pendingValue)}
+			if key.Type=="auto_click"{
+				cfg,e:=parseAutoClick(key.Value)
+				if e!=nil{cfg=defaultAutoClick()}
+				g.pendingValue=fmt.Sprintf("%s|%d|%s",g.pendingValue,cfg.Count,cfg.Button)
+			}
+		}
 	}
 	g.pendingModel = c.Selected
 	g.pendingSide = c.SelectedSide

@@ -1,3 +1,3 @@
 package main
 
-const productVersion = "7.5.21"
+const productVersion = "7.5.22"

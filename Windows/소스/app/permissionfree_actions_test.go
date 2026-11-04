@@ -58,7 +58,7 @@ func TestWindowsPermissionFreeActionsRemainEditable(t *testing.T){
     actions:=[]struct{kind,caption string;param bool}{
         {"copy_text","문구 복사",true},
         {"system_settings","설정 바로가기",true},
-        {"open_timers","타이머 열기",false},
+        {"open_timers","타이머 (제거됨)",false},
         {"open_alarms","알람 열기",false},
     }
     for _,tc:=range actions{
@@ -67,7 +67,7 @@ func TestWindowsPermissionFreeActionsRemainEditable(t *testing.T){
         if needsValue(tc.kind)!=tc.param{t.Fatalf("input mismatch %s",tc.kind)}
         found:=false
         for _,typ:=range types{if typ==tc.kind{found=true}}
-        if !found{t.Fatalf("%s missing from GUI picker",tc.kind)}
+        if tc.kind=="open_timers" {if found{t.Fatal("removed timer is still in action picker")}} else if !found {t.Fatalf("%s missing from GUI picker",tc.kind)}
         for _,size:=range []int{12,15}{
             c:=defaults()
             c.Selected=size

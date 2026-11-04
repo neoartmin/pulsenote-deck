@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build glossy PulseNote shortcut and new action artwork in the v7.5.17 icon style.
+"""Build one consistent black/gray/red PulseNote logo and action artwork.
 
 Existing assets and user color profiles remain untouched.
 Generated assets are embedded in the executable by the Windows CI build.
@@ -90,14 +90,20 @@ def draw_audio_output():
     return im.resize((512, 512), Image.Resampling.LANCZOS)
 
 def draw_desktop_logo():
-    im = gradient_tile("#F25665", "#AA2849", "#FF8795", "#D44561",
-                       box=(38, 36, 474, 475), radius=107)
-    d = ImageDraw.Draw(im)
-    for yy in (169, 268):
-        for xx in (171, 271):
-            rr(d, (xx+3, yy+7, xx+78, yy+82), 21, fill="#93223E")
-            rr(d, (xx, yy, xx+76, yy+76), 20, fill="#F5F7FF")
-            rr(d, (xx+8, yy+7, xx+67, yy+26), 10, fill="#FFFFFF")
+    """One shared mark for desktop, EXE, titlebar and in-app masthead.
+
+    Restrained black / light-gray / red palette; strong legibility at 16px.
+    Uses native 1024px geometry rather than the half-size action icon helper.
+    """
+    im = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(im)
+    draw.rounded_rectangle((36, 36, 988, 988), radius=210,
+                           fill="#111114", outline="#44454B", width=18)
+    keys = [(226, 226), (540, 226), (226, 540), (540, 540)]
+    for idx, (x, y) in enumerate(keys):
+        fill = "#D62839" if idx == 1 else "#D9D9DE"
+        draw.rounded_rectangle((x, y, x + 258, y + 258),
+                               radius=54, fill=fill)
     return im
 
 def main():
@@ -109,6 +115,7 @@ def main():
         draw_icon().save(target, "PNG", optimize=True)
         print("Generated action icon", name, target.stat().st_size)
     logo = draw_desktop_logo()
+    logo.resize((512, 512), Image.Resampling.LANCZOS).save(ART / "app_logo.png", "PNG", optimize=True)
     sizes = [(n, n) for n in (16, 24, 32, 48, 64, 128, 256)]
     for path in (APP / "PulseNoteDeck.ico", INSTALLER / "icon.ico"):
         path.parent.mkdir(parents=True, exist_ok=True)

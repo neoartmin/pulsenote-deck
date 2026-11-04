@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-const version = "7.5.17"
+const version = "7.5.18"
 
 var palette = []string{"파랑", "빨강", "회색", "보라", "주황", "초록", "노랑"}
 
@@ -21,8 +21,8 @@ var palette = []string{"파랑", "빨강", "회색", "보라", "주황", "초록
 // Changing the rendering palette does NOT rewrite users' saved settings.
 var paletteRGB = []uint32{
 	0xD5B494, // 파랑 #94B4D5, soft blue
-	0xA098D9, // 빨강 #D998A0, dusty rose
-	0xE8DED6, // 회색 #D6DEE8, cool gray
+	0x3928D6, // 빨강 #D62839, red
+	0xD9D9D9, // 회색 #D9D9D9, light gray
 	0xD5A6B9, // 보라 #B9A6D5, lavender
 	0x8FB4E4, // 주황 #E4B48F, apricot
 	0xB4C9A0, // 초록 #A0C9B4, sage
@@ -31,7 +31,7 @@ var paletteRGB = []uint32{
 
 // Subtle lip highlights, coordinated with the lower-saturation fills.
 var paletteHighlightRGB = []uint32{
-	0xE9D3BF, 0xBFB9F0, 0xF9F6F4, 0xEACAD9,
+	0xE9D3BF, 0x6859EF, 0xECECEC, 0xEACAD9,
 	0xB6D1F2, 0xD5E5C5, 0xBBE4F0,
 }
 
@@ -47,7 +47,7 @@ func keycapHighlight(color string) uint32 {
 // Every softened cap is light enough for the original dark foreground.
 // Light text on pastel blue/purple would fail readability contrast checks.
 func lightKeycap(color string) bool {
-	return isColor(color)
+	return isColor(color) && color != "빨강"
 }
 
 const maxProfiles = 8
@@ -77,7 +77,7 @@ type Config struct {
 	Models            map[string]Model `json:"models"`
 }
 
-var validTypes = map[string]bool{"web_search": true, "compose_email": true, "qr_code": true, "sequence": true, "clipboard_history": true, "window_control": true, "copy_text": true, "system_settings": true, "open_timers": true, "open_alarms": true, "none": true, "capture": true, "text": true, "shortcut": true, "program": true, "website": true, "folder": true, "volume_up": true, "volume_down": true, "volume_mute": true, "media_play": true, "media_next": true, "media_prev": true}
+var validTypes = map[string]bool{"web_search": true, "compose_email": true, "qr_code": true, "sequence": true, "clipboard_history": true, "window_control": true, "copy_text": true, "system_settings": true, "open_timers": true, "open_alarms": true, "auto_click": true, "audio_output": true, "none": true, "capture": true, "text": true, "shortcut": true, "program": true, "website": true, "folder": true, "volume_up": true, "volume_down": true, "volume_mute": true, "media_play": true, "media_next": true, "media_prev": true}
 
 func keyDefault(n int) Key {
 	return Key{Label: fmt.Sprintf("버튼 %02d", n), Type: "none", Color: "회색"}

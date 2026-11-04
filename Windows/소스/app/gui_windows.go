@@ -745,10 +745,16 @@ func (g *ui) paint() {
 	g.oy = d.oy
 	g.touches = g.touches[:0]
 	d.rounded(0, 0, 244, 900, 0, theme("sidebar"), theme("sidebar"))
-	d.rounded(28, 30, 54, 54, 13, theme("accent"), theme("accent"))
-	for rr := 0; rr < 2; rr++ {
-		for cc := 0; cc < 2; cc++ {
-			d.rounded(44+cc*13, 46+rr*13, 10, 10, 3, RGB(255, 255, 255), RGB(255, 255, 255))
+	// Exactly the same black/gray/red mark used by the Windows shortcut ICO.
+	// No palette tinting: this logo is intentionally independent of the v7.5.17 UI theme.
+	if !d.actionArtwork("app_logo", 28, 30, 54) {
+		d.rounded(28, 30, 54, 54, 13, RGB(17, 17, 20), RGB(17, 17, 20))
+		for rr := 0; rr < 2; rr++ {
+			for cc := 0; cc < 2; cc++ {
+				fill := RGB(217, 217, 222)
+				if rr == 0 && cc == 1 { fill = RGB(214, 40, 57) }
+				d.rounded(39+cc*20, 41+rr*20, 15, 15, 3, fill, fill)
+			}
 		}
 	}
 	d.textBold("PulseNote Deck", 94, 36, 155, 28, 18, theme("text"), false)
@@ -2439,6 +2445,14 @@ func main() {
 		return
 	}
 	defer closeHandle.Call(guardMutex)
+	// The app uses the same Pretendard face on every supported PC.
+	// Missing private font data falls back to the previous system-font selection.
+	if loadBundledPretendard() {
+		preferredFace = "Pretendard"
+	} else {
+		preferredFace = chooseUIFont()
+	}
+	defer unloadBundledPretendard()
 	// Present a short, themed splash only for a real interactive startup.
 	// Login autostart remains silent; second launches reuse the running UI.
 	var splash *startupSplash
@@ -2463,21 +2477,24 @@ func main() {
 	ins, _, _ := getModuleHandle.Call(0)
 	cursor, _, _ := loadCursor.Call(0, IDC_ARROW)
 	appIcon, _, _ = loadIcon.Call(0, IDI_APPLICATION)
+	iconSmall := appIcon
 	if exe, e := os.Executable(); e == nil {
 		iconPath := filepath.Join(filepath.Dir(exe), "PulseNoteDeck.ico")
 		if _, e := os.Stat(iconPath); e == nil {
-			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 64, 64, 0x10); ico != 0 {
+			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 48, 48, 0x10); ico != 0 {
 				appIcon = ico
+			}
+			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 16, 16, 0x10); ico != 0 {
+				iconSmall = ico
 			}
 		}
 	}
 	editBgBrush, _, _ = createSolidBrush.Call(uintptr(theme("panel2")))
-	preferredFace = chooseUIFont()
 	initRoundedArtwork()
 	g := &ui{selected: 0, page: 0, modelMode: snap().Selected, modelSide: snap().SelectedSide, fonts: map[int]uintptr{}, iconFonts: map[int]uintptr{}, icons: map[string]uintptr{}, appBitmaps: map[string]uintptr{}, appResults: make(chan scanResult, 8)}
 	mainUI = g
 	callback := syscall.NewCallback(wndproc)
-	class := wndclassex{Size: uint32(unsafe.Sizeof(wndclassex{})), Style: 0, WndProc: callback, Instance: ins, Icon: appIcon, Cursor: cursor, ClassName: ptr(windowClassName), IconSm: appIcon}
+	class := wndclassex{Size: uint32(unsafe.Sizeof(wndclassex{})), Style: 0, WndProc: callback, Instance: ins, Icon: appIcon, Cursor: cursor, ClassName: ptr(windowClassName), IconSm: iconSmall}
 	r, _, _ := registerClass.Call(uintptr(unsafe.Pointer(&class)))
 	if r == 0 {
 		return
@@ -2492,6 +2509,10 @@ func main() {
 		return
 	}
 	g.hwnd = hwnd
+	// Set both titlebar/taskbar icons explicitly to avoid scaling a 48px image
+	// to 16px and to match the desktop .lnk's registered ICO.
+	sendMessage.Call(hwnd, 0x0080, 0, iconSmall) // WM_SETICON / ICON_SMALL
+	sendMessage.Call(hwnd, 0x0080, 1, appIcon)   // WM_SETICON / ICON_BIG
 	enableDarkTitlebar(hwnd)
 	label, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_VISIBLE|WS_CHILD|WS_BORDER|ES_AUTOHSCROLL, 0, 0, 50, 30, hwnd, uintptr(1201), ins, 0)
 	g.labelEdit = label

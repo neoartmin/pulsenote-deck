@@ -115,6 +115,19 @@ jobs:
           } else {
             gh release create $tag $exe $zip --target $env:GITHUB_SHA --title 'PulseNote Deck Windows v7.5.17' --notes 'Windows v7.5.17: every action has user help, simplified function picker hides legacy complex macros, keyboard shortcut hold-toggle keydown/keyup with one ON/OFF notification, safe release on disconnect/profile changes/exit. Windows-only release; Android unchanged.' --prerelease
           }
+
+          # Keep one stable URL for the newest installer built from main.
+          if ($env:GITHUB_REF_NAME -eq 'main') {
+            $latestExe = 'out/PulseNoteDeck_Setup_Latest.exe'
+            Copy-Item $exe $latestExe -Force
+            $latestTag = 'latest'
+            gh release view $latestTag *> $null
+            if ($LASTEXITCODE -eq 0) {
+              gh release upload $latestTag $latestExe --clobber
+            } else {
+              gh release create $latestTag $latestExe --target $env:GITHUB_SHA --title 'PulseNote Deck Windows installer (Latest)' --notes 'Stable download alias. This installer is replaced automatically by successful Windows builds from main.'
+            }
+          }
       - name: Commit rebuilt canonical-firmware installer and manifests
         shell: pwsh
         run: |

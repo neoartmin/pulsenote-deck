@@ -17,8 +17,9 @@ func TestProgramKeyRetainsColorAndNativeIconAlpha(t *testing.T) {
 	if strings.Contains(src, "transparentProgramKey") {
 		t.Fatal("v7.4.7 keycap removal must be reverted")
 	}
-	if !strings.Contains(src, "d.rounded(x, y, w, h, 13, colorValue(key.Color)") {
-		t.Fatal("colored keycap must remain for program keys")
+	if !strings.Contains(src, "d.rounded(x, y, w, h, 13, edge, edge)") ||
+		!strings.Contains(src, `11, theme("controlFill"), theme("controlFill")`) {
+		t.Fatal("uniform light-gray keycap with colored edge must remain for program keys")
 	}
 	if strings.Contains(src, "makeTransparentIconBitmap(bitmap)") || strings.Contains(src, "removeIconBackdrop(") {
 		t.Fatal("lossy background guessing must never modify Windows program logos")

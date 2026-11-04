@@ -62,8 +62,12 @@ func TestAppIconHasNoDarkBackplateOrJaggedClip(t *testing.T) {
 			t.Errorf("GDI+ high-quality icon rendering missing: %s", need)
 		}
 	}
-	if !strings.Contains(s, "selected := g.selected == i") ||
-		strings.Contains(s, "d.rounded(x-3, y-3, w+6, h+6") {
+	keyStart := strings.Index(s, "func (g *ui) drawKeys(")
+	keyEnd := strings.Index(s, "\nfunc typeName(")
+	if keyStart < 0 || keyEnd < keyStart { t.Fatal("drawKeys source bounds missing") }
+	keySource := s[keyStart:keyEnd]
+	if !strings.Contains(keySource, "selected := g.selected == i") ||
+		strings.Contains(keySource, "d.rounded(x-3, y-3, w+6, h+6") {
 		t.Error("keycap selection must use a single violet edge, not a double focus ring")
 	}
 }

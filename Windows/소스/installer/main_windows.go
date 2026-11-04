@@ -20,6 +20,9 @@ var appBytes []byte
 //go:embed icon.ico
 var iconBytes []byte
 
+//go:embed Pretendard_OFL.txt
+var fontLicenseBytes []byte
+
 const productName = "PulseNote Deck"
 
 var udll = syscall.NewLazyDLL("user32.dll")
@@ -168,7 +171,7 @@ func install() error {
 	for _, it := range []struct {
 		name string
 		data []byte
-	}{{appFilename(), appBytes}, {"PulseNoteDeck.ico", iconBytes},
+	}{{appFilename(), appBytes}, {"PulseNoteDeck.ico", iconBytes}, {"LICENSE_Pretendard.txt", fontLicenseBytes},
 		{filepath.Join("Firmware", "PN12", "PulseNoteDeck_C3_12Key.ino"), firmwarePN12},
 		{filepath.Join("Firmware", "PN15", "RIGHT", "PulseNoteDeck_C3_PN15_RIGHT", "PulseNoteDeck_C3_PN15_RIGHT.ino"), firmwarePN15},
 		{filepath.Join("Firmware", "PN15", "LEFT", "PulseNoteDeck_C3_PN15_LEFT", "PulseNoteDeck_C3_PN15_LEFT.ino"), firmwarePN15Left},

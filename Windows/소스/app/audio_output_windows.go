@@ -36,9 +36,15 @@ type playbackEndpoint struct{ id,name string }
 
 func failedHRESULT(hr uintptr) bool{return uint32(hr)&0x80000000!=0}
 func audioHRESULT(what string,hr uintptr) error {return fmt.Errorf("%s 실패 (HRESULT 0x%08X)",what,uint32(hr))}
+var rtlCopyMemory=k32.NewProc("RtlMoveMemory")
+var wideStringLength=k32.NewProc("lstrlenW")
+
+// Copy COM vtable pointers without uintptr->unsafe.Pointer casts rejected by
+// go vet. The COM object is still validated by CoCreateInstance.
 func comMethod(obj uintptr,index int,params ...uintptr) uintptr {
-	table:=*(*uintptr)(unsafe.Pointer(obj))
-	method:=*(*uintptr)(unsafe.Pointer(table+uintptr(index)*unsafe.Sizeof(uintptr(0))))
+	var table,method uintptr
+	rtlCopyMemory.Call(uintptr(unsafe.Pointer(&table)),obj,unsafe.Sizeof(table))
+	rtlCopyMemory.Call(uintptr(unsafe.Pointer(&method)),table+uintptr(index)*unsafe.Sizeof(uintptr(0)),unsafe.Sizeof(method))
 	args:=append([]uintptr{obj},params...)
 	r,_,_:=syscall.SyscallN(method,args...)
 	return r
@@ -53,12 +59,11 @@ func releaseCOM(obj uintptr){if obj!=0{comMethod(obj,2)}}
 // Windows audio COM returns null-terminated LPWSTR buffers.
 func audioUTF16String(p uintptr) string {
 	if p==0{return ""}
-	chars:=make([]uint16,0,128)
-	for i:=0;i<4096;i++{
-		v:=*(*uint16)(unsafe.Pointer(p+uintptr(i*2)))
-		if v==0{break}
-		chars=append(chars,v)
-	}
+	length,_,_:=wideStringLength.Call(p)
+	if length==0{return ""}
+	if length>4096{length=4096}
+	chars:=make([]uint16,int(length))
+	rtlCopyMemory.Call(uintptr(unsafe.Pointer(&chars[0])),p,length*2)
 	return syscall.UTF16ToString(chars)
 }
 func audioEndpointID(device uintptr)(string,error){

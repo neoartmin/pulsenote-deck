@@ -1,0 +1,98 @@
+name: Windows v7.5.23 English Edition
+
+on:
+  pull_request:
+    paths:
+      - 'tools/build_english_version.py'
+      - 'tools/locales/**'
+      - '.github/workflows/windows-english-v7523.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  english-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate all English string translations
+        shell: pwsh
+        run: |
+          python tools/build_english_version.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify original v7.5.23 Go tests before translation
+        shell: pwsh
+        working-directory: Windows/소스/app
+        run: |
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare matching original icons and licensed Pretendard fonts
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==11.3.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/generate_pnd_icon.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/prepare_pretendard.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location "Windows/소스/app"
+          go run github.com/akavel/rsrc@v0.10.2 -manifest app.manifest -ico PulseNoteDeck.ico -o rsrc_windows_amd64.syso
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          Push-Location "Windows/소스/installer"
+          go run github.com/akavel/rsrc@v0.10.2 -manifest ../app/app.manifest -ico icon.ico -o rsrc_windows_amd64.syso
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+      - name: Apply English translations to build copy
+        shell: pwsh
+        run: |
+          python tools/build_english_version.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Vet and build v7.5.23 English Windows app
+        shell: pwsh
+        working-directory: Windows/소스/app
+        run: |
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.23_EN.exe" .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build v7.5.23 English Setup
+        shell: pwsh
+        run: |
+          Copy-Item "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.23_EN.exe" "Windows/소스/installer/app.bin" -Force
+          Push-Location "Windows/소스/installer"
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.23_EN_Setup.exe" .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+      - name: Export full English Windows source and both executables
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "PulseNoteDeck_v7.5.23_EN_Source"
+          New-Item -ItemType Directory -Path $dir | Out-Null
+          Copy-Item "Windows/소스/app" (Join-Path $dir "app") -Recurse
+          Copy-Item "Windows/소스/installer" (Join-Path $dir "installer") -Recurse
+          Copy-Item "Firmware" (Join-Path $dir "Firmware") -Recurse
+          Copy-Item "tools/locales" (Join-Path $dir "english_translation_catalogs") -Recurse
+          Copy-Item "tools/build_english_version.py" (Join-Path $dir "build_english_version.py")
+          Copy-Item "README_EN_BUILD.md" (Join-Path $dir "README_EN_BUILD.md")
+          Copy-Item "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.23_EN.exe" (Join-Path $dir "PulseNoteDeck_v7.5.23_EN.exe")
+          Copy-Item "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.23_EN_Setup.exe" (Join-Path $dir "PulseNoteDeck_v7.5.23_EN_Setup.exe")
+          Compress-Archive -Path "$dir/*" -DestinationPath "$env:RUNNER_TEMP/PulseNoteDeck_v7.5.23_EN_Source.zip" -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PulseNoteDeck-v7.5.23-English-Edition
+          path: |
+            ${{ runner.temp }}/PulseNoteDeck_v7.5.23_EN.exe
+            ${{ runner.temp }}/PulseNoteDeck_v7.5.23_EN_Setup.exe
+            ${{ runner.temp }}/PulseNoteDeck_v7.5.23_EN_Source.zip
+          retention-days: 14
+          if-no-files-found: error

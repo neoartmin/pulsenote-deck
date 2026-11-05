@@ -123,11 +123,33 @@ func (d *drawCtx) drawTextMacroArtwork(x, y, size int) {
     }
 }
 
+// The other embedded action PNGs deliberately reserve approximately 20% of
+// their 512px canvas for transparent padding; the native GDI text symbol used
+// to fill 100% of the same slot and looked disproportionately large.
+// Fit only that symbol into an 80% optical footprint, keeping the outer icon
+// slot, labels, click targets, assets and the v7.5.17 layout unchanged.
+// The calculation operates in logical units and is scaled exactly once by
+// drawCtx, so it also works on per-monitor DPI changes.
+func fittedTextMacroBounds(x, y, size int) (int, int, int) {
+    if size <= 0 {
+        return x, y, 0
+    }
+    visual := (size*4 + 2) / 5 // nearest integer to 80% of the slot
+    if visual < 1 {
+        visual = 1
+    }
+    inset := (size - visual) / 2
+    return x + inset, y + inset, visual
+}
+
 // The icon renderer targets the existing double-buffered HDC and reuses one
 // GDI+ Graphics per paint, avoiding per-key font rasterization and upscaling.
 func (d *drawCtx) actionArtwork(name string, x, y, size int) bool {
     if name == "text" {
-        d.drawTextMacroArtwork(x, y, size)
+        fittedX, fittedY, fittedSize := fittedTextMacroBounds(x, y, size)
+        if fittedSize > 0 {
+            d.drawTextMacroArtwork(fittedX, fittedY, fittedSize)
+        }
         return true
     }
 	asset, ok := roundedIcons[name]

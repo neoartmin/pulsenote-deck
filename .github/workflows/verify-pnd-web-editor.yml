@@ -42,6 +42,33 @@ jobs:
                 assert.equal(await page.locator('body').getAttribute('data-current-page'),which);
               }
               await checkPage('software');
+              // Check visual-first coverage and actual SVG load, not only markup.
+              await page.waitForFunction(()=>Number(document.documentElement.dataset.pndVisualCount)>=95,{timeout:20000});
+              const count=Number(await page.locator('html').getAttribute('data-pnd-visual-count'));
+              assert.ok(count>=95,'Each explanation must have original concept art, count='+count);
+              const tabs=['overview','design','hardware','software','purpose','usage','assembly','parts','history','downloads','license'];
+              for (const tab of tabs){
+                await page.locator('[data-page-link="'+tab+'"]').click();
+                await checkPage(tab);
+                assert.ok(await page.locator('#'+tab+' .pnd-intro-art img').count()===1,'Visual section intro required '+tab);
+                assert.ok(await page.locator('#'+tab+' img[src^="/api/illustration"]').count()>=4,'At least 4 independent explanatory illustrations '+tab);
+              }
+              await page.locator('[data-page-link="software"]').click();
+              await checkPage('software');
+              for(const topic of ['deck-introduction','spool-hardware-design','wire-hardware-design','printer-iteration','shield-hardware-design','chip-parts-01']){
+                const r=await page.request.get('https://pulsenote-deck-site.vercel.app/api/illustration?topic='+topic);
+                assert.equal(r.status(),200,'artwork '+topic);
+                assert.match(r.headers()['content-type'],/image\/svg\+xml/,'SVG content type '+topic);
+                const svg=await r.text();
+                assert.ok(svg.startsWith('<svg')&&svg.includes('</svg>'),'valid complete illustration '+topic);
+              }
+              // Even text-only conceptual art must load as actual pixels.
+              const visual=page.locator('#software .pnd-intro-art img');
+              const loaded=await visual.evaluate(async img=>{
+                if(!img.complete)await new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true})});
+                return {naturalWidth:img.naturalWidth,naturalHeight:img.naturalHeight};
+              });
+              assert.ok(loaded.naturalWidth>0&&loaded.naturalHeight>0,'browser image decode failed');
               assert.equal(await page.locator('.pnd-feature-card').count(),22,'22 real app actions must be documented');
               await page.locator('[data-pnd-filter="media"]').click();
               assert.equal(await page.locator('.pnd-feature-card:not([hidden])').count(),7,'media category filter');
@@ -121,6 +148,13 @@ jobs:
               assert.equal(saved.models['15L'].profiles[1].keys[1].value,'250|10|right');
               assert.equal(saved.models['12'].profiles[0].keys.length,12);
               await page.setViewportSize({width:390,height:820});
+              await page.locator('[data-page-link="purpose"]').click();
+              await checkPage('purpose');
+              assert.equal(await page.locator('#purpose .pnd-journey-card').count(),6);
+              assert.equal(await page.locator('#purpose .pnd-illustrated-paragraph').count()>=6,true);
+              const pageWidth=await page.evaluate(()=>({vw:document.documentElement.clientWidth,sw:document.documentElement.scrollWidth}));
+              assert.ok(pageWidth.sw <= pageWidth.vw+3,'Purpose art causes horizontal overflow: '+JSON.stringify(pageWidth));
+              await page.locator('[data-page-link="software"]').click();
               await page.locator('[data-page-link="overview"]').click();
               await checkPage('overview');
               await page.locator('[data-page-link="software"]').click();
@@ -170,7 +204,7 @@ jobs:
               await checkPage('software');
               assert.equal((await page.request.get('https://pulsenote-deck-site.vercel.app/api/native-icon?name=auto_click')).status(),200);
               assert.deepEqual(errors,[], 'browser runtime errors');
-              console.log('E2E PASS: official user-uploaded PN logo, maker philosophy, CooBeen PETG, 3mm EPDM, gallery, navigation, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');
+              console.log('E2E PASS: all 11 page illustrations, >95 unique concept art nodes, SVG decode, desktop/mobile layouts, original PN logo, maker philosophy, CooBeen PETG, 3mm EPDM, gallery, navigation, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');
             } finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
           NODE

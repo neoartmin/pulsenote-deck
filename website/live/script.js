@@ -44,7 +44,6 @@ setGallery(0);
   document.querySelectorAll('[data-pnd-version="'+kind+'"]').forEach(el=>{el.textContent=value});
  };
  const fallback="v7.5.22";
- setLabels('release',fallback);
  if(setup)setup.href='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_Setup_preview.exe';
  if(backup)backup.href='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip';
  const safe=(value)=>{
@@ -66,7 +65,7 @@ setGallery(0);
    if(archive&&backup)backup.href=archive;
    if(note)note.textContent='공개 Windows '+w.version+(w.version==='v7.5.22'?' 프리뷰':'')+' · GitHub Releases';
    document.title='PulseNote Deck '+w.version+' | PN12 · PN15 · Windows 설정';
-  }).catch(()=>{if(note)note.textContent='게시된 설치 파일: '+fallback+' · 최신 버전 조회 재시도 가능';});
+  }).catch(()=>{setLabels('release',fallback);if(note)note.textContent='이전 확인된 설치 파일: '+fallback+' · 최신 버전 조회 실패';});
  };
  const updateSource=()=>{
   fetch('/api/source-version',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Source API');return r.json();}).then(data=>{

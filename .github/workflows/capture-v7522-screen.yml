@@ -1,0 +1,107 @@
+name: Capture actual v7.5.22 Windows settings screen
+on:
+  push:
+    branches: [feature/pnd-auto-click-audio-notifications-dark-theme]
+    paths:
+      - '.github/workflows/capture-v7522-screen.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pnd-v7522-screen
+  cancel-in-progress: true
+jobs:
+  screenshot:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Download and extract exact verified v7.5.22 backup
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download pnd-windows-v7.5.22 --repo neoartmin/pulsenote-deck --pattern PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip --dir $env:RUNNER_TEMP --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $zip = Join-Path $env:RUNNER_TEMP 'PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip'
+          Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'pnd-backup') -Force
+          $exe = Join-Path $env:RUNNER_TEMP 'pnd-backup/BINARIES/PulseNoteDeck_v7.5.22.exe'
+          if (!(Test-Path -LiteralPath $exe)) { throw 'Missing built Windows executable in release backup' }
+          $head = [System.IO.File]::ReadAllBytes($exe)
+          if ($head[0] -ne 77 -or $head[1] -ne 90) { throw 'Invalid Windows executable' }
+          "PND_EXE=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Launch the actual program and capture its Win32 window
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.Drawing.Common
+          Add-Type -TypeDefinition @'
+          using System;
+          using System.Runtime.InteropServices;
+          public static class PndNativeWindow {
+            [StructLayout(LayoutKind.Sequential)] public struct Rect {
+              public int Left, Top, Right, Bottom;
+            }
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd,out Rect rect);
+            [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd,IntPtr hdc,uint flags);
+          }
+          '@
+          function Capture-ActualWindow($hwnd, [string]$dest) {
+            $rect = [PndNativeWindow+Rect]::new()
+            if (![PndNativeWindow]::GetWindowRect($hwnd,[ref]$rect)) { return $false }
+            $w=$rect.Right-$rect.Left
+            $h=$rect.Bottom-$rect.Top
+            if($w -lt 350 -or $h -lt 250 -or $w -gt 8000 -or $h -gt 5000){return $false}
+            $bitmap=[System.Drawing.Bitmap]::new($w,$h,[System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+            try {
+              $graphics=[System.Drawing.Graphics]::FromImage($bitmap)
+              try {
+                $hdc=$graphics.GetHdc()
+                try { $ok=[PndNativeWindow]::PrintWindow($hwnd,$hdc,2) }
+                finally { $graphics.ReleaseHdc($hdc) }
+              } finally { $graphics.Dispose() }
+              if (!$ok) { return $false }
+              $colors=[System.Collections.Generic.HashSet[int]]::new()
+              for($y=10;$y -lt ($h-10);$y+=[Math]::Max(1,[int]($h/30))){
+                for($x=10;$x -lt ($w-10);$x+=[Math]::Max(1,[int]($w/39))){
+                  $c=$bitmap.GetPixel($x,$y)
+                  [void]$colors.Add((([int]($c.R/12)) -shl 16) -bor (([int]($c.G/12)) -shl 8) -bor ([int]($c.B/12)))
+                }
+              }
+              if($colors.Count -lt 32){ return $false }
+              $bitmap.Save($dest,[System.Drawing.Imaging.ImageFormat]::Png)
+              return $true
+            } finally { $bitmap.Dispose() }
+          }
+          $proc = Start-Process -FilePath $env:PND_EXE -WorkingDirectory (Split-Path $env:PND_EXE) -PassThru
+          try {
+            $dest = Join-Path $env:RUNNER_TEMP 'PulseNoteDeck_v7.5.22_ActualScreen.png'
+            $done = $false
+            for ($i=0; $i -lt 18 -and -not $done; $i++) {
+              Start-Sleep -Seconds 2
+              $proc.Refresh()
+              if ($proc.HasExited) { throw "App exited before screenshot: $($proc.ExitCode)" }
+              if ($proc.MainWindowHandle -eq [IntPtr]::Zero) { continue }
+              $done = Capture-ActualWindow $proc.MainWindowHandle $dest
+            }
+            if (!$done) { throw 'No valid screenshot could be captured from the actual application window' }
+            $size=(Get-Item $dest).Length
+            if ($size -lt 10000) { throw 'Captured image unexpectedly small' }
+            "SCREEN_FILE=$dest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host "Real Windows screenshot captured: $size bytes"
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: PulseNoteDeck-v7.5.22-real-window
+          path: ${{ runner.temp }}/PulseNoteDeck_v7.5.22_ActualScreen.png
+          if-no-files-found: error
+      - name: Publish actual screenshot as release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload pnd-windows-v7.5.22 "$env:SCREEN_FILE" --repo neoartmin/pulsenote-deck --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

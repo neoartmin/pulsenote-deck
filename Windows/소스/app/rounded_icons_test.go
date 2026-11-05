@@ -8,7 +8,7 @@ import (
 )
 
 func TestEmbeddedActionArtworkQuality(t *testing.T) {
-	names := []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control"}
+	names := []string{"none", "program", "folder", "website", "shortcut", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "web_search", "compose_email", "qr_code", "sequence", "clipboard_history", "window_control", "auto_click", "audio_output", "app_logo"}
 	for _, name := range names {
 		f, err := os.Open("assets/" + name + ".png")
 		if err != nil {

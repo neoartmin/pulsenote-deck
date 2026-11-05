@@ -1,0 +1,127 @@
+name: E2E test live PulseNote Deck editor and category navigation
+on:
+  push:
+    branches: [feature/pnd-auto-click-audio-notifications-dark-theme]
+    paths: ['.github/workflows/verify-pnd-web-editor.yml', 'website/live/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install browser automation
+        shell: bash
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Check category pages, actual JSON editor, colors, profile and native export
+        shell: bash
+        run: |
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          const fs=require('node:fs');
+          const assert=require('node:assert/strict');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            try{
+              const ctx=await browser.newContext({acceptDownloads:true,viewport:{width:1400,height:900}});
+              const page=await ctx.newPage(); const errors=[];
+              page.on('pageerror',e=>errors.push(String(e)));
+              const response=await page.goto('https://pulsenote-deck-site.vercel.app/',{waitUntil:'networkidle',timeout:60000});
+              assert.equal(response.status(),200);
+              await page.locator('.pnd-native-editor').waitFor({state:'visible',timeout:30000});
+              async function checkPage(which){
+                assert.equal(await page.locator('#'+which).evaluate(el=>el.hidden),false,which+' must be shown');
+                assert.equal(await page.locator('.page-panel:not([hidden])').count(),1,'only one category visible');
+                assert.equal(await page.locator('body').getAttribute('data-current-page'),which);
+              }
+              await checkPage('software');
+              // The text-input button must render the actual native app design,
+              // never the low-contrast fallback "T" seen in the report.
+              const nativeIcon = page.locator('[data-pnw="type"][data-type="text"] svg.pnw-native-text-glyph');
+              await nativeIcon.waitFor({state:'visible'});
+              const artwork = await nativeIcon.evaluate(el=>{
+                const bounds=el.getBoundingClientRect();
+                const r=el.querySelector('rect');
+                return {
+                  background:r.getAttribute('fill'),
+                  border:r.getAttribute('stroke'),
+                  whiteLines:el.querySelectorAll('rect[fill="#ffffff"]').length,
+                  hasWhiteT:!!el.querySelector('text[fill="#ffffff"]'),
+                  w:bounds.width,h:bounds.height
+                };
+              });
+              assert.deepEqual([artwork.background,artwork.border],['#2363eb','#649dff']);
+              assert.equal(artwork.whiteLines,3);
+              assert.equal(artwork.hasWhiteT,true);
+              assert.ok(artwork.w>=25&&artwork.h>=25,'native input icon must be visible at button size');
+              await page.locator('[data-pnw="type"][data-type="text"]').click();
+              assert.equal(await page.locator('.pnw-key.selected svg.pnw-native-text-glyph').count(),1);
+              assert.equal(await page.locator('.pnw-current svg.pnw-native-text-glyph').count(),1);
+              await page.locator('[data-page-link="hardware"]').click();
+              await checkPage('hardware');
+              await page.locator('#gallery-next').click();
+              assert.match(await page.locator('#gallery-count').textContent(), /02 \/ 06/);
+              await page.locator('#gallery-prev').click();
+              assert.match(await page.locator('#gallery-count').textContent(), /01 \/ 06/);
+              await page.locator('[data-page-link="design"]').click();
+              await checkPage('design');
+              await page.goBack({waitUntil:'domcontentloaded'});
+              await checkPage('hardware');
+              await page.locator('[data-page-link="software"]').click();
+              await checkPage('software');
+              await page.locator('[data-pnw="model"][data-model="12"]').click();
+              assert.equal(await page.locator('.pnw-key').count(),12);
+              assert.equal(await page.evaluate(()=>window.PulseNoteWebConfig.getConfig().selected),12);
+              await page.locator('[data-pnw="model"][data-model="15L"]').click();
+              assert.equal(await page.locator('.pnw-key').count(),15);
+              assert.equal(await page.evaluate(()=>window.PulseNoteWebConfig.getConfig().selectedSide),'L');
+              const geometry=await page.evaluate(()=>Array.from(document.querySelectorAll('.pnw-key')).map(el=>{const r=el.getBoundingClientRect();return [Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)];}));
+              assert.equal(new Set(geometry.map(g=>g.join(','))).size,15,'PN15 keys must have distinct physical grid positions');
+              await page.locator('[data-pnw="key"][data-index="1"]').click({timeout:8000});
+              await page.locator('[data-pnw="type"][data-type="auto_click"]').click();
+              await page.locator('[data-field="auto-ms"]').fill('250');
+              await page.locator('[data-field="auto-count"]').fill('10');
+              await page.locator('[data-field="auto-button"]').selectOption('right');
+              assert.equal(await page.evaluate(()=>window.PulseNoteWebConfig.getConfig().models['15L'].profiles[0].keys[1].value),'250|10|right');
+              await page.locator('[data-pnw="action-page"][data-index="1"]').click();
+              await page.locator('[data-pnw="action-page"][data-index="2"]').click();
+              await page.locator('[data-pnw="action-page"][data-index="1"]').click();
+              await page.locator('[data-pnw="action-page"][data-index="0"]').click();
+              await page.locator('[data-pnw="tab"][data-tab="profiles"]').click();
+              await page.locator('[data-pnw="profile-add"]').click();
+              assert.equal(await page.evaluate(()=>window.PulseNoteWebConfig.getConfig().models['15L'].profiles.length),2);
+              await page.locator('[data-field="profile-name"]').fill('작업용');
+              const downloadPromise=page.waitForEvent('download');
+              await page.locator('[data-pnw="export"]').click();
+              const download=await downloadPromise;
+              assert.equal(download.suggestedFilename(),'config_unified.json');
+              const dest='/tmp/pnd-e2e-config.json';await download.saveAs(dest);
+              const saved=JSON.parse(fs.readFileSync(dest,'utf8'));
+              assert.equal(saved.version,7);
+              assert.equal(saved.models['15L'].profiles.length,2);
+              assert.equal(saved.models['15L'].profiles[1].name,'작업용');
+              assert.equal(saved.models['15L'].profiles[1].keys[1].value,'250|10|right');
+              assert.equal(saved.models['12'].profiles[0].keys.length,12);
+              await page.setViewportSize({width:390,height:820});
+              await page.locator('[data-page-link="overview"]').click();
+              await checkPage('overview');
+              await page.locator('[data-page-link="software"]').click();
+              await checkPage('software');
+              await page.locator('[data-page-link="downloads"]').click();
+              await checkPage('downloads');
+              assert.equal((await page.locator('#version').textContent()).trim(),'v7.5.22');
+              assert.match(await page.locator('#backup-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_COMPLETE_BACKUP\.zip/);
+              assert.match(await page.locator('#installer-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_Setup_preview\.exe/);
+              assert.equal((await page.request.get('https://pulsenote-deck-site.vercel.app/api/native-icon?name=auto_click')).status(),200);
+              assert.deepEqual(errors,[], 'browser runtime errors');
+              console.log('E2E PASS: page navigation, gallery, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');
+            } finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          NODE

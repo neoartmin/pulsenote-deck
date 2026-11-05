@@ -109,19 +109,18 @@ func (s *startupSplash) paint() {
 	fillRect.Call(hdc, uintptr(unsafe.Pointer(&bounds)), background)
 	deleteObject.Call(background)
 
-	// Subtle graphite frame, violet accent and a miniature 2 x 3 key matrix.
+	// The splash uses the same icon image as the titlebar, desktop and UI.
+	// Background and all other v7.5.17 visual rules remain untouched.
 	d.rounded(1, 1, 538, 266, 16, theme("bg"), theme("border"))
 	d.rounded(32, 30, 146, 178, 18, theme("panel"), theme("border"))
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 2; col++ {
-			fill := theme("sel")
-			if row == 0 && col == 0 {
-				fill = theme("accent")
+	if !d.actionArtwork("app_logo", 42, 53, 126) {
+		d.rounded(42, 53, 126, 126, 23, RGB(17, 17, 20), RGB(17, 17, 20))
+		for rr := 0; rr < 2; rr++ {
+			for cc := 0; cc < 2; cc++ {
+				c := RGB(217, 217, 222)
+				if rr == 0 && cc == 1 { c = RGB(214, 40, 57) }
+				d.rounded(68+cc*37, 78+rr*37, 29, 29, 7, c, c)
 			}
-			if row == 1 && col == 1 {
-				fill = RGB(3, 180, 112)
-			}
-			d.rounded(48+col*59, 46+row*51, 49, 41, 8, fill, theme("border"))
 		}
 	}
 	d.textBold("PulseNote", 202, 39, 290, 43, 29, theme("text"), false)

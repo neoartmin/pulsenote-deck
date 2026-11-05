@@ -42,6 +42,7 @@ func recordDeviceAttached(port string, keys int) {
 	}
 }
 func recordDeviceDetached(manual bool) {
+	stopAutoClick("USB 연결 종료")
 	releaseAllHeldShortcuts()
 	if n, ok := liveDeviceNotices.detach(manual); ok {
 		enqueueDeviceNotice(n)

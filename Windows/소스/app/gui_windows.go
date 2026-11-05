@@ -224,6 +224,9 @@ type ui struct {
 	actionPage                                           int
 	page                                                 int
 	status                                               string
+	windowDPI                                            uint32
+	nativeEditFont                                       uintptr
+	nativeEditPx                                         int
 	scale                                                float64
 	ox, oy                                               int
 	touches                                              []click
@@ -481,9 +484,9 @@ func newDraw(hdc uintptr, w, h int32) *drawCtx {
 	if scale < 0.4 {
 		scale = 0.4
 	}
-	if scale > 1.65 {
-		scale = 1.65
-	}
+	// Do not cap the fit scale at 165%. A 200% or 250% display must
+	// receive its full number of native device pixels, not a blurry bitmap
+	// scaled by Windows. DPI is NOT multiplied here a second time.
 	return &drawCtx{hdc: hdc, scale: scale, ox: int((float64(w) - 1440*scale) / 2), oy: int((float64(h) - 900*scale) / 2), fonts: mainUI.fonts, iconFonts: mainUI.iconFonts}
 }
 func (d *drawCtx) xy(x, y int) (int32, int32) {
@@ -494,6 +497,9 @@ func (d *drawCtx) ab(x, y, w, h int) rect {
 	return rectI(xx, yy, int32(float64(w)*d.scale), int32(float64(h)*d.scale))
 }
 func (d *drawCtx) rounded(x, y, w, h, r int, fill, border uint32) {
+	if d.antiAliasedRounded(x,y,w,h,r,fill,border) {
+		return
+	}
 	q := d.ab(x, y, w, h)
 	pen, _, _ := createPen.Call(PS_SOLID, uintptr(maxInt(1, int(d.scale))), uintptr(border))
 	brush, _, _ := createSolidBrush.Call(uintptr(fill))
@@ -596,7 +602,7 @@ func glyphForAction(t string) rune {
 		return icoTextEdit
 	case "system_settings":
 		return icoApps
-	case "open_timers", "open_alarms":
+	case "auto_click", "audio_output", "open_alarms":
 		return icoPlay
 	case "web_search":
 		return icoGlobe
@@ -673,10 +679,10 @@ func (g *ui) actionPill(d *drawCtx, x, y, w, h int, glyph rune, label string, se
 	d.rounded(x, y, w, h, 10, fill, border)
 	// Render the same colorful premium artwork here as on the physical-key
 	// preview. The monochrome Fluent glyph remains a safe fallback.
-	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+4, y+5, min(28,h-8)) {
-		d.icon(glyph, x+6, y+5, 26, h-10, 16, fg)
+	if id < 0 || id >= len(types) || !d.actionArtwork(types[id], x+7, y+5, min(38,h-10)) {
+		d.icon(glyph, x+7, y+6, 38, h-12, 26, fg)
 	}
-	d.textBold(label, x+35, y+1, w-37, h-2, 11, fg, false)
+	d.textBold(label, x+49, y+1, w-53, h-2, 12, fg, false)
 	g.clickable(d, x, y, w, h, "action", id)
 }
 
@@ -741,14 +747,21 @@ func (g *ui) paint() {
 	deleteObject.Call(bg)
 	d := newDraw(target, w, h)
 	g.scale = d.scale
+	g.applyNativeEditorFont(d.scale)
 	g.ox = d.ox
 	g.oy = d.oy
 	g.touches = g.touches[:0]
 	d.rounded(0, 0, 244, 900, 0, theme("sidebar"), theme("sidebar"))
-	d.rounded(28, 30, 54, 54, 13, theme("accent"), theme("accent"))
-	for rr := 0; rr < 2; rr++ {
-		for cc := 0; cc < 2; cc++ {
-			d.rounded(44+cc*13, 46+rr*13, 10, 10, 3, RGB(255, 255, 255), RGB(255, 255, 255))
+	// Exactly the same black/gray/red mark used by the Windows shortcut ICO.
+	// No palette tinting: this logo is intentionally independent of the v7.5.17 UI theme.
+	if !d.actionArtwork("app_logo", 28, 30, 54) {
+		d.rounded(28, 30, 54, 54, 13, RGB(17, 17, 20), RGB(17, 17, 20))
+		for rr := 0; rr < 2; rr++ {
+			for cc := 0; cc < 2; cc++ {
+				fill := RGB(217, 217, 222)
+				if rr == 0 && cc == 1 { fill = RGB(214, 40, 57) }
+				d.rounded(39+cc*20, 41+rr*20, 15, 15, 3, fill, fill)
+			}
 		}
 	}
 	d.textBold("PulseNote Deck", 94, 36, 155, 28, 18, theme("text"), false)
@@ -929,7 +942,11 @@ func typeName(t string) string {
 	case "system_settings":
 		return "설정 바로가기"
 	case "open_timers":
-		return "타이머 열기"
+		return "타이머 (제거됨)"
+	case "auto_click":
+		return "오토클릭"
+	case "audio_output":
+		return "출력 장치 전환"
 	case "open_alarms":
 		return "알람 열기"
 	case "web_search":
@@ -967,12 +984,13 @@ func typeName(t string) string {
 	}
 }
 
-var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "open_timers", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
+var types = []string{"shortcut", "text", "capture", "copy_text", "system_settings", "auto_click", "audio_output", "open_alarms", "program", "website", "folder", "volume_up", "volume_down", "volume_mute", "media_play", "media_next", "media_prev", "none", "web_search", "qr_code", "clipboard_history", "window_control"}
 
 func pickerActionName(t string) string {
     switch t {
     case "system_settings": return "설정"
-    case "open_timers": return "타이머"
+    case "auto_click": return "오토클릭"
+    case "audio_output": return "스피커 전환"
     case "open_alarms": return "알람"
     case "media_play": return "재생/정지"
     case "clipboard_history": return "복사 기록"
@@ -986,7 +1004,7 @@ func pickerActionName(t string) string {
 // Only action types with parameters enable the parameter field.
 func needsValue(t string) bool {
 	switch t {
-	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings", "web_search", "compose_email", "qr_code", "sequence", "window_control":
+	case "program", "website", "folder", "shortcut", "text", "copy_text", "system_settings", "web_search", "compose_email", "qr_code", "sequence", "window_control", "auto_click":
 		return true
 	}
 	return false
@@ -1015,6 +1033,10 @@ func valueFieldTitle(t string) string {
 		return "QR로 만들 내용 (900바이트 이내)"
 	case "sequence":
 		return "키 번호·대기 단계 (예: 2,wait:250,4)"
+	case "auto_click":
+		return "클릭 간격 (20~10000ms)"
+	case "audio_output":
+		return "출력 장치 선택"
 	case "window_control":
 		return "창 동작 선택 (오른쪽 메뉴)"
 	default:
@@ -1045,6 +1067,10 @@ func valueCue(t string) string {
 		return "UTF-8 900바이트 이내 · 오프라인 PNG 생성"
 	case "sequence":
 		return "이전 버전에서 저장된 고급 기능입니다"
+	case "auto_click":
+		return "100 (밀리초 단위, 20~10000)"
+	case "audio_output":
+		return "출력 장치 선택에서 지정"
 	case "window_control":
 		return "오른쪽 창 동작 선택 메뉴에서 지정"
 	default:
@@ -1072,22 +1098,23 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	d.textBold("기능", 931, 343, 250, 28, 16, theme("text"), false)
 	// 16 actions per page. Avoid overlapping the name/value editor when
 	// adding new functions; keep earlier button choices visible on page 1.
-	pageCount := (len(types)+15)/16
+	// Three larger function buttons per row, not the original 4x4 miniature grid.
+	pageCount := (len(types)+8)/9
 	if g.actionPage >= pageCount {g.actionPage=pageCount-1}
 	if g.actionPage < 0 {g.actionPage=0}
-	start := g.actionPage*16
-	for index:=start; index<len(types) && index<start+16; index++ {
-		col := (index-start)%4
-		row := (index-start)/4
-		x := 928 + col*118
-		y := 377 + row*42
+	start := g.actionPage*9
+	for index:=start; index<len(types) && index<start+9; index++ {
+		col := (index-start)%3
+		row := (index-start)/3
+		x := 928 + col*156
+		y := 377 + row*53
 		t := types[index]
-		g.actionPill(d,x,y,111,38,glyphForAction(t),pickerActionName(t),key.Type==t,index)
+		g.actionPill(d,x,y,150,48,glyphForAction(t),pickerActionName(t),key.Type==t,index)
 	}
 	if pageCount>1{
-		g.pill(d,929,550,113,32,"◀ 이전",false,"actionpage",0)
+		g.pill(d,929,550,113,32,"◀ 이전",false,"actionpage",g.actionPage-1)
 		d.textBold(fmt.Sprintf("기능 %d / %d",g.actionPage+1,pageCount),1050,551,226,29,12,theme("muted"),true)
-		g.pill(d,1277,550,117,32,"다음 ▶",false,"actionpage",1)
+		g.pill(d,1277,550,117,32,"다음 ▶",false,"actionpage",g.actionPage+1)
 	}
 	d.textBold("버튼 이름", 931, 598, 326, 25, 16, theme("text"), false)
 	d.textBold(valueFieldTitle(key.Type), 931, 674, 330, 25, 15, theme("text"), false)
@@ -1096,6 +1123,23 @@ func (g *ui) drawKeyEdit(d *drawCtx, key Key) {
 	} else if key.Type == "system_settings" {
 		g.pill(d, 1247, 669, 146, 31, "설정 선택", false, "settingspick", 0)
 		d.text(settingLabel(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
+	} else if key.Type == "auto_click" {
+		g.pill(d, 1247, 669, 146, 31, "클릭 설정", false, "autoclickpick", 0)
+		cfg, err := parseAutoClick(key.Value)
+		if err == nil {
+			count := "무제한"
+			if cfg.Count > 0 { count = fmt.Sprintf("%d회", cfg.Count) }
+			button := "왼쪽"
+			if cfg.Button == "right" { button = "오른쪽" }
+			d.text(button+" 클릭 · "+count+" · F8 긴급 중지", 930, 746, 460, 18, 11, theme("muted"), false)
+		} else {
+			d.text("클릭 간격을 확인하세요 (20~10000ms)", 930, 746, 460, 18, 11, theme("accent"), false)
+		}
+	} else if key.Type == "audio_output" {
+		g.pill(d, 1247, 669, 146, 31, "출력 장치 선택", false, "audiopick", 0)
+		setting := "다음 연결된 출력 장치로 전환"
+		if key.Value != "" && key.Value != "cycle" { setting = "지정된 출력 장치로 전환" }
+		d.text(setting, 930, 746, 460, 18, 11, theme("muted"), false)
 	} else if key.Type == "window_control" {
 		g.pill(d, 1247, 669, 146, 31, "창 동작 선택", false, "windowpick", 0)
 		d.text(windowActionName(key.Value), 930, 746, 440, 18, 11, theme("muted"), false)
@@ -1343,7 +1387,15 @@ func (g *ui) edits() {
 	}
 	g.editing = true
 	setWindowText.Call(g.labelEdit, ptr(key.Label))
-	setWindowText.Call(g.valueEdit, ptr(func()string{if key.Type=="web_search"{return searchQuery(key.Value)};return key.Value}()))
+	setWindowText.Call(g.valueEdit, ptr(func()string{
+		if key.Type=="web_search"{return searchQuery(key.Value)}
+		if key.Type=="auto_click"{
+			cfg,e:=parseAutoClick(key.Value)
+			if e==nil{return fmt.Sprintf("%d",cfg.IntervalMS)}
+			return strings.Split(key.Value,"|")[0]
+		}
+		return key.Value
+	}()))
 	setWindowText.Call(g.textValueEdit, ptr(windowsEditorNewlines(key.Value)))
 	enableWindow.Call(g.valueEdit, 0)
 	enableWindow.Call(g.textValueEdit, 0)
@@ -1436,6 +1488,7 @@ func (g *ui) perform(hit click) {
 		g.selected = hit.id
 		g.edits()
 	case "editmodel":
+		stopAutoClick("모델 변경")
 		// Changing a settings tab must never alter live USB sessions.
 		targets := []struct {
 			model int
@@ -1452,7 +1505,7 @@ func (g *ui) perform(hit click) {
 	case "color":
 		g.showSaveError(update(func(c *Config) { mutateKey(c, g.selected, func(k *Key) { k.Color = palette[hit.id] }) }))
 	case "actionpage":
-		if hit.id>=0 && hit.id < (len(types)+15)/16 {g.actionPage=hit.id}
+		if hit.id>=0 && hit.id < (len(types)+8)/9 {g.actionPage=hit.id}
 	case "action":
         if hit.id<0||hit.id>=len(types){break}
 		t := types[hit.id]
@@ -1488,11 +1541,13 @@ func (g *ui) perform(hit click) {
 			g.profileEdits()
 		}
 	case "profile":
+		stopAutoClick("프로필 변경")
 		g.showSaveError(update(func(c *Config) { _, m, _ := active(*c); m.Active = hit.id; c.Models[modelKey(*c)] = m }))
 		g.selected = 0
 		g.edits()
 		g.profileEdits()
 	case "profileadd":
+		stopAutoClick("프로필 변경")
 		g.showSaveError(update(func(c *Config) {
 			_, m, p := active(*c)
 			if len(m.Profiles) >= maxProfiles {
@@ -1518,6 +1573,7 @@ func (g *ui) perform(hit click) {
 		if answer, _, _ := messageBox.Call(g.hwnd, ptr("프로필 '"+name+"'을(를) 삭제할까요?\n삭제하면 해당 프로필의 버튼 설정을 되돌릴 수 없습니다."), ptr("프로필 삭제 확인"), 0x24); answer != 6 {
 			return
 		}
+		stopAutoClick("프로필 변경")
 		g.showSaveError(update(func(c *Config) {
 			_, m, _ := active(*c)
 			if len(m.Profiles) <= 1 {
@@ -1544,6 +1600,62 @@ func (g *ui) perform(hit click) {
 			}))
 			g.edits()
 		}
+	case "autoclickpick":
+		k, ok := selectedKey(snap(), g.selected)
+		if !ok || k.Type != "auto_click" { break }
+		cfg, e := parseAutoClick(k.Value)
+		if e != nil {
+			messageBox.Call(g.hwnd, ptr(e.Error()), ptr("오토클릭 설정"), 0x30)
+			break
+		}
+		options := []string{"왼쪽 클릭", "오른쪽 클릭", "무제한 반복", "10회 반복", "100회 반복", "1000회 반복"}
+		choice := g.menu(options)
+		if choice < 1 || choice > len(options) { break }
+		switch choice {
+		case 1: cfg.Button = "left"
+		case 2: cfg.Button = "right"
+		case 3: cfg.Count = 0
+		case 4: cfg.Count = 10
+		case 5: cfg.Count = 100
+		case 6: cfg.Count = 1000
+		}
+		g.showSaveError(update(func(c *Config) {
+			mutateKey(c, g.selected, func(k *Key) {
+				if k.Type == "auto_click" { k.Value = formatAutoClick(cfg) }
+			})
+		}))
+		g.edits()
+	case "audiopick":
+		k, ok := selectedKey(snap(), g.selected)
+		if !ok || k.Type != "audio_output" { break }
+		devices, current, err := listAudioOutputs()
+		if err != nil {
+			messageBox.Call(g.hwnd, ptr("오디오 장치 조회 실패: "+err.Error()), ptr("출력 장치 선택"), 0x30)
+			break
+		}
+		options := []string{"다음 출력 장치로 순환"}
+		for _, item := range devices {
+			label := item.Name
+			if item.ID == current { label = "현재: " + label }
+			options = append(options, label)
+		}
+		choice := g.menu(options)
+		if choice < 1 || choice > len(options) { break }
+		selected := "cycle"
+		selectedLabel := "출력 장치 전환"
+		if choice > 1 {
+			selected = devices[choice-2].ID
+			selectedLabel = "출력: " + devices[choice-2].Name
+		}
+		g.showSaveError(update(func(c *Config) {
+			mutateKey(c, g.selected, func(k *Key) {
+				if k.Type == "audio_output" {
+					if k.Label == "출력 장치 전환" || strings.HasPrefix(k.Label, "출력: ") { k.Label = selectedLabel }
+					k.Value = selected
+				}
+			})
+		}))
+		g.edits()
 	case "windowpick":
 		k,ok:=selectedKey(snap(),g.selected)
 		if !ok || k.Type!="window_control"{break}
@@ -2010,7 +2122,14 @@ func (g *ui) writeFromEdit(which int) {
 		g.pendingValue = normalizeEditorNewlines(getText(g.textValueEdit))
 	} else {
 		g.pendingValue = getText(g.valueEdit)
-		if key,ok:=selectedKey(c,g.selected);ok&&key.Type=="web_search"{g.pendingValue=makeSearchValue(searchEngine(key.Value),g.pendingValue)}
+		if key,ok:=selectedKey(c,g.selected);ok{
+			if key.Type=="web_search"{g.pendingValue=makeSearchValue(searchEngine(key.Value),g.pendingValue)}
+			if key.Type=="auto_click"{
+				cfg,e:=parseAutoClick(key.Value)
+				if e!=nil{cfg=defaultAutoClick()}
+				g.pendingValue=fmt.Sprintf("%s|%d|%s",g.pendingValue,cfg.Count,cfg.Button)
+			}
+		}
 	}
 	g.pendingModel = c.Selected
 	g.pendingSide = c.SelectedSide
@@ -2089,9 +2208,9 @@ func (g *ui) tray(add bool) {
 	notifyIcon.Call(op, uintptr(unsafe.Pointer(&n)))
 }
 func (g *ui) trayMenu() {
-	toggle := "장치 연결 알림 켜기"
+	toggle := "상태 알림 켜기"
 	if notificationsEnabled() {
-		toggle = "장치 연결 알림 끄기"
+		toggle = "상태 알림 끄기"
 	}
 	id := g.menu([]string{"설정창 열기", toggle, "완전 종료"})
 	if id == 1 {
@@ -2112,11 +2231,13 @@ func (g *ui) trayMenu() {
 func (g *ui) quit() {
 	g.flushProfileName()
 	g.flushEdits()
+	stopAutoClick("프로그램 종료")
 	releaseAllHeldShortcuts()
 	if editBgBrush != 0 {
 		deleteObject.Call(editBgBrush)
 	}
 	g.tray(false)
+	if g.nativeEditFont!=0 {deleteObject.Call(g.nativeEditFont);g.nativeEditFont=0}
 	for _, v := range g.fonts {
 		deleteObject.Call(v)
 	}
@@ -2175,6 +2296,9 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		return 0
 	case WM_SIZE:
 		g.redraw()
+		return 0
+	case WM_DPICHANGED:
+		g.handleDPIChanged(hwnd,wp,lp)
 		return 0
 	case WM_CLOSE:
 		// Close the SETTINGS WINDOW, not the USB listener / action worker.
@@ -2235,6 +2359,16 @@ func wndproc(hwnd uintptr, m uint32, wp, lp uintptr) uintptr {
 		}
 		g.redraw()
 		return 0
+	case WM_ACTION_NOTICE:
+		for {
+			select {
+			case notice := <-actionStateEvents:
+				g.showActionStateNotice(notice)
+			default:
+				g.redraw()
+				return 0
+			}
+		}
 	case WM_SHORTCUT_TOGGLE:
         for {
             select{
@@ -2297,6 +2431,8 @@ func maxInt(a, b int) int {
 	return b
 }
 func main() {
+	// Establish DPI context before creating the splash window or any HWND.
+	configureProcessDPI()
 	// Shell's jumbo icon list is COM-backed. Pin the main UI message loop to
 	// one STA thread for SHGetImageList and keep it initialized until exit.
 	runtime.LockOSThread()
@@ -2322,6 +2458,16 @@ func main() {
 		return
 	}
 	defer closeHandle.Call(guardMutex)
+	// The app uses the same Pretendard face on every supported PC.
+	// Missing private font data falls back to the previous system-font selection.
+	if loadBundledPretendard() {
+		preferredFace = "Pretendard"
+	} else {
+		preferredFace = chooseUIFont()
+	}
+	defer unloadBundledPretendard()
+	// Make the shared brand artwork available to both startup splash and UI.
+	initRoundedArtwork()
 	// Present a short, themed splash only for a real interactive startup.
 	// Login autostart remains silent; second launches reuse the running UI.
 	var splash *startupSplash
@@ -2346,21 +2492,26 @@ func main() {
 	ins, _, _ := getModuleHandle.Call(0)
 	cursor, _, _ := loadCursor.Call(0, IDC_ARROW)
 	appIcon, _, _ = loadIcon.Call(0, IDI_APPLICATION)
+	iconSmall := appIcon
 	if exe, e := os.Executable(); e == nil {
-		iconPath := filepath.Join(filepath.Dir(exe), "PulseNoteDeck.ico")
+		iconPath := filepath.Join(filepath.Dir(exe), "PulseNoteDeck_v"+version+".ico")
+		if _, err := os.Stat(iconPath); err != nil {
+			iconPath = filepath.Join(filepath.Dir(exe), "PulseNoteDeck.ico")
+		}
 		if _, e := os.Stat(iconPath); e == nil {
-			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 64, 64, 0x10); ico != 0 {
+			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 48, 48, 0x10); ico != 0 {
 				appIcon = ico
+			}
+			if ico, _, _ := imageLoader.Call(0, ptr(iconPath), 1, 16, 16, 0x10); ico != 0 {
+				iconSmall = ico
 			}
 		}
 	}
 	editBgBrush, _, _ = createSolidBrush.Call(uintptr(theme("panel2")))
-	preferredFace = chooseUIFont()
-	initRoundedArtwork()
 	g := &ui{selected: 0, page: 0, modelMode: snap().Selected, modelSide: snap().SelectedSide, fonts: map[int]uintptr{}, iconFonts: map[int]uintptr{}, icons: map[string]uintptr{}, appBitmaps: map[string]uintptr{}, appResults: make(chan scanResult, 8)}
 	mainUI = g
 	callback := syscall.NewCallback(wndproc)
-	class := wndclassex{Size: uint32(unsafe.Sizeof(wndclassex{})), Style: 0, WndProc: callback, Instance: ins, Icon: appIcon, Cursor: cursor, ClassName: ptr(windowClassName), IconSm: appIcon}
+	class := wndclassex{Size: uint32(unsafe.Sizeof(wndclassex{})), Style: 0, WndProc: callback, Instance: ins, Icon: appIcon, Cursor: cursor, ClassName: ptr(windowClassName), IconSm: iconSmall}
 	r, _, _ := registerClass.Call(uintptr(unsafe.Pointer(&class)))
 	if r == 0 {
 		return
@@ -2375,6 +2526,11 @@ func main() {
 		return
 	}
 	g.hwnd = hwnd
+	g.windowDPI=currentWindowDPI(hwnd)
+	// Set both titlebar/taskbar icons explicitly to avoid scaling a 48px image
+	// to 16px and to match the desktop .lnk's registered ICO.
+	sendMessage.Call(hwnd, 0x0080, 0, iconSmall) // WM_SETICON / ICON_SMALL
+	sendMessage.Call(hwnd, 0x0080, 1, appIcon)   // WM_SETICON / ICON_BIG
 	enableDarkTitlebar(hwnd)
 	label, _, _ := createWindow.Call(0, ptr("EDIT"), ptr(""), WS_VISIBLE|WS_CHILD|WS_BORDER|ES_AUTOHSCROLL, 0, 0, 50, 30, hwnd, uintptr(1201), ins, 0)
 	g.labelEdit = label
@@ -2399,14 +2555,9 @@ func main() {
     sendMessage.Call(to,EM_SETLIMITTEXT,320,0)
     sendMessage.Call(subject,EM_SETLIMITTEXT,700,0)
     sendMessage.Call(body,EM_SETLIMITTEXT,3000,0)
-	editFont, _, _ := createFont.Call(uintptr(^uint32(17)), 0, 0, 0, uintptr(500), 0, 0, 0, 1, 0, 0, 0, 0, ptr(preferredFace))
-	g.fonts[17*1000+500] = editFont
-	sendMessage.Call(g.labelEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.valueEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.textValueEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.appSearchEdit, WM_SETFONT, editFont, 1)
-	sendMessage.Call(g.profileNameEdit, WM_SETFONT, editFont, 1)
-    for _,field:=range []uintptr{g.emailToEdit,g.emailSubjectEdit,g.emailBodyEdit}{sendMessage.Call(field,WM_SETFONT,editFont,1)}
+	// Native text-edit HWNDs need the same physical-pixel font scale as
+	// the GDI backbuffer. Reapply on WM_DPICHANGED and on window resize.
+	g.applyNativeEditorFont(1)
 	g.edits()
 	g.tray(true)
 	if background {

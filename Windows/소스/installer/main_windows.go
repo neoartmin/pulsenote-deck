@@ -20,7 +20,12 @@ var appBytes []byte
 //go:embed icon.ico
 var iconBytes []byte
 
+//go:embed Pretendard_OFL.txt
+var fontLicenseBytes []byte
+
 const productName = "PulseNote Deck"
+
+func currentIconName() string { return "PulseNoteDeck_v" + productVersion + ".ico" }
 
 var udll = syscall.NewLazyDLL("user32.dll")
 var ole = syscall.NewLazyDLL("ole32.dll")
@@ -143,7 +148,7 @@ func registerUninstall(dir string) error {
 		return syscall.Errno(ret)
 	}
 	defer syscall.RegCloseKey(h)
-	props := map[string]string{"DisplayName": productName, "DisplayVersion": productVersion, "Publisher": "PulseNote", "InstallLocation": dir, "DisplayIcon": filepath.Join(dir, "PulseNoteDeck.ico"), "UninstallString": `"` + filepath.Join(dir, "Uninstall.exe") + `" --uninstall`}
+	props := map[string]string{"DisplayName": productName, "DisplayVersion": productVersion, "Publisher": "PulseNote", "InstallLocation": dir, "DisplayIcon": filepath.Join(dir, currentIconName()), "UninstallString": `"` + filepath.Join(dir, "Uninstall.exe") + `" --uninstall`}
 	for n, v := range props {
 		if e := regString(h, n, v); e != nil {
 			return e
@@ -168,7 +173,7 @@ func install() error {
 	for _, it := range []struct {
 		name string
 		data []byte
-	}{{appFilename(), appBytes}, {"PulseNoteDeck.ico", iconBytes},
+	}{{appFilename(), appBytes}, {"PulseNoteDeck.ico", iconBytes}, {currentIconName(), iconBytes}, {"LICENSE_Pretendard.txt", fontLicenseBytes},
 		{filepath.Join("Firmware", "PN12", "PulseNoteDeck_C3_12Key.ino"), firmwarePN12},
 		{filepath.Join("Firmware", "PN15", "RIGHT", "PulseNoteDeck_C3_PN15_RIGHT", "PulseNoteDeck_C3_PN15_RIGHT.ino"), firmwarePN15},
 		{filepath.Join("Firmware", "PN15", "LEFT", "PulseNoteDeck_C3_PN15_LEFT", "PulseNoteDeck_C3_PN15_LEFT.ino"), firmwarePN15Left},
@@ -193,7 +198,7 @@ func install() error {
 		return e
 	}
 	target := filepath.Join(dir, appFilename())
-	ico := filepath.Join(dir, "PulseNoteDeck.ico")
+	ico := filepath.Join(dir, currentIconName())
 	desk, e := known(&folderDesktop)
 	if e != nil {
 		return e

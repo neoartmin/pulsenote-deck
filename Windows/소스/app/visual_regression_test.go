@@ -75,3 +75,26 @@ func TestSoftKeycapsReadableText(t *testing.T) {
 		}
 	}
 }
+
+ 
+// Preserve the stock v7.5.17 look while making the function picker easier to tap.
+func TestOriginalThemeAndLargeFunctionPicker(t *testing.T) {
+    ui, err := os.ReadFile("gui_windows.go")
+    if err != nil {t.Fatal(err)}
+    src := string(ui)
+    for _, check := range []string{
+        `"bg": RGB(8, 15, 29)`,
+        `"accent": RGB(85, 102, 255)`,
+        `colorValue(key.Color), keycapHighlight(key.Color)`,
+        `g.swatch(d, x, 793, 52, 33, name, key.Color == name)`,
+        `g.actionPill(d,x,y,150,48`,
+        `min(38,h-10)`,
+        `start := g.actionPage*9`,
+        `if hit.id>=0 && hit.id < (len(types)+8)/9`,
+    } {
+        if !strings.Contains(src, check) {t.Errorf("missing original appearance or large picker: %s",check)}
+    }
+    for _, unwanted := range []string{`theme("controlFill")`, `theme("selectedEdge")`} {
+        if strings.Contains(src, unwanted) {t.Errorf("v7.5.19 styling was not restored: %s", unwanted)}
+    }
+}

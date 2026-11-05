@@ -33,15 +33,19 @@ setGallery(0);
 
 // Current public installer, with fallback for offline API.
 (function(){
- const setup=document.getElementById('installer-link'),note=document.getElementById('release-note');
+ const setup=document.getElementById('installer-link'),note=document.getElementById('release-note'),backup=document.getElementById('backup-link'),versionBadge=document.getElementById('version');
  const fallback='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_Setup_preview.exe';
  if(setup)setup.href=fallback;
+ if(backup)backup.href='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip';
+ if(versionBadge)versionBadge.textContent='v7.5.22';
  if(note)note.textContent='Windows v7.5.22 프리뷰 · 실제 Windows 앱';
  fetch('/api/latest',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('release API');return r.json();}).then(data=>{
   const w=data.windows;if(!w?.installer?.url)return;
   const u=new URL(w.installer.url);
   if(u.protocol!=='https:'||u.hostname!=='github.com'||!u.pathname.startsWith('/neoartmin/pulsenote-deck/releases/'))return;
   if(setup)setup.href=u.href;
+  if(versionBadge)versionBadge.textContent=w.version;
+  if(backup&&w.archive?.url){const zip=new URL(w.archive.url);if(zip.protocol==='https:'&&zip.hostname==='github.com'&&zip.pathname.startsWith('/neoartmin/pulsenote-deck/releases/'))backup.href=zip.href;}
   if(note)note.textContent='최신 Windows '+w.version+(w.version==='v7.5.22'?' 프리뷰':'');
  }).catch(()=>{});
 })();

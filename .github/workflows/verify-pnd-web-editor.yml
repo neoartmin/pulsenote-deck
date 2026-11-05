@@ -138,6 +138,25 @@ jobs:
               await checkPage('hardware');
               assert.equal(await page.locator('.pnd-switch-card').count(),4);
               assert.equal(await page.locator('.pnd-build-grid article').count(),3);
+              assert.equal(await page.locator('.pnd-selected-card').count(),2,'CooBeen PETG and EPDM material images are both presented');
+              assert.equal(await page.locator('.pnd-material-spec').count(),2,'material dimensions');
+              assert.match(await page.locator('.pnd-selected-materials').innerText(),/20mm/);
+              assert.match(await page.locator('.pnd-selected-materials').innerText(),/3mm/);
+              for (const name of ['petg','epdm']){
+                const response=await page.request.get('https://pulsenote-deck-site.vercel.app/api/material-photo?name='+name);
+                assert.equal(response.status(),200,'material photo must load: '+name);
+                assert.match(response.headers()['content-type'],/^image\//);
+              }
+              await page.locator('[data-page-link="purpose"]').click();
+              await checkPage('purpose');
+              assert.match(await page.locator('.pnd-brand-manifesto').innerText(),/PulseNote는 전기·전자에서 순간적으로 나타나는 신호인/);
+              assert.match(await page.locator('.pnd-brand-manifesto').innerText(),/수년간 3D 프린터를 직접 사용하고 손보며/);
+              assert.match(await page.locator('.pnd-brand-manifesto').innerText(),/계속 남기는 제작 노트입니다/);
+              assert.equal(await page.locator('.pnd-manifesto-logo').count(),1);
+              const logo=await page.request.get('https://pulsenote-deck-site.vercel.app/assets/brand/pulsenote-logo.webp');
+              assert.equal(logo.status(),200,'user provided official logo must be hosted as original imagery');
+              assert.match(logo.headers()['content-type'],/image\/webp/);
+
               for (const name of ['cream-yellow','sea-salt','peach','lime']){
                 const photo=await page.request.get('https://pulsenote-deck-site.vercel.app/api/switch-photo?name='+name);
                 assert.equal(photo.status(),200,'real switch photo '+name);
@@ -146,11 +165,12 @@ jobs:
               await page.locator('[data-page-link="history"]').click();
               await checkPage('history');
               assert.ok(await page.locator('.pnd-release-timeline article').count()>=5);
+              assert.equal(await page.locator('.pnd-history-brand-link').count(),1);
               await page.locator('[data-page-link="software"]').click();
               await checkPage('software');
               assert.equal((await page.request.get('https://pulsenote-deck-site.vercel.app/api/native-icon?name=auto_click')).status(),200);
               assert.deepEqual(errors,[], 'browser runtime errors');
-              console.log('E2E PASS: page navigation, gallery, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');
+              console.log('E2E PASS: official user-uploaded PN logo, maker philosophy, CooBeen PETG, 3mm EPDM, gallery, navigation, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');
             } finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
           NODE

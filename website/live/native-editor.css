@@ -186,3 +186,38 @@
 @media(max-width:380px){.pnd-manifesto-hero{flex-wrap:wrap}.pnd-brand-teaser .pnd-brand-more{margin-left:0}}
 
 .pnd-material-source-links{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:2px}.pnd-material-source-links a{font-size:11px;font-weight:750;color:#e8b3a8;text-decoration:none;line-height:1.6}.pnd-material-source-links a:hover{text-decoration:underline}
+
+/* Direct user-supplied visual mapping, preserving the pre-redesign layout.
+   Both background sprites contain exactly three equal 3:2 visual cells. */
+#hardware .pnd-build-grid .pnd-material-visual{
+ display:block;width:100%;aspect-ratio:3 / 2;min-height:0;
+ background-image:url('/assets/visuals/materials-user-supplied.webp');
+ background-size:100% 300%;background-repeat:no-repeat;background-color:#f6f6f6;
+ border-bottom:1px solid #394250;
+}
+#hardware .pnd-build-grid .pnd-material-visual--petg{background-position:center top;}
+#hardware .pnd-build-grid .pnd-material-visual--kapton{background-position:center center;}
+#hardware .pnd-build-grid .pnd-material-visual--copper{background-position:center bottom;}
+#hardware .pnd-build-material-card>div:last-child{
+ display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+}
+#hardware .pnd-build-material-card>div:last-child>p{margin:0;}
+#hardware .pnd-build-material-card>div:last-child>small{
+ display:block;border-left:2px solid #bc827a;padding-left:12px;
+ font-size:11px;line-height:1.7;color:#c8a5a4;margin:8px 0 0;
+}
+#purpose .advantage-grid.three .pnd-purpose-visual{
+ display:block;width:100%;aspect-ratio:3 / 2;
+ border:1px solid #2e384e;border-radius:8px;
+ background-image:url('/assets/visuals/purpose-original-ordered.webp');
+ background-size:100% 300%;background-repeat:no-repeat;
+ background-color:#111724;
+ margin:16px 0 17px;
+}
+#purpose .advantage-grid.three .pnd-purpose-visual--shortcut{background-position:center top;}
+#purpose .advantage-grid.three .pnd-purpose-visual--customize{background-position:center center;}
+#purpose .advantage-grid.three .pnd-purpose-visual--integrated{background-position:center bottom;}
+@media(max-width:700px){
+ #purpose .advantage-grid.three .pnd-purpose-visual{margin:12px 0;}
+ #hardware .pnd-build-grid .pnd-material-visual{width:100%;}
+}

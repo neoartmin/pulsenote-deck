@@ -44,6 +44,10 @@ jobs:
               await checkPage('software');
               await page.locator('[data-page-link="hardware"]').click();
               await checkPage('hardware');
+              await page.locator('#gallery-next').click();
+              assert.match(await page.locator('#gallery-count').textContent(), /02 \/ 06/);
+              await page.locator('#gallery-prev').click();
+              assert.match(await page.locator('#gallery-count').textContent(), /01 \/ 06/);
               await page.locator('[data-page-link="design"]').click();
               await checkPage('design');
               await page.goBack({waitUntil:'domcontentloaded'});
@@ -88,8 +92,14 @@ jobs:
               await checkPage('overview');
               await page.locator('[data-page-link="software"]').click();
               await checkPage('software');
+              await page.locator('[data-page-link="downloads"]').click();
+              await checkPage('downloads');
+              assert.equal((await page.locator('#version').textContent()).trim(),'v7.5.22');
+              assert.match(await page.locator('#backup-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_COMPLETE_BACKUP\.zip/);
+              assert.match(await page.locator('#installer-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_Setup_preview\.exe/);
+              assert.equal((await page.request.get('https://pulsenote-deck-site.vercel.app/api/native-icon?name=auto_click')).status(),200);
               assert.deepEqual(errors,[], 'browser runtime errors');
-              console.log('E2E PASS: page navigation, history, 12/15L config, action pagination, auto-click, profile, native v7 JSON download, mobile, console');
+              console.log('E2E PASS: page navigation, gallery, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads and real icons');
             } finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
           NODE

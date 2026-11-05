@@ -31,25 +31,70 @@ attachSwipe($('.gallery-stage'),()=>setGallery(galleryIndex-1),()=>setGallery(ga
 attachSwipe(lightbox,()=>showPhoto(photoIndex-1),()=>showPhoto(photoIndex+1));
 setGallery(0);
 
-// Current public installer, with fallback for offline API.
+// Canonical version labels. Downloadable releases and unshipped source versions
+// are deliberately different data sources so the website never advertises
+// a non-existent installer as available.
 (function(){
- const setup=document.getElementById('installer-link'),note=document.getElementById('release-note'),backup=document.getElementById('backup-link'),versionBadge=document.getElementById('version');
- const fallback='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_Setup_preview.exe';
- if(setup)setup.href=fallback;
+ const setup=document.getElementById('installer-link');
+ const note=document.getElementById('release-note');
+ const backup=document.getElementById('backup-link');
+ const versionBadge=document.getElementById('version');
+ const setLabels=(kind,value)=>{
+  if(!/^v\d+\.\d+\.\d+$/.test(value))return;
+  document.querySelectorAll('[data-pnd-version="'+kind+'"]').forEach(el=>{el.textContent=value});
+ };
+ const fallback="v7.5.22";
+ setLabels('release',fallback);
+ if(setup)setup.href='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_Setup_preview.exe';
  if(backup)backup.href='https://github.com/neoartmin/pulsenote-deck/releases/download/pnd-windows-v7.5.22/PulseNoteDeck_v7.5.22_COMPLETE_BACKUP.zip';
- if(versionBadge)versionBadge.textContent='v7.5.22';
- if(note)note.textContent='Windows v7.5.22 프리뷰 · 실제 Windows 앱';
- fetch('/api/latest',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('release API');return r.json();}).then(data=>{
-  const w=data.windows;if(!w?.installer?.url)return;
-  const u=new URL(w.installer.url);
-  if(u.protocol!=='https:'||u.hostname!=='github.com'||!u.pathname.startsWith('/neoartmin/pulsenote-deck/releases/'))return;
-  if(setup)setup.href=u.href;
-  if(versionBadge)versionBadge.textContent=w.version;
-  if(backup&&w.archive?.url){const zip=new URL(w.archive.url);if(zip.protocol==='https:'&&zip.hostname==='github.com'&&zip.pathname.startsWith('/neoartmin/pulsenote-deck/releases/'))backup.href=zip.href;}
-  if(note)note.textContent='최신 Windows '+w.version+(w.version==='v7.5.22'?' 프리뷰':'');
- }).catch(()=>{});
+ const safe=(value)=>{
+  try{
+   const u=new URL(value);
+   return u.protocol==='https:'&&u.hostname==='github.com'&&u.pathname.startsWith('/neoartmin/pulsenote-deck/releases/')?u.href:null;
+  }catch{return null;}
+ };
+ const updateRelease=()=>{
+  fetch('/api/latest',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Release API');return r.json();}).then(data=>{
+   const w=data.windows;
+   if(!w||!/^v\d+\.\d+\.\d+$/.test(w.version))return;
+   const installed=safe(w.installer?.url);
+   if(!installed)return; // Exclude an unfinished release without a usable installer.
+   setLabels('release',w.version);
+   if(versionBadge)versionBadge.textContent=w.version;
+   if(setup)setup.href=installed;
+   const archive=safe(w.archive?.url);
+   if(archive&&backup)backup.href=archive;
+   if(note)note.textContent='공개 Windows '+w.version+(w.version==='v7.5.22'?' 프리뷰':'')+' · GitHub Releases';
+   document.title='PulseNote Deck '+w.version+' | PN12 · PN15 · Windows 설정';
+  }).catch(()=>{if(note)note.textContent='게시된 설치 파일: '+fallback+' · 최신 버전 조회 재시도 가능';});
+ };
+ const updateSource=()=>{
+  fetch('/api/source-version',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Source API');return r.json();}).then(data=>{
+   if(!/^v\d+\.\d+\.\d+$/.test(data.version))return;
+   setLabels('source',data.version);
+   if(window.PulseNoteWebConfig)window.PulseNoteWebConfig.version=data.version.slice(1);
+  }).catch(()=>{
+   document.querySelectorAll('[data-pnd-version="source"]').forEach(el=>{el.textContent='개발 버전 확인 중'});
+  });
+ };
+ updateRelease();updateSource();
+ // Update even in tabs left open across a new GitHub release.
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden){updateRelease();updateSource()}});
 })();
 
+// Filter the actual app's supported action types without affecting native editor state.
+(function(){
+ const buttons=[...document.querySelectorAll('[data-pnd-filter]')];
+ const cards=[...document.querySelectorAll('[data-pnd-feature-group]')];
+ buttons.forEach(btn=>btn.addEventListener('click',()=>{
+  const group=btn.dataset.pndFilter;
+  buttons.forEach(b=>{const selected=b===btn;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
+  cards.forEach(card=>{card.hidden=group!=='all'&&card.dataset.pndFeatureGroup!==group;});
+ }));
+ document.querySelectorAll('.pnd-switch-photo img').forEach(img=>{
+  img.addEventListener('error',()=>{img.hidden=true;img.parentElement.classList.add('pnd-switch-missing');});
+ });
+})();
 // Independent page navigation. Every hash identifies one visible product category.
 const pageIds=['overview','design','hardware','software','purpose','usage','assembly','parts','history','downloads','license'];
 const pagePanels=pageIds.map(id=>document.getElementById(id));

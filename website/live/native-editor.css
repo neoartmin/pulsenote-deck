@@ -244,3 +244,12 @@
 #parts .pnd-part-mcu-title img{display:block;width:86px;max-width:40%;height:63px;object-fit:contain;border:1px solid #445066;border-radius:7px;background:#747c84;flex:none}
 @media(max-width:860px){#hardware .pnd-architecture-controller{grid-template-columns:minmax(170px,.9fr) minmax(0,1.8fr);gap:15px}#hardware .pnd-architecture-controller>div{padding:16px 16px 16px 0}#assembly .pnd-assembly-exploded{max-width:100%}}
 @media(max-width:600px){#hardware .pnd-architecture-controller{grid-template-columns:1fr;gap:0}#hardware .pnd-architecture-controller img{max-height:210px;min-height:160px}#hardware .pnd-architecture-controller>div{padding:18px 20px 21px}#hardware .pnd-architecture-controller h4{font-size:16px}#design .pnd-advantage-exploded img{max-height:210px}#parts .pnd-part-mcu-title{flex-wrap:wrap;gap:6px}#parts .pnd-part-mcu-title img{width:100%;max-width:130px}}
+
+/* All non-download links removed. Preserve existing navigation and button design. */
+button.category-link,button.navdownload,button.pnd-brand-more,button.source-link,button.btn,button.pnd-release-source{font-family:inherit;cursor:pointer;text-align:inherit;color:inherit}
+button.category-link{appearance:none;background:transparent;border:0;border-radius:0;white-space:nowrap}
+button.navdownload{background:transparent;color:inherit}
+button.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button.pnd-brand-more,button.source-link{background:none;border:0;padding:0;color:#e6a9a0;font-weight:700}
+button.pnd-brand-more:hover,button.source-link:hover{text-decoration:underline}
+#overview .overview-launch article.launch-card{cursor:default}

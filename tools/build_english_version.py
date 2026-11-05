@@ -86,6 +86,25 @@ def main() -> None:
             continue
         original = path.read_text(encoding="utf-8")
         localized, unresolved, count = rewrite_go(original, mapping)
+        if path.name == "gui_windows.go":
+            # The English edition uses the same profile JSON as the Korean
+            # edition: recognize *both* older Korean and new English default
+            # labels when the user reassigns a key or switches audio outputs.
+            key_marker = 'strings.HasPrefix(k.Label,"버튼 ")'
+            if key_marker not in localized:
+                raise RuntimeError("key-label compatibility marker missing")
+            localized = localized.replace(
+                key_marker,
+                '(strings.HasPrefix(k.Label,"버튼 ") || strings.HasPrefix(k.Label,"Key "))'
+            )
+            audio_marker = 'k.Label == "Switch Audio" || strings.HasPrefix(k.Label, "Audio: ")'
+            if audio_marker not in localized:
+                raise RuntimeError("audio-label compatibility marker missing")
+            localized = localized.replace(
+                audio_marker,
+                'k.Label == "Switch Audio" || strings.HasPrefix(k.Label, "Audio: ") || '
+                'k.Label == "출력 장치 전환" || strings.HasPrefix(k.Label, "출력: ")'
+            )
         if unresolved:
             missing[path] = unresolved
         if localized != original:

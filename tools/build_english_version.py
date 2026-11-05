@@ -23,7 +23,7 @@ DO_NOT_TRANSLATE = {
     "ESP32_C3_배선.txt", # Firmware file name in the installer payload.
 }
 # Preserve Go string syntax and escaped characters.
-STRINGS = re.compile(r'"(?:\\.|[^"\\])*"' + chr(96) + r'[^' + chr(96) + r']*' + chr(96), re.S)
+STRINGS = re.compile(r'"(?:\\.|[^"\\])*"|' + chr(96) + r'[^' + chr(96) + r']*' + chr(96), re.S)
 HANGUL = re.compile(r"[\uac00-\ud7a3]")
 GO_TEST = "_test.go"
 

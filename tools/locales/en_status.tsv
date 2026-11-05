@@ -60,7 +60,7 @@ F8 긴급 중지	F8 emergency stop
 Windows 입력 구조 크기가 예상과 다릅니다	Unexpected Windows input structure size
 Windows SendInput 실패: %v	Windows SendInput failed: %v
 스피커 전환 실패	Speaker Switch Failed
-스피커 전환	Speaker Switched
+스피커 전환	Switch Speakers
 출력 장치	Audio output device
 출력 장치 수가 비정상적입니다	Invalid number of audio output devices
 사용 가능한 출력 장치가 없습니다	No available audio output devices

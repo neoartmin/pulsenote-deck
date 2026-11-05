@@ -17,9 +17,9 @@ GENERATED = [
     "Windows/소스/installer/rsrc_windows_amd64.syso",
     "Windows/소스/installer/app.bin",
 ]
-README = """PulseNote Deck Control Center v7.5.22 - 전체 백업
+README = """PulseNote Deck Control Center v7.5.23 - 전체 백업
 
-이 압축파일에는 v7.5.22 프리뷰 개발 브랜치의 모든 Git 추적 파일,
+이 압축파일에는 v7.5.23 프리뷰 개발 브랜치의 모든 Git 추적 파일,
 빌드에 필요한 생성 아이콘/리소스, 앱 EXE 및 설치 EXE가 있습니다.
 폰트 원본 파일은 포함하지 않습니다. tools/prepare_pretendard.py를 실행하면
 공식 Pretendard 배포본을 해시 검증 후 다시 가져올 수 있습니다.
@@ -43,7 +43,7 @@ USER_SETTINGS_BACKUP_yyyyMMdd_HHmmss 폴더로 복사합니다.
 백업한 USER_SETTINGS_BACKUP 폴더 내용물을
 %APPDATA%\\PulseNoteDeck 로 복사하십시오.
 
-설치: BINARIES/PulseNoteDeck_v7.5.22_Setup_preview.exe
+설치: BINARIES/PulseNoteDeck_v7.5.23_Setup_preview.exe
 코드 위치: PROJECT/Windows/소스/app, PROJECT/Windows/소스/installer
 펌웨어: PROJECT/Firmware 및 PROJECT/Windows/펌웨어
 Android: PROJECT/android-pn12
@@ -85,12 +85,12 @@ def main():
             if not path.is_file():
                 raise RuntimeError("Missing source file: " + name)
             add("PROJECT/" + Path(name).as_posix(), path.read_bytes())
-        add("BINARIES/PulseNoteDeck_v7.5.22.exe", args.app.read_bytes())
-        add("BINARIES/PulseNoteDeck_v7.5.22_Setup_preview.exe",
+        add("BINARIES/PulseNoteDeck_v7.5.23.exe", args.app.read_bytes())
+        add("BINARIES/PulseNoteDeck_v7.5.23_Setup_preview.exe",
             args.installer.read_bytes())
         add("README_BACKUP_KO.txt", ("SOURCE_COMMIT: " + commit
                                     + "\n\n" + README).encode("utf-8"))
-        manifest = (f"PulseNote Deck v7.5.22 BACKUP - Git {commit}\n"
+        manifest = (f"PulseNote Deck v7.5.23 BACKUP - Git {commit}\n"
                     + f"Entries: {len(rows)}\n\n"
                     + "".join(f"{sha}  {name}  ({size} bytes)\n"
                               for sha, name, size in rows))

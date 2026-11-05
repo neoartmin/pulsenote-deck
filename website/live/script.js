@@ -118,8 +118,8 @@ function openPageFromHash(){
 }
 window.addEventListener('hashchange',openPageFromHash);
 window.addEventListener('popstate',openPageFromHash);
-document.querySelectorAll('a[href^="#"]').forEach(link=>link.addEventListener('click',e=>{
- const raw=(link.getAttribute('href')||'').slice(1);if(!pageIds.includes(raw)&&raw!=='top'&&raw!=='model-downloads')return;
+document.querySelectorAll('[data-page-link], [data-page-target]').forEach(link=>link.addEventListener('click',e=>{
+ const raw=link.dataset.pageLink||link.dataset.pageTarget||'';if(!pageIds.includes(raw)&&raw!=='top'&&raw!=='model-downloads')return;
  if(raw==='model-downloads'){e.preventDefault();if(location.hash!=='#'+raw)location.hash=raw;else openPageFromHash();return;}
  e.preventDefault();const id=raw==='top'?'overview':raw;
  if(location.hash!=='#'+id)location.hash=id;activatePage(id);

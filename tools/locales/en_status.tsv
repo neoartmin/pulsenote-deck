@@ -117,7 +117,7 @@ ShellExecute 실패: %v (%d)	ShellExecute failed: %v (%d)
 연속 동작 %d: 키 %d가 없습니다	Sequence step %d: key %d not found
 연속 동작 %d단계 (키 %d): %w	Sequence step %d (key %d): %w
 연속 동작에는 다른 연속 동작 키를 넣을 수 없습니다	Sequences cannot contain nested sequences
-오디오 장치 조회 실패: 	Could not enumerate audio devices: 
+오디오 장치 조회 실패: 	Cannot list audio devices: 
 프로그램 경로 또는 APPDATA를 찾지 못했습니다	Program path or APPDATA is unavailable
 투명한 픽셀이 있는 PNG 파일만 사용할 수 있습니다 (최대 6MB, 2048픽셀)	Only PNGs with transparency are allowed (up to 6 MB, 2048 px)
 배경이 투명한 프로그램 아이콘 PNG 선택	Choose a transparent PNG app icon

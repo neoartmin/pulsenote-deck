@@ -197,3 +197,6 @@ KEY:%d · 실행 실패: %v	KEY:%d · Action failed: %v
 %s KEY:%d · 기능 없음	%s KEY:%d · Unassigned
 %s KEY:%d · 실행 실패: %v	%s KEY:%d · Action failed: %v
 PN%d 펌웨어 응답 정상	PN%d firmware responded successfully
+화면캡처	ScreenCapture
+기본 프로필	Default Profile
+버튼 %02d	Key %02d

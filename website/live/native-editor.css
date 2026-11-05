@@ -221,3 +221,26 @@
  #purpose .advantage-grid.three .pnd-purpose-visual{margin:12px 0;}
  #hardware .pnd-build-grid .pnd-material-visual{width:100%;}
 }
+
+/* Complete the author's supplied photography without redesigning the existing website. */
+.pnd-user-added-image{margin:0;overflow:hidden;background:#141c2a;border:1px solid #384354;border-radius:10px;min-width:0}
+.pnd-user-added-image img{display:block;width:100%;height:auto;object-fit:contain}
+.pnd-user-added-image figcaption{font-size:10px;line-height:1.6;letter-spacing:.025em;color:#b9c6d5;padding:9px 12px;border-top:1px solid #374557}
+#design .pnd-advantage-exploded{margin:14px 0 14px}
+#design .pnd-advantage-exploded img{max-height:190px;aspect-ratio:4/3;object-fit:contain;background:#cacaca}
+#hardware .pnd-hw-input-illustration{max-width:780px;margin:24px auto 46px}
+#hardware .pnd-hw-input-illustration img{max-height:380px;aspect-ratio:687/456;object-fit:contain}
+#hardware .pnd-architecture-controller{display:grid;grid-template-columns:minmax(200px,1.05fr) minmax(0,2.4fr);gap:25px;align-items:center;max-width:100%;margin:23px 0 24px;border:1px solid #353d4c;border-radius:12px;background:linear-gradient(130deg,#161d29,#10141d);overflow:hidden}
+#hardware .pnd-architecture-controller img{display:block;width:100%;height:100%;max-height:225px;min-height:190px;object-fit:cover}
+#hardware .pnd-architecture-controller>div{padding:22px 25px 22px 0;min-width:0}
+#hardware .pnd-architecture-controller span{color:#e3978e;font-size:10px;font-weight:780;letter-spacing:.12em}
+#hardware .pnd-architecture-controller h4{font-size:19px;line-height:1.45;margin:7px 0 11px;color:#f7f7fa;letter-spacing:-.035em}
+#hardware .pnd-architecture-controller p{color:#b8c1cf;font-size:12px;line-height:1.85;margin:0}
+#assembly .pnd-assembly-journey{max-width:1200px;margin:30px auto 34px}
+#assembly .pnd-assembly-journey img{width:100%;height:auto;aspect-ratio:1024/765;object-fit:contain;background:#11151f}
+#assembly .pnd-assembly-exploded{max-width:550px;margin:22px 0 12px}
+#assembly .pnd-assembly-exploded img{width:100%;height:auto;aspect-ratio:1080/712;object-fit:contain;background:#bdbdbd}
+#parts .pnd-part-mcu-title{display:flex;align-items:center;gap:12px;min-width:0}
+#parts .pnd-part-mcu-title img{display:block;width:86px;max-width:40%;height:63px;object-fit:contain;border:1px solid #445066;border-radius:7px;background:#747c84;flex:none}
+@media(max-width:860px){#hardware .pnd-architecture-controller{grid-template-columns:minmax(170px,.9fr) minmax(0,1.8fr);gap:15px}#hardware .pnd-architecture-controller>div{padding:16px 16px 16px 0}#assembly .pnd-assembly-exploded{max-width:100%}}
+@media(max-width:600px){#hardware .pnd-architecture-controller{grid-template-columns:1fr;gap:0}#hardware .pnd-architecture-controller img{max-height:210px;min-height:160px}#hardware .pnd-architecture-controller>div{padding:18px 20px 21px}#hardware .pnd-architecture-controller h4{font-size:16px}#design .pnd-advantage-exploded img{max-height:210px}#parts .pnd-part-mcu-title{flex-wrap:wrap;gap:6px}#parts .pnd-part-mcu-title img{width:100%;max-width:130px}}

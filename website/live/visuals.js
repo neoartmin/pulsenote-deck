@@ -53,8 +53,9 @@
  for(const [id,[topic,alt]] of Object.entries(intro)){
   const page=document.getElementById(id),heading=page?.querySelector(':scope > .sectionhead');
   if(!page)return;
-  if(heading){const f=document.createElement('div');f.className='pnd-intro-art';f.append(image(topic,alt));
-    const meta=document.createElement('span');meta.textContent='PULSENOTE · EXPLANATORY ART';f.append(meta);heading.after(f);}
+  const origin=heading||(id==='overview'?page.querySelector(':scope > .hero'):null);
+  if(origin){const f=document.createElement('div');f.className='pnd-intro-art';f.append(image(topic,alt));
+    const meta=document.createElement('span');meta.textContent='PULSENOTE · EXPLANATORY ART';f.append(meta);origin.after(f);}
  }
  // Product overview: the three main benefits should all contain visuals.
  series('#overview .launch-card',['cad','chip','screen'],'제품 구성','prepend');

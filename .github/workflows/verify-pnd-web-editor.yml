@@ -42,6 +42,17 @@ jobs:
                 assert.equal(await page.locator('body').getAttribute('data-current-page'),which);
               }
               await checkPage('software');
+              assert.equal(await page.locator('.pnd-feature-card').count(),22,'22 real app actions must be documented');
+              await page.locator('[data-pnd-filter="media"]').click();
+              assert.equal(await page.locator('.pnd-feature-card:not([hidden])').count(),7,'media category filter');
+              await page.locator('[data-pnd-filter="all"]').click();
+              assert.equal(await page.locator('.pnd-feature-card:not([hidden])').count(),22);
+              const sourceResponse=await page.request.get('https://pulsenote-deck-site.vercel.app/api/source-version');
+              assert.equal(sourceResponse.status(),200,'Windows source-version API');
+              const sourceInfo=await sourceResponse.json();
+              assert.match(sourceInfo.version,/^v\d+\.\d+\.\d+$/);
+              await page.waitForFunction(v=>Array.from(document.querySelectorAll('[data-pnd-version="source"]')).every(el=>el.textContent.trim()===v),sourceInfo.version);
+
               // The text-input button must render the actual native app design,
               // never the low-contrast fallback "T" seen in the report.
               const nativeIcon = page.locator('[data-pnw="type"][data-type="text"] svg.pnw-native-text-glyph');
@@ -116,9 +127,27 @@ jobs:
               await checkPage('software');
               await page.locator('[data-page-link="downloads"]').click();
               await checkPage('downloads');
-              assert.equal((await page.locator('#version').textContent()).trim(),'v7.5.22');
-              assert.match(await page.locator('#backup-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_COMPLETE_BACKUP\.zip/);
-              assert.match(await page.locator('#installer-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_Setup_preview\.exe/);
+              const latestResponse=await page.request.get('https://pulsenote-deck-site.vercel.app/api/latest');
+              assert.equal(latestResponse.status(),200);
+              const latest=(await latestResponse.json()).windows;
+              await page.waitForFunction(v=>document.getElementById('version').textContent.trim()===v,latest.version);
+              assert.equal((await page.locator('#version').textContent()).trim(),latest.version);
+              assert.equal(await page.locator('#backup-link').getAttribute('href'),latest.archive.url);
+              assert.equal(await page.locator('#installer-link').getAttribute('href'),latest.installer.url);
+              await page.locator('[data-page-link="hardware"]').click();
+              await checkPage('hardware');
+              assert.equal(await page.locator('.pnd-switch-card').count(),4);
+              assert.equal(await page.locator('.pnd-build-grid article').count(),3);
+              for (const name of ['cream-yellow','sea-salt','peach','lime']){
+                const photo=await page.request.get('https://pulsenote-deck-site.vercel.app/api/switch-photo?name='+name);
+                assert.equal(photo.status(),200,'real switch photo '+name);
+                assert.match(photo.headers()['content-type'],/^image\//);
+              }
+              await page.locator('[data-page-link="history"]').click();
+              await checkPage('history');
+              assert.ok(await page.locator('.pnd-release-timeline article').count()>=5);
+              await page.locator('[data-page-link="software"]').click();
+              await checkPage('software');
               assert.equal((await page.request.get('https://pulsenote-deck-site.vercel.app/api/native-icon?name=auto_click')).status(),200);
               assert.deepEqual(errors,[], 'browser runtime errors');
               console.log('E2E PASS: page navigation, gallery, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');

@@ -8,6 +8,7 @@ before compiling. Do not apply it to the Korean release branch.
 """
 from __future__ import annotations
 import argparse
+import sys
 import re
 from pathlib import Path
 
@@ -68,6 +69,8 @@ def rewrite_go(content: str, mapping: dict[str, str]) -> tuple[str, list[str], i
     return result, sorted(missing), count
 
 def main() -> None:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='backslashreplace')
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true",
                         help="report missing strings without editing source")

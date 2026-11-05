@@ -29,7 +29,7 @@ func enqueueShortcutToggleNotice(label string,active bool){
 }
 
 func (g *ui) showShortcutToggleNotice(n shortcutToggleNotice){
-    if g==nil||g.hwnd==0{return}
+    if g==nil||g.hwnd==0||!notificationsEnabled(){return}
     var v nid
     v.Size=uint32(unsafe.Sizeof(v))
     v.Hwnd=g.hwnd

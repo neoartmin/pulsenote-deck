@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-const version = "7.5.17"
+const version = "7.5.23"
 
 var palette = []string{"파랑", "빨강", "회색", "보라", "주황", "초록", "노랑"}
 
@@ -77,7 +77,7 @@ type Config struct {
 	Models            map[string]Model `json:"models"`
 }
 
-var validTypes = map[string]bool{"web_search": true, "compose_email": true, "qr_code": true, "sequence": true, "clipboard_history": true, "window_control": true, "copy_text": true, "system_settings": true, "open_timers": true, "open_alarms": true, "none": true, "capture": true, "text": true, "shortcut": true, "program": true, "website": true, "folder": true, "volume_up": true, "volume_down": true, "volume_mute": true, "media_play": true, "media_next": true, "media_prev": true}
+var validTypes = map[string]bool{"web_search": true, "compose_email": true, "qr_code": true, "sequence": true, "clipboard_history": true, "window_control": true, "copy_text": true, "system_settings": true, "open_timers": true, "open_alarms": true, "auto_click": true, "audio_output": true, "none": true, "capture": true, "text": true, "shortcut": true, "program": true, "website": true, "folder": true, "volume_up": true, "volume_down": true, "volume_mute": true, "media_play": true, "media_next": true, "media_prev": true}
 
 func keyDefault(n int) Key {
 	return Key{Label: fmt.Sprintf("버튼 %02d", n), Type: "none", Color: "회색"}

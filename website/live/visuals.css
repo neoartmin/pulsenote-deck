@@ -1,0 +1,75 @@
+/* PulseNote visual-first 2026 / original concept illustrations across all 11 tabs */
+.pnd-concept-visual,.pnd-intro-art,.pnd-illustrated-paragraph,.pnd-journey-card{box-sizing:border-box}
+.pnd-concept-visual{display:block;position:relative;overflow:hidden;background:#101724;border:1px solid #33445b;border-radius:12px;margin:0 0 17px;width:100%;max-width:100%;min-width:0}
+.pnd-concept-visual>img{display:block;width:100%;height:150px;object-fit:contain;background:#101725}
+.pnd-concept-visual figcaption{display:block;color:#a9bacb;background:#101624;border-top:1px solid #34415a;padding:8px 12px;font-size:9px;letter-spacing:.03em;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pnd-intro-art{position:relative;margin:18px auto 32px;width:100%;min-height:180px;overflow:hidden;border:1px solid #354558;border-radius:16px;background:#0b121e}
+.pnd-intro-art>img{display:block;width:100%;height:230px;object-fit:cover;object-position:center}
+.pnd-intro-art>span{position:absolute;left:17px;bottom:15px;color:#e3b6b1;background:#0b1220c9;padding:7px 10px;border:1px solid #674b56;border-radius:7px;font-size:10px;letter-spacing:.14em;font-weight:750}
+#overview .hero-metrics>div>.pnd-concept-visual{max-width:145px;margin:0 0 9px}
+#overview .hero-metrics>div>.pnd-concept-visual img{height:60px}
+#overview .hero-metrics>div>.pnd-concept-visual figcaption{display:none}
+#overview .launch-card .pnd-concept-visual{margin:0 0 20px}
+#overview .launch-card .pnd-concept-visual img{height:145px}
+#overview .overview-final>.pnd-concept-visual{max-width:520px;margin:0 auto 22px}
+#design .design-spec .pnd-concept-visual img{height:87px}
+#design .design-metrics>div>.pnd-concept-visual img{height:110px}
+#design .design-metrics>div>.pnd-concept-visual figcaption{display:none}
+#design .advantage-grid article>.pnd-concept-visual img{height:165px}
+#hardware .pnd-build-grid .pnd-concept-visual{margin:0;border:0;border-bottom:1px solid #343a48;border-radius:0}
+#hardware .pnd-build-grid .pnd-concept-visual>img{height:auto;aspect-ratio:16/9;object-fit:cover}
+#hardware .pnd-build-grid .pnd-concept-visual figcaption{padding:9px 17px}
+#hardware .pnd-switch-card>.pnd-concept-visual{border-radius:0;margin:0;border-left:0;border-right:0;border-bottom:0;border-top:1px solid #394557}
+#hardware .pnd-switch-card>.pnd-concept-visual img{height:125px}
+#hardware .pnd-selected-card{display:flex;flex-wrap:wrap}
+#hardware .pnd-selected-card>.pnd-selected-photo{flex:0 0 41%}
+#hardware .pnd-selected-card>.pnd-selected-copy{flex:1 1 52%}
+#hardware .pnd-selected-card>.pnd-concept-visual{order:3;width:100%;border:0;border-radius:0;margin:0;border-top:1px solid #40506a}
+#hardware .pnd-selected-card>.pnd-concept-visual img{height:114px}
+#software .pnd-feature-card>.pnd-concept-visual{background:#132033;flex:none}
+#software .pnd-feature-card>.pnd-concept-visual img{height:117px}
+#software .pnd-feature-card>.pnd-concept-visual figcaption{font-size:8px}
+#software .pnd-feature-icon .pnd-gallery-texticon{width:46px;height:46px;display:block}
+#software .pnd-feature-icon{width:64px;height:64px}
+#software .pnd-feature-icon img{height:46px;width:46px;object-fit:contain}
+.pnd-illustrated-paragraph{display:grid;grid-template-columns:minmax(155px,31%) minmax(0,1fr);gap:22px;align-items:center;border-bottom:1px solid #303b4c;padding:18px 0;margin:0 0 6px}
+.pnd-illustrated-paragraph>figure{min-width:0;max-width:360px;margin:0;overflow:hidden;border:1px solid #344359;border-radius:11px;background:#101724}
+.pnd-illustrated-paragraph>figure img{width:100%;height:auto;max-height:177px;aspect-ratio:3/2;object-fit:cover;display:block}
+.pnd-illustrated-paragraph>figure figcaption{padding:8px;color:#aeb6c7;font-size:9px;letter-spacing:.07em}
+.pnd-illustrated-paragraph>p{margin:0!important;line-height:1.88;min-width:0}
+.pnd-purpose-journey{margin:32px 0 50px;padding:0}
+.pnd-journey-title{padding:10px 0 19px}
+.pnd-journey-title h3{color:#f4f6fb;font-size:clamp(24px,2.7vw,35px);line-height:1.4;letter-spacing:-.04em;margin:8px 0}
+.pnd-journey-title h3 em{color:#e4a39e;font-style:normal}
+.pnd-journey-title p{color:#b9c3ce;line-height:1.8;font-size:13px;margin:0}
+.pnd-journey-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.pnd-journey-card{min-width:0;overflow:hidden;border:1px solid #38455a;border-radius:13px;background:linear-gradient(#172234,#101722)}
+.pnd-journey-card>img{width:100%;display:block;height:auto;aspect-ratio:3/2;object-fit:contain;background:#101726}
+.pnd-journey-card>div{padding:18px 19px}
+.pnd-journey-card>div>span{color:#d69b97;letter-spacing:.13em;font-size:10px;font-weight:740}
+.pnd-journey-card h4{color:#f7f7fa;font-size:17px;margin:9px 0;letter-spacing:-.03em;line-height:1.45}
+.pnd-journey-card p{color:#b3becd;font-size:12px;line-height:1.85;margin:0;word-break:keep-all}
+#usage .detailed-steps .pnd-concept-visual img{height:140px}
+#usage .usecase-grid .pnd-concept-visual img{height:150px}
+#assembly .assemble-list li>.pnd-concept-visual{width:200px;max-width:44%;float:right;margin:0 0 10px 15px}
+#assembly .assemble-list li>.pnd-concept-visual img{height:114px}
+#assembly .assemble-list li>.pnd-concept-visual figcaption{font-size:8px}
+#assembly .assemble-list li{display:flow-root}
+#parts .component-row>.pnd-concept-visual{width:120px;max-width:100%;margin:0 12px 0 0;border-radius:9px}
+#parts .component-row>.pnd-concept-visual img{height:76px}
+#parts .component-row>.pnd-concept-visual figcaption{display:none}
+#parts .component-row{align-items:center;gap:10px}
+#parts .component-row:not(.component-head)>b,#parts .component-row:not(.component-head)>span,#parts .component-row:not(.component-head)>em{min-width:0}
+#history .timeline>div>.pnd-concept-visual{max-width:280px}
+#history .pnd-release-timeline article>.pnd-concept-visual{width:190px;float:right;margin:0 0 12px 15px}
+#history .pnd-release-timeline article>.pnd-concept-visual img{height:110px}
+#downloads .download-card>.pnd-concept-visual{margin:4px 0 18px}
+#downloads .download-card>.pnd-concept-visual img{height:138px}
+#downloads .download-help>div>.pnd-concept-visual{max-width:180px;margin:0 0 10px}
+#downloads .download-help>div>.pnd-concept-visual img{height:95px}
+#license .terms-grid>div>.pnd-concept-visual img{height:120px}
+#license .license-card .pnd-illustrated-paragraph{grid-template-columns:150px 1fr}
+#license .license-card .pnd-illustrated-paragraph>figure img{height:110px}
+@media(max-width:1080px){.pnd-journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pnd-concept-visual>img{height:130px}.pnd-intro-art>img{height:190px}#hardware .pnd-selected-card>.pnd-selected-photo{flex:0 0 100%;max-height:280px}#hardware .pnd-selected-card>.pnd-selected-copy{flex:1 1 100%}}
+@media(max-width:670px){.pnd-journey-grid{grid-template-columns:1fr 1fr;gap:9px}.pnd-journey-card>div{padding:12px}.pnd-journey-card h4{font-size:14px}.pnd-journey-card p{font-size:11px}.pnd-intro-art{margin:15px 0 25px;min-height:0}.pnd-intro-art>img{height:157px}.pnd-illustrated-paragraph{grid-template-columns:1fr;gap:11px}.pnd-illustrated-paragraph>figure{max-width:100%}.pnd-illustrated-paragraph>figure img{max-height:210px}#assembly .assemble-list li>.pnd-concept-visual{float:none;max-width:100%;width:100%;margin:0 0 12px}#parts .component-row>.pnd-concept-visual{width:92px}#parts .component-row>.pnd-concept-visual img{height:60px}#history .pnd-release-timeline article>.pnd-concept-visual{float:none;width:100%;margin:0 0 14px}}
+@media(max-width:400px){.pnd-journey-grid{grid-template-columns:1fr}#overview .launch-card .pnd-concept-visual img{height:135px}}

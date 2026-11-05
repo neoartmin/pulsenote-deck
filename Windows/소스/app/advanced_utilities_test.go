@@ -51,6 +51,8 @@ func TestAdvancedActionsAndSettingsPersistence(t *testing.T){
         {"sequence","연속 동작",true},
         {"clipboard_history","클립보드 기록",false},
         {"window_control","창 제어",true},
+        {"auto_click","오토클릭",true},
+        {"audio_output","출력 장치 전환",false},
     }
     for _,tc:=range kinds{
         if !validTypes[tc.name]||typeName(tc.name)!=tc.label{

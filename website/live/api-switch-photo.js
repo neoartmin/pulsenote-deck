@@ -3,10 +3,10 @@
 // our own origin because website CSP allows only same-origin images.
 // A source and credit link accompanies each image in the hardware page.
 const sources={
- 'cream-yellow':'https://cdn.store-assets.com/s/920773/i/60906028.jpeg?width=480',
- 'sea-salt':'https://www.lemokey.com/cdn/shop/files/Keychron-Sea-Salt-Linear-Switch-2.jpg?v=1731381214&width=800',
- 'peach':'https://www.ozokeyboards.com/cdn/shop/files/outemu-v3-peach-silent-switch-main.jpg?v=1767566911&width=800',
- 'lime':'https://www.ozokeyboards.com/cdn/shop/files/outemu-lime-v3-main.jpg?v=1767566512&width=800'
+ 'cream-yellow':'https://down-th.img.susercontent.com/file/cn-11134207-7r98o-lnd9cdwrggij62',
+ 'sea-salt':'https://www.lemokey.com/cdn/shop/files/Keychron-Sea-Salt-Linear-Switch-2.jpg?v=1731381214&width=1445',
+ 'peach':'https://bizweb.dktcdn.net/100/484/752/products/outemu-peach-v3-1728306613019.jpg?v=1728306617000',
+ 'lime':'https://bizweb.dktcdn.net/100/484/752/products/outemu-lime-v3-1728306603558.jpg?v=1728306610947'
 };
 module.exports=async(req,res)=>{
  if(req.method!=='GET')return res.status(405).end();

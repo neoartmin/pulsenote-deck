@@ -59,24 +59,19 @@ try{var saved=localStorage.getItem(KEY);state.config=saved?normalize(JSON.parse(
 function logo(){return '<svg aria-hidden="true" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><rect x="36" y="36" width="952" height="952" rx="210" fill="#111114" stroke="#44454b" stroke-width="18"/><rect x="226" y="226" width="258" height="258" rx="54" fill="#d9d9de"/><rect x="540" y="226" width="258" height="258" rx="54" fill="#d62839"/><rect x="226" y="540" width="258" height="258" rx="54" fill="#d9d9de"/><rect x="540" y="540" width="258" height="258" rx="54" fill="#d9d9de"/></svg>';}
 function icon(t,cls){
  var allowed=['auto_click','audio_output','capture','clipboard_history','copy_text','folder','media_next','media_play','media_prev','none','open_alarms','program','qr_code','shortcut','system_settings','volume_down','volume_mute','volume_up','web_search','website','window_control'];
- return allowed.includes(t)?'<img class="'+(cls||'')+'" loading="lazy" src="/api/native-icon?name='+encodeURIComponent(t)+'" alt="" onerror="this.hidden=true"/>':'<span class="pnw-icon-fallback">'+esc(t==='auto_click'?'AC':t==='audio_output'?'AU':t==='text'?'T':t==='compose_email'?'@':'✦')+'</span>';
+ return allowed.includes(t)?'<img class="'+(cls||'')+'" loading="lazy" src="/api/native-icon?name='+encodeURIComponent(t)+'" alt=""/>':'<span class="pnw-icon-fallback">'+esc(t==='auto_click'?'AC':t==='audio_output'?'AU':t==='text'?'T':t==='compose_email'?'@':'✦')+'</span>';
 }
 function button(action,label,cls,extra){return '<button type="button" class="'+(cls||'pnw-btn')+'" data-pnw="'+esc(action)+'" '+(extra||'')+'>'+label+'</button>';}
 function activeTitle(){return state.config.selected===12?'PN12 · 12키':state.config.selectedSide==='L'?'PN15 · 왼손':'PN15 · 오른손';}
 function keyDisplay(k,i){
- var grid=state.config.selected===12?{cols:3,rows:4,baseX:22.5,stepX:19,baseY:1.5,stepY:24.5,drop:0,szX:17,szY:23}:{cols:5,rows:3,baseX:3.8,stepX:18.55,baseY:1.3,stepY:22.65,drop:6.7,szX:16.2,szY:20.8};
- if(state.config.selected===12){grid.baseX=16;grid.stepX=23.1;grid.szX=21.0;grid.szY=23.5;}
- var col=i%grid.cols,row=Math.floor(i/grid.cols),fall=state.config.selected===15?(state.config.selectedSide==='L'?4-col:col)*grid.drop:0;
- var x=grid.baseX+col*grid.stepX,y=grid.baseY+row*grid.stepY+fall;
- var bg=COLORS.find(function(v){return v[0]===k.color})||COLORS[2];
- return '<button type="button" data-pnw="key" data-index="'+i+'" class="pnw-key '+(state.selected===i?'selected':'')+'" style="left:'+x+'%;top:'+y+'%;width:'+grid.szX+'%;height:'+grid.szY+'%;background:'+bg[1]+'"><span class="pnw-key-number">'+String(i+1).padStart(2,'0')+'</span><span class="pnw-key-icon">'+icon(k.type)+'</span><span class="pnw-key-label" data-keylabel="'+i+'">'+esc(k.label.slice(0,9))+'</span><small>'+esc(NAMES[k.type]||k.type)+'</small></button>';
+ return '<button type="button" data-pnw="key" data-index="'+i+'" data-color="'+esc(k.color)+'" class="pnw-key '+(state.selected===i?'selected':'')+'"><span class="pnw-key-number">'+String(i+1).padStart(2,'0')+'</span><span class="pnw-key-icon">'+icon(k.type)+'</span><span class="pnw-key-label" data-keylabel="'+i+'">'+esc(k.label.slice(0,9))+'</span><small>'+esc(NAMES[k.type]||k.type)+'</small></button>';
 }
 function btnProfile(p,i,active){return button('profile',esc(p.name), 'pnw-profile-item '+(i===active?'selected':''),'data-index="'+i+'"');}
 function tabs(){return '<div class="pnw-tabs">'+[['12','PN12'],['15L','15 왼손'],['15','15 오른손']].map(function(t){return button('model',esc(t[1]),'pnw-btn '+(modelId()===t[0]?'selected':''),'data-model="'+t[0]+'"')}).join('')+'</div>';}
 function drawKeys(){
  var m=getModel(),p=getProfile(),key=getKey(),names=TYPES;
  var start=state.actionPage*9,count=Math.ceil(names.length/9);
- var panel='<div class="pnw-key-panel"><div class="pnw-key-heading"><div><h4>나의 '+state.config.selected+'키 컨트롤러</h4><p>'+(state.config.selected===12?'3열 × 4행 · 키별 자동 저장':'5열 × 3행 · '+(state.config.selectedSide==='L'?'왼쪽':'오른쪽')+' 하강 대각선 배열')+'</p></div>'+tabs()+'</div><div class="pnw-key-stage">'+p.keys.map(keyDisplay).join('')+'</div><p class="pnw-profile-caption">프로필 · '+esc(p.name)+'</p></div>';
+ var panel='<div class="pnw-key-panel"><div class="pnw-key-heading"><div><h4>나의 '+state.config.selected+'키 컨트롤러</h4><p>'+(state.config.selected===12?'3열 × 4행 · 키별 자동 저장':'5열 × 3행 · '+(state.config.selectedSide==='L'?'왼쪽':'오른쪽')+' 하강 대각선 배열')+'</p></div>'+tabs()+'</div><div class="pnw-key-stage pnw-layout-'+modelId()+'">'+p.keys.map(keyDisplay).join('')+'</div><p class="pnw-profile-caption">프로필 · '+esc(p.name)+'</p></div>';
  var actions=names.slice(start,start+9).map(function(t,j){return button('type',icon(t,'pnw-pick-icon')+'<span>'+esc(NAMES[t])+'</span>','pnw-action '+(key.type===t?'selected':''),'data-type="'+esc(t)+'"')}).join('');
  var valueControl='';
  if(key.type==='auto_click'){
@@ -88,7 +83,7 @@ function drawKeys(){
    valueControl=(key.type==='text'||key.type==='copy_text')?'<textarea data-field="value" rows="3" maxlength="4096">'+esc(key.value)+'</textarea>':'<input data-field="value" maxlength="4096" value="'+esc(key.value)+'" placeholder="'+esc(PARAMS[key.type]||'설정 값')+'">';
  }else{valueControl='<p class="pnw-no-param">이 기능은 추가 입력이 필요하지 않습니다.</p>';}
  var extra=key.type==='shortcut'?'<label class="pnw-check"><input type="checkbox" data-field="toggle" '+(key.toggle?'checked':'')+'> 단축키 누름 유지 토글</label>':'';
- var color=COLORS.map(function(c){return button('color',key.color===c[0]?'✓':'','pnw-color '+(key.color===c[0]?'selected':''),'data-color="'+esc(c[0])+'" title="'+esc(c[0])+'" style="background:'+c[1]+'"')}).join('');
+ var color=COLORS.map(function(c){return button('color',key.color===c[0]?'✓':'','pnw-color '+(key.color===c[0]?'selected':''),'data-color="'+esc(c[0])+'" title="'+esc(c[0])+'"')}).join('');
  var right='<div class="pnw-edit-panel"><h4>키 '+String(state.selected+1).padStart(2,'0')+' 설정</h4><div class="pnw-current">'+icon(key.type)+'<div><strong>'+esc(key.label)+'</strong><small>'+esc(NAMES[key.type]||key.type)+'</small></div></div><h5>기능</h5><div class="pnw-action-grid">'+actions+'</div><div class="pnw-action-nav">'+button('action-page','◀ 이전','pnw-btn','data-index="'+(state.actionPage-1)+'" '+(state.actionPage===0?'disabled':''))+'<span>기능 '+(state.actionPage+1)+' / '+count+'</span>'+button('action-page','다음 ▶','pnw-btn','data-index="'+(state.actionPage+1)+'" '+(state.actionPage>=count-1?'disabled':''))+'</div><label class="pnw-field"><strong>버튼 이름</strong><input data-field="label" maxlength="45" value="'+esc(key.label)+'"></label><label class="pnw-field"><strong>'+esc(PARAMS[key.type]||'기능 설정')+'</strong>'+valueControl+'</label>'+extra+'<h5>키캡 색상</h5><div class="pnw-colors">'+color+'</div></div>';
  return '<div class="pnw-key-columns">'+panel+right+'</div>';
 }
@@ -137,6 +132,7 @@ function updateAuto(){
  if(!Number.isInteger(a)||a<20||a>10000||!Number.isInteger(b)||b<0||b>100000){status('오토클릭 간격 20~10000ms, 횟수 0~100000 범위를 지켜야 합니다.');return;}
  getKey().value=a+'|'+b+'|'+(bt.value==='right'?'right':'left');mark();
 }
+mount.addEventListener('error',function(ev){if(ev.target&&ev.target.tagName==='IMG')ev.target.hidden=true;},true);
 mount.addEventListener('click',function(event){
  var b=event.target.closest('[data-pnw]');if(!b)return;
  var op=b.dataset.pnw;

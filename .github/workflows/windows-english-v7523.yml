@@ -27,12 +27,6 @@ jobs:
         run: |
           python tools/build_english_version.py --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify original v7.5.23 Go tests before translation
-        shell: pwsh
-        working-directory: Windows/소스/app
-        run: |
-          go test ./...
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare matching original icons and licensed Pretendard fonts
         shell: pwsh
         run: |
@@ -50,6 +44,12 @@ jobs:
           go run github.com/akavel/rsrc@v0.10.2 -manifest ../app/app.manifest -ico icon.ico -o rsrc_windows_amd64.syso
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
+      - name: Verify original v7.5.23 Go tests before translation
+        shell: pwsh
+        working-directory: Windows/소스/app
+        run: |
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Apply English translations to build copy
         shell: pwsh
         run: |

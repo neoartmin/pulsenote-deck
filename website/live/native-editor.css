@@ -58,3 +58,12 @@
 /* Source backup is always reachable from the downloadable Windows release. */
 #backup-link.pnd-backup-download{display:inline-flex;align-items:center;color:#e09e9a;margin-top:13px;font-size:12px;font-weight:700;text-decoration:none;line-height:1.55}
 #backup-link.pnd-backup-download:hover{text-decoration:underline}
+
+/* Native v7.5.22 text-input artwork: same solid blue / white T+lines
+   as drawTextMacroArtwork in the Win32 application. */
+.pnd-native-editor .pnw-native-text-glyph{display:block;flex:none;object-fit:contain;max-width:100%;max-height:100%}
+.pnd-native-editor .pnw-action .pnw-native-text-glyph{width:29px;height:29px}
+.pnd-native-editor .pnw-key-icon .pnw-native-text-glyph{width:min(100%,42px);height:min(100%,42px)}
+.pnd-native-editor .pnw-current .pnw-native-text-glyph{width:42px;height:42px}
+.pnd-native-editor .pnw-icon-fallback{color:#e2ebfa}
+@media(max-width:700px){.pnd-native-editor .pnw-key-icon .pnw-native-text-glyph{width:26px;height:26px}}

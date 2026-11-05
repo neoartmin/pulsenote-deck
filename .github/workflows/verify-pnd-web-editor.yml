@@ -56,7 +56,15 @@ jobs:
               await page.locator('[data-pnw="model"][data-model="15L"]').click();
               assert.equal(await page.locator('.pnw-key').count(),15);
               assert.equal(await page.evaluate(()=>window.PulseNoteWebConfig.getConfig().selectedSide),'L');
-              await page.locator('[data-pnw="key"][data-index="1"]').click();
+              console.log('PN15 LEFT KEY LAYOUT',JSON.stringify(await page.evaluate(()=>{
+                const chosen=document.querySelector('[data-pnw="key"][data-index="1"]');
+                chosen.scrollIntoView({block:'center'});
+                return Array.from(document.querySelectorAll('[data-pnw="key"]')).map(e=>{
+                  const r=e.getBoundingClientRect();
+                  return {id:e.dataset.index,x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),position:getComputedStyle(e).position};
+                });
+              })));
+              await page.locator('[data-pnw="key"][data-index="1"]').click({timeout:6000});
               await page.locator('[data-pnw="type"][data-type="auto_click"]').click();
               await page.locator('[data-field="auto-ms"]').fill('250');
               await page.locator('[data-field="auto-count"]').fill('10');

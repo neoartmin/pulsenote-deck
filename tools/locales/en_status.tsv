@@ -1,0 +1,156 @@
+ · 12키 통신 중	 · 12-key session active
+ · 15키 통신 중	 · 15-key session active
+ · 응답 확인 중	 · checking response
+ · 자동 재시도	 · retrying automatically
+ · 키 누름 유지 시작	 · hold activated
+ · 키 누름 유지 해제	 · hold released
+ · 포트 여는 중	 · opening port
+%d대 연결 · 총 %d키 · %s	%d connected · %d keys total · %s
+%d대 연결됨	%d devices connected
+%s · %s 재시도	%s · retry at %s
+장치 알림 설정 읽기 오류: %w	Could not read device notification settings: %w
+포트 연결 중	Connecting to port
+장치 확인 중	Identifying device
+PN15 연결됨	PN15 connected
+PN12 연결됨	PN12 connected
+재연결 대기	Waiting to reconnect
+장치 검색 중	Searching for devices
+총 %d키 · 동시 입력 활성	%d keys · simultaneous input enabled
+PN12/PN15 자동 재검색	Auto-rescanning PN12/PN15
+ESP32-C3 · 자동 검색 중	ESP32-C3 · auto-discovery
+PN12/PN15 장치를 자동으로 검색합니다	Automatically searching for PN12/PN15 devices
+최근 확인: 준비 중	Last checked: waiting
+최근 확인: 	Last checked: 
+PN12 / PN15 LEFT / PN15 RIGHT · 자동 검색 중	PN12 / PN15 LEFT / PN15 RIGHT · auto-discovery
+장치 정보 저장 실패: 	Could not save device information: 
+장치 세션 종료	Device session ended
+포트 열기 실패: 	Could not open port: 
+장치 식별 실패: 	Device identification failed: 
+중복 장치 유형 또는 종료 중인 포트: 	Duplicate device type or closing port: 
+USB 장치 응답 시간 초과	USB device response timed out
+USB 수신 오류: 	USB receive error: 
+입력 대기열 가득 참	Input queue full
+펌웨어 장치 식별 정보 변경	Firmware identity changed
+장치 응답 시간 초과	Device response timed out
+USB 식별 요청 송신 오류: 	USB identification request failed: 
+장치 정보가 연결 확인 중 변경됨	Device information changed during verification
+PND:READY:2.1 응답 없음	No PND:READY:2.1 response
+PN12/PN15 장치 정보 불일치 또는 INFO 응답 없음	PN12/PN15 identity mismatch or missing INFO response
+USB 연결됨 · 	USB connected · 
+사용자 재검색	Manual rescan
+USB 송신 오류: 	USB transmission error: 
+버튼 입력 대기열 가득 참	Key input queue full
+장치 모델 정보가 연결 중 변경됨	Device model changed during session
+Windows COM 포트 목록에서 사라짐	Missing from Windows COM port list
+USB 연결 종료	USB disconnected
+PulseNote Deck · 장치 연결	PulseNote Deck · Device Connected
+PulseNote Deck · 장치 통신 종료	PulseNote Deck · Device Disconnected
+ 장치가 	 device connected to 
+에 연결되었습니다.	.
+ 장치의 	 device on 
+ 통신이 중단됐습니다. 자동 재연결을 시도합니다.	 disconnected. Attempting to reconnect automatically.
+PulseNote · 토글 비활성화	PulseNote · Hold Released
+PulseNote · 토글 활성화	PulseNote · Hold Active
+오토클릭 중지	Auto Click Stopped
+오토클릭 시작	Auto Click Started
+오토클릭 오류	Auto Click Error
+오토클릭 완료	Auto Click Completed
+F8 긴급 중지	F8 emergency stop
+윈도우	Windows
+Windows 입력 구조 크기가 예상과 다릅니다	Unexpected Windows input structure size
+Windows SendInput 실패: %v	Windows SendInput failed: %v
+스피커 전환 실패	Speaker Switch Failed
+스피커 전환	Audio Switch
+출력 장치	Audio output device
+출력 장치 수가 비정상적입니다	Invalid number of audio output devices
+사용 가능한 출력 장치가 없습니다	No available audio output devices
+지정한 출력 장치가 연결되지 않았습니다	Selected audio output device is disconnected
+순환할 출력 장치가 두 개 이상 필요합니다	At least two devices are required to cycle
+Windows 출력 전환 인터페이스를 사용할 수 없습니다: %w	Windows audio switching interface unavailable: %w
+출력 장치 변경 실패 (role=%d): %w	Failed to switch audio output (role=%d): %w
+출력 장치 변경 확인 실패	Audio output switch verification failed
+COM 객체가 비어 있습니다	COM object is nil
+오토클릭 설정 형식이 올바르지 않습니다	Invalid auto-click configuration
+클릭 간격은 20~10000ms여야 합니다	Click interval must be 20–10000 ms
+반복 횟수는 0~100000회여야 합니다 (0=무제한)	Repeat count must be 0–100000 (0 = unlimited)
+클릭 버튼은 왼쪽 또는 오른쪽이어야 합니다	Click button must be left or right
+비어 있는 단축키 항목이 있습니다	Shortcut contains an empty key
+중복된 키: %s	Duplicate key: %s
+지원하지 않는 키: %s	Unsupported key: %s
+키 조합은 1~5개여야 합니다	A shortcut must contain 1–5 keys
+입력할 텍스트가 비어 있습니다	Text to type is empty
+텍스트는 UTF-8 4096바이트 이하이어야 합니다	Text must be at most 4096 UTF-8 bytes
+NUL 문자는 입력할 수 없습니다	NUL characters are not allowed
+이 버전의 텍스트 매크로는 Windows x64 전용입니다	Text macros require Windows x64
+Windows 텍스트 입력 실패 (%d/%d): %v	Windows text input failed (%d/%d): %v
+QR 내용은 UTF-8 1~900바이트로 입력하세요	Enter QR content of 1–900 UTF-8 bytes
+복사할 문구가 없습니다	No text to copy
+NUL 문자를 포함할 수 없습니다	NUL characters are not allowed
+문구는 UTF-16 기준 %d자 이하여야 합니다	Text must be at most %d UTF-16 code units
+클립보드 메모리 할당 실패: %v	Clipboard memory allocation failed: %v
+클립보드 메모리 잠금 실패: %v	Clipboard memory lock failed: %v
+클립보드가 다른 앱에서 사용 중입니다	The clipboard is in use by another app
+클립보드를 초기화하지 못했습니다	Could not clear clipboard
+클립보드에 문구를 저장하지 못했습니다	Could not write text to clipboard
+실행 파일 · 바로가기 경로	Executable or shortcut path
+대상이 없습니다	No target specified
+ShellExecute 실패: %v (%d)	ShellExecute failed: %v (%d)
+타이머 기능은 제거되었습니다. 다른 기능을 선택하세요	The timer feature was removed. Please choose another action.
+활성 창이 없습니다	No active window
+창 제어 동작을 선택하세요	Choose a window action
+연속 동작은 장치/프로필 문맥에서 실행해야 합니다	Sequences must run with device/profile context
+프로그램이 선택되지 않았습니다	No program selected
+웹 주소는 https:// 또는 http:// 로 시작해야 합니다	Website URL must start with https:// or http://
+지원하지 않는 기능	Unsupported action
+검색어를 1~%d자로 입력하세요	Enter a search query of 1–%d characters
+검색 엔진은 google, naver, youtube만 지원합니다	Supported search engines: google, naver, youtube
+이메일 편집기 데이터가 손상되었습니다	Email editor data is corrupted
+이메일 데이터 디코딩 실패: %w	Could not decode email data: %w
+이메일 초안은 1~4096자여야 합니다	Email draft must contain 1–4096 characters
+받는 사람은 단일 이메일 주소만 입력하세요	Enter exactly one recipient email address
+이메일 주소 형식이 올바르지 않습니다	Invalid email address
+연속 실행 키를 입력하세요	Enter a sequence of key IDs
+연속 실행은 최대 %d단계입니다	Sequences may contain at most %d steps
+빈 단계가 있습니다	Sequence has an empty step
+대기 시간은 0~1000ms여야 합니다	Delay must be 0–1000 ms
+자기 자신을 제외한 키 번호 1~%d를 입력하세요	Choose another key number between 1 and %d
+연속 동작 %d: 키 %d가 없습니다	Sequence step %d: key %d not found
+연속 동작 %d단계 (키 %d): %w	Sequence step %d (key %d): %w
+연속 동작에는 다른 연속 동작 키를 넣을 수 없습니다	Sequences cannot contain nested sequences
+오디오 장치 조회 실패: 	Cannot list audio devices: 
+프로그램 경로 또는 APPDATA를 찾지 못했습니다	Program path or APPDATA is unavailable
+투명한 픽셀이 있는 PNG 파일만 사용할 수 있습니다 (최대 6MB, 2048픽셀)	Only PNGs with transparency are allowed (up to 6 MB, 2048 px)
+배경이 투명한 프로그램 아이콘 PNG 선택	Choose a transparent PNG app icon
+PNG 이미지 (*.png)\x00*.png\x00\x00	PNG images (*.png)\x00*.png\x00\x00
+자동 시작 등록 실패: %d	Could not enable autostart: %d
+자동 시작 저장 실패: %d	Could not save autostart: %d
+자동 시작 해제 실패: %d	Could not disable autostart: %d
+기존 프로그램 창을 찾을 수 없습니다	Cannot find the running app window
+기존 프로그램 PID 확인 실패	Cannot determine the running app PID
+기존 프로그램에 종료 요청을 전달하지 못했습니다	Cannot request shutdown of the running app
+기존 프로그램이 종료되지 않았습니다	The existing program did not exit
+기존 PulseNote Deck가 실행 중이지만 응답 창을 찾지 못했습니다. 잠시 후 다시 실행하세요.	PulseNote Deck is running but its window is not responding. Please try again.
+기존 버전 자동 전환 실패: 	Automatic version switch failed: 
+\n기존 프로그램을 종료한 뒤 다시 실행해 주세요.	\nExit the running app and try again.
+기존 PulseNote Deck 프로세스가 여러 개 남아 있습니다. 종료가 완료되지 않아 새 앱 시작을 중단했습니다.	Multiple PulseNote Deck processes remain active. Startup was cancelled to protect settings.
+알 수 없는 설정 버전	Unknown settings format version
+기존 설정 손상, 덮어쓰기 중단: %w	Existing settings are corrupted; overwrite cancelled: %w
+기존 파일 보존 실패: %w	Could not preserve existing settings file: %w
+설정 파일 보호: %w	Settings file protection error: %w
+절전 모드	Battery Saver
+전체 설정	All Settings
+블루투스	Bluetooth
+화면	Display
+소리	Sound
+최대화	Maximize
+최소화	Minimize
+왼쪽 정렬	Snap Left
+오른쪽 정렬	Snap Right
+바탕화면 보기	Show Desktop
+이전 데스크톱	Previous Desktop
+다음 데스크톱	Next Desktop
+빠르고 편리한 단축키 컨트롤러	Fast, convenient shortcut controller
+PulseNote Deck 시작 중	Starting PulseNote Deck
+환경 확인 중	Checking environment
+설정과 화면 준비 중	Preparing settings and UI
+준비 완료	Ready

@@ -42,6 +42,28 @@ jobs:
                 assert.equal(await page.locator('body').getAttribute('data-current-page'),which);
               }
               await checkPage('software');
+              // The text-input button must render the actual native app design,
+              // never the low-contrast fallback "T" seen in the report.
+              const nativeIcon = page.locator('[data-pnw="type"][data-type="text"] svg.pnw-native-text-glyph');
+              await nativeIcon.waitFor({state:'visible'});
+              const artwork = await nativeIcon.evaluate(el=>{
+                const bounds=el.getBoundingClientRect();
+                const r=el.querySelector('rect');
+                return {
+                  background:r.getAttribute('fill'),
+                  border:r.getAttribute('stroke'),
+                  whiteLines:el.querySelectorAll('rect[fill="#ffffff"]').length,
+                  hasWhiteT:!!el.querySelector('text[fill="#ffffff"]'),
+                  w:bounds.width,h:bounds.height
+                };
+              });
+              assert.deepEqual([artwork.background,artwork.border],['#2363eb','#649dff']);
+              assert.equal(artwork.whiteLines,3);
+              assert.equal(artwork.hasWhiteT,true);
+              assert.ok(artwork.w>=25&&artwork.h>=25,'native input icon must be visible at button size');
+              await page.locator('[data-pnw="type"][data-type="text"]').click();
+              assert.equal(await page.locator('.pnw-key.selected svg.pnw-native-text-glyph').count(),1);
+              assert.equal(await page.locator('.pnw-current svg.pnw-native-text-glyph').count(),1);
               await page.locator('[data-page-link="hardware"]').click();
               await checkPage('hardware');
               await page.locator('#gallery-next').click();
@@ -99,7 +121,7 @@ jobs:
               assert.match(await page.locator('#installer-link').getAttribute('href'),/pnd-windows-v7\.5\.22\/PulseNoteDeck_v7\.5\.22_Setup_preview\.exe/);
               assert.equal((await page.request.get('https://pulsenote-deck-site.vercel.app/api/native-icon?name=auto_click')).status(),200);
               assert.deepEqual(errors,[], 'browser runtime errors');
-              console.log('E2E PASS: page navigation, gallery, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads and real icons');
+              console.log('E2E PASS: page navigation, gallery, history, 12/15L keys, action pagination, auto-click, profile, native v7 JSON, mobile, latest downloads, real icons, native v7.5.22 text icon');
             } finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exitCode=1});
           NODE

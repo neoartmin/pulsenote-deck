@@ -57,7 +57,19 @@ function remember(){
 }
 try{var saved=localStorage.getItem(KEY);state.config=saved?normalize(JSON.parse(saved)):defaults();}catch(_){state.config=defaults();}
 function logo(){return '<svg aria-hidden="true" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><rect x="36" y="36" width="952" height="952" rx="210" fill="#111114" stroke="#44454b" stroke-width="18"/><rect x="226" y="226" width="258" height="258" rx="54" fill="#d9d9de"/><rect x="540" y="226" width="258" height="258" rx="54" fill="#d62839"/><rect x="226" y="540" width="258" height="258" rx="54" fill="#d9d9de"/><rect x="540" y="540" width="258" height="258" rx="54" fill="#d9d9de"/></svg>';}
+function textMacroArtwork(cls){
+ // Direct vector translation of gui_windows.go's drawTextMacroArtwork,
+ // preserving Win32 RGB(35,99,235), RGB(100,157,255), white T and 3 lines.
+ return '<svg class="pnw-native-text-glyph '+esc(cls||'')+'" aria-hidden="true" focusable="false" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+   +'<rect x="1.5" y="1.5" width="97" height="97" rx="20" fill="#2363eb" stroke="#649dff" stroke-width="3"/>'
+   +'<text x="11" y="70" font-family="Segoe UI,Malgun Gothic,Arial,sans-serif" font-size="57" font-weight="700" fill="#ffffff">T</text>'
+   +'<rect x="61" y="31" width="25" height="7" rx="3.5" fill="#ffffff"/>'
+   +'<rect x="61" y="48" width="25" height="7" rx="3.5" fill="#ffffff"/>'
+   +'<rect x="61" y="65" width="25" height="7" rx="3.5" fill="#ffffff"/>'
+   +'</svg>';
+}
 function icon(t,cls){
+ if(t==='text')return textMacroArtwork(cls);
  var allowed=['auto_click','audio_output','capture','clipboard_history','copy_text','folder','media_next','media_play','media_prev','none','open_alarms','program','qr_code','shortcut','system_settings','volume_down','volume_mute','volume_up','web_search','website','window_control'];
  return allowed.includes(t)?'<img class="'+(cls||'')+'" loading="lazy" src="/api/native-icon?name='+encodeURIComponent(t)+'" alt=""/>':'<span class="pnw-icon-fallback">'+esc(t==='auto_click'?'AC':t==='audio_output'?'AU':t==='text'?'T':t==='compose_email'?'@':'✦')+'</span>';
 }
